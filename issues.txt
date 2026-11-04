@@ -1,0 +1,25 @@
+# agent-creator — known issues & TODOs
+
+- [ ] Knowledge-base / RAG half of the goal is completely unscoped. No
+      chunking strategy, embedding model, vector store, or retrieval interface
+      has been chosen. This is the main open item from the INIT update — see
+      updates/2026-11-04 INIT - OPEN/update v1.md for the planned next phase.
+
+- [ ] SKILL.md and references/ are in Chinese (vendored verbatim from
+      upstream nuwa-skill). Works fine as-is since Claude Code reads it
+      directly, but worth translating/adapting to English once we start
+      actually adjusting "how we interact with the AI" per the INIT brief —
+      not done now on purpose, to keep the first copy a faithful, unmodified
+      baseline.
+
+- [ ] No generated person-skill exists yet. The first real run through the
+      vendored SKILL.md (distilling an actual person from the user's course/
+      book folders) will be the real test of whether this approach fits
+      as-is or needs adjustment. Do that before investing in the RAG phase —
+      it may change what the knowledge base even needs to contain.
+
+- [ ] `references/about-author.md` and the `examples/` folder from upstream
+      nuwa-skill were deliberately not vendored (self-promotional content /
+      14 bulk example people, not needed for our use). If a reference example
+      is ever needed, pull one from https://github.com/alchaincyf/nuwa-skill
+      directly rather than re-adding the whole examples/ tree.

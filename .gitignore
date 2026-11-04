@@ -1,0 +1,12 @@
+# Secrets — never commit
+.env
+
+# OS / editor
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# nuwa-skill's version-check bookkeeping file (local, not part of the method)
+.last-update-check
