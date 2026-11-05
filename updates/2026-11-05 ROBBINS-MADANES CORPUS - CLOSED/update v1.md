@@ -98,8 +98,8 @@ exactly one `pending` batch, mark it `done`, stop or continue)
 | P4.5 | Personality | Phase 2.5 checkpoint: confirm synthesis with user. | ~10K | **done** — user confirmed, and asked to drop the Honest Boundary section from the final file entirely (personal-use instance, not for distribution). |
 | P5 | Personality | Phase 3: construct new `instructions.md` from `references/skill-template.md`. | ~100K | **done** — written directly. `scripts/quality_check.py`: 4/6 automated pass. The 2 remaining fails are expected: Expression DNA is a confirmed Chinese-only regex gap in the vendored script (content manually verified, same issue as the first Tony Robbins run); Honest Boundary fails correctly because it was deliberately omitted per above. See `wiki.md`. |
 | P6 | Personality | Phase 4: independent validation (sanity/edge/voice tests + `quality_check.py`). | ~150K | **done** — 42,264 tokens. Independent agent (no access to research files, only `instructions.md`) answered 3 known-position questions (each correctly invoked the specific model it targeted: Model 7 horse-trading, Models 1/2/5 identity+decisions, Model 6 rules-by-function), 1 edge case (AI chatbots — correctly flagged as outside source material, extrapolated rather than invented), and a voice-check sample (distinctively in-character). No corrections needed; passed without an iteration cycle. |
-| P7 | Personality | Phase 5: dual-agent refinement, checkpoint, apply. | ~150K | pending |
-| F | Both | Finalize: confirm `.gitignore` covers `knowledge.md` and staged sources, update this file's Status section, commit + push. | ~15K | pending |
+| P7 | Personality | Phase 5: dual-agent refinement, checkpoint, apply. | ~150K | **done** — 84,581 tokens (2 parallel agents). Agent A (structural): flagged Step 2's research dimensions implying 5 model-backed lenses when only 2 have actual Core Mental Models behind them (annotated the other 2), and a RAG-KB boundary-condition gap (this person's situation vs. precedent in the corpus — two different fact sources, now split out explicitly). Agent B (role-play operability): added a "break character" handling rule (previously undefined — a real gap), added a generic-AI-drift recovery rule, collapsed a duplicated "never exits" statement into one place. All 5 fixes applied; `quality_check.py` re-run clean, no regressions (still 4/6, same 2 expected exceptions). |
+| F | Both | Finalize: confirm `.gitignore` covers `knowledge.md` and staged sources, update this file's Status section, commit + push. | ~15K | **done** |
 
 Only P1/P2 (and optional P3) are "big" batches; everything else is small.
 Batch 0 can run independently of the personality track in any order.
@@ -115,8 +115,29 @@ Batch 0 can run independently of the personality track in any order.
 
 ## Status
 
-v2 plan written 2026-11-05 after user feedback on v1 (decouple the two
-deliverables, use only Tony-led transcripts for personality). No batches
-executed yet. Next action: run batch 0 (knowledge.md script) and/or batch P1
-(personality research group A) when given the go-ahead — they're
-independent, can run in either order.
+**Complete, 2026-11-05.** All batches (0, P1-P7, F) done. Deliverables:
+
+1. `.claude/skills/tony-robbins-perspective/instructions.md` — rebuilt from
+   31 real on-camera coaching transcripts (Strategic Intervention training
+   films) plus *Awaken the Giant Within* as a writings supplement. 7 core
+   mental models, 10 decision heuristics, full Expression DNA and Coaching
+   Style sections, 4 preserved internal tensions, intellectual lineage.
+   Honest Boundary section deliberately omitted per user request (personal
+   use, not distribution — see `wiki.md` if this changes). Passed
+   independent Phase 4 validation cleanly (no iteration needed) and a
+   Phase 5 dual-agent refinement pass (5 concrete fixes applied).
+2. `.claude/skills/tony-robbins-perspective/knowledge.md` — mechanical
+   extraction of all 155 corpus files (865,515 words), local/gitignored,
+   for future RAG use.
+
+Total cost: ~2.17M tokens across the whole update (knowledge.md ~near-zero,
+personality pipeline ~2.17M) — above the revised ~1.0-1.7M estimate mainly
+because Phase 1 research (928K) ran ~24% over estimate and the book
+supplement (309K) plus Phase 4/5 (127K) added real but reasonable cost.
+Well within budget throughout; no batch was rushed to stay under the 500k
+ceiling.
+
+Open for later, not blocking: the one dead transcript file ("Jim 2"),
+and whatever comes next for the knowledge-base/RAG design proper (chunking,
+embeddings, retrieval) — `knowledge.md` is the raw input for that, not the
+RAG system itself.
