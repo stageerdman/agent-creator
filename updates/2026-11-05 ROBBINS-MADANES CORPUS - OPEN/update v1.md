@@ -4,123 +4,119 @@
 
 Source folder: `/Users/stage/Library/CloudStorage/OneDrive-Personal/Library/Tony
 Robbins/Tony Robbins Classroom/CORE 100&200 by Robbins Madaness` (23GB on disk,
-mostly video/audio which is explicitly out of scope). Two deliverables:
+mostly video/audio which is explicitly out of scope). Two **deliberately
+decoupled** deliverables — they don't share batches, because they have
+completely different cost profiles and different source subsets (v2 decision,
+2026-11-05, see below):
 
-1. **Rebuild `.claude/skills/tony-robbins-perspective/`** from this corpus,
-   replacing the existing instance (currently built from 3 books only, missing
-   dimensions 02-conversations and 04-external-views — see
-   `updates/2026-11-04 INIT - OPEN/update v1.md` Phase 2). This corpus is case
-   transcripts/teleclasses (Strategic Intervention methodology, co-created by
-   Tony Robbins and Cloé Madanes), so it's a much stronger source for
-   conversations/coaching-style than the books were, but it is **not** Tony
-   Robbins' own unscripted voice throughout — many module transcripts are
-   client case studies run by other certified trainers, not Robbins himself.
-   This needs to be verified per-module during Phase 1 research and recorded
-   honestly (contradictions/gaps are kept, not smoothed over, per this
-   project's forked methodology).
-2. **Produce `knowledge.md`**: a single merged, cleaned, structured file of
-   all the corpus's text content, for future RAG use. Stays local,
-   **gitignored** — raw course material is sensitive per `CLAUDE.md`'s rule
-   on source dumps (user confirmed 2026-11-05).
+1. **Rebuild `.claude/skills/tony-robbins-perspective/`**, replacing the
+   existing instance (built from 3 books only, missing dimensions
+   02-conversations and 04-external-views — see `updates/2026-11-04 INIT -
+   OPEN/update v1.md` Phase 2). Old content is authorized to be deleted
+   outright, not archived.
+2. **Produce `knowledge.md`**: every file in the corpus, extracted to plain
+   text and concatenated, for future RAG use. Stays local, **gitignored**
+   — raw course material is sensitive per `CLAUDE.md`'s rule on source dumps
+   (user confirmed 2026-11-05).
 
-User's explicit constraints on how this update runs (2026-11-05):
-- No large single run. Work proceeds in small, independently resumable
-  batches, each targeting **≤500k tokens**, so it can be stopped after any
-  batch and picked up in a later session without re-doing work.
-- Every batch's output is written to disk immediately (never left only in
-  chat/context) — that's what makes a batch resumable.
-- Old `tony-robbins-perspective` content is authorized to be deleted, not
-  just archived — it's being replaced outright, same directory/skill name.
+## v2 revision (2026-11-05): decouple personality source from knowledge.md source
+
+Original v1 plan read the whole corpus module-by-module and fed both
+deliverables from the same batches. User feedback: that's wrong on two
+counts —
+
+1. **knowledge.md should be near-zero cost.** It's a mechanical transform
+   (extract text from every file, concatenate, add headers) — a script's
+   job, not something that needs a model to read through. It doesn't need
+   batching under the 500k rule at all.
+2. **Personality shouldn't be built from the whole corpus — only from where
+   Tony Robbins is actually speaking.** Most of this corpus is *about* his
+   methodology (case studies run by other certified trainers, teleclass
+   recaps, reading material), not him talking. Mixing that in would dilute
+   fidelity, not add to it.
+
+**File-naming investigation confirmed a clean, fully mechanical split** —
+verified by reading sample content, not just filenames:
+
+- Every module/lesson that has a named client (e.g. "Module 1: Leaving Home
+  **- Scott**") pairs with a sibling folder suffixed **"- Teleclass"** (e.g.
+  "Module 1: Leaving Home **- Teleclass**").
+- The non-Teleclass folder's transcript (filenames like `*Transcript.doc`,
+  `*FilmTranscript*.doc/pdf`) is the **on-camera film**: verified speaker
+  tags are `T:`/`TR: Anthony Robbins` coaching the client directly (one
+  sample even has an explicit legend: `TR Anthony Robbins / CM Cloe Madanes
+  / L Lise`). **This is the personality source.**
+- The "- Teleclass" folder's transcript is an **audio-only call** where a
+  host (`M:` in the sample checked) recaps/analyzes the film for the class,
+  referring to "Tony" in the third person — confirmed NOT his voice.
+  **Knowledge.md only.**
+- `page.md`/`reading.txt`/`note.md` files in either folder type are written
+  curriculum copy (expository, not transcribed speech) — **knowledge.md
+  only**, not treated as Tony's own words even when they sit next to a film
+  transcript.
+
+This is a filename-pattern match (`*transcript*` in path, minus any path
+containing "teleclass"), checked against content on a handful of samples
+across different modules — holds consistently.
 
 ## Source survey (measured 2026-11-05)
 
 Excluding `.mp3`/`.mp4`/`.flv`/`.jpg`/`.DS_Store` and 76 empty `.lesson`
-placeholder files. Exact word counts (not sampled) via `pypdf`/`textutil`/doc
-metadata, per top-level module folder:
+placeholders. 155 text-bearing files total (71 `.doc`, 14 `.pdf`, 39 `.md`,
+21 `.txt`, 10 `.docx`), **729,736 words (~950K tokens) in total**.
 
-| Module | Words |
-|---|---|
-| 3. Life Stages (B) | 105,150 |
-| 1. Introduction to Strategic Intervention | 104,384 |
-| Bonus Modules | 92,585 |
-| 5. Individual Transformation | 81,730 |
-| 4. Finding Marital Passion | 80,969 |
-| 2. Life Stages (A) | 65,213 |
-| 8. Resiliency in Crisis Overcoming Grief | 64,871 |
-| 6. Overcoming Inner Conflicts | 51,409 |
-| 7. Group Dynamics | 47,366 |
-| 9. Advanced Negotiation Skills | 35,772 |
-| Bonus Module URP Educator's Kit | 287 |
-| **Total** | **729,736 words ≈ 950K tokens raw text** |
+Of those, the **personality subset is 32 files, 395,487 words (~515K
+tokens)** — the non-Teleclass transcripts listed above. (One file, "Jim 2 -
+Transcript.doc", extracted to only 5 words — likely a conversion issue;
+flagged for a manual look, not blocking.)
 
-File types: 71 `.doc`, 14 `.pdf`, 39 `.md`, 21 `.txt`, 10 `.docx` = 155 files.
+**Supplementary source on hand, reusable at zero extraction cost**: the
+previous instance's extracted text of *Awaken the Giant Within*
+(201,684 words) already sits at
+`.claude/skills/tony-robbins-perspective/references/sources/books/Awaken_the_Giant_Within_-_Anthony_Robbins.txt`.
+Held in reserve — pulled in only if the Phase 1.5 checkpoint shows a
+dimension is thin (most likely dimension 01, "writings/systematic thought" —
+dialogue transcripts don't naturally cover that).
 
-**Revised total cost estimate: ~2.8–3.5M tokens** for the whole update
-(well under the original rough estimate of 8-12M — exact per-module counts
-came in lower than the sampled extrapolation, and batching knowledge.md +
-Phase-1 research extraction into the same read pass per module-group avoids
-reading the corpus 6 separate times).
+## Revised total cost estimate: ~1.0–1.7M tokens
 
-## Batching strategy
+(Down from v1's ~2.8M and the original rough ~8–12M estimate.) Knowledge.md
+construction is now near-free (mechanical script); the personality pipeline
+reads ~515K tokens of raw transcript instead of ~950K tokens of full corpus.
 
-**Key efficiency decision**: nuwa-skill's 6 research dimensions are normally
-filled by 6 agents each independently searching the web (no redundant reads,
-since each hits different sources). In local-corpus mode, all 6 dimensions
-can appear in the *same* transcript — the methodology's own local-corpus
-section already says this ("一本书可能同时覆盖著作+对话+表达多个维度"). So
-each module-group is read **once**, and that single pass produces both (a) a
-cleaned `knowledge.md` chunk and (b) tagged excerpts appended into whichever
-of the 6 `references/research/0X-*.md` files apply — instead of 6 separate
-full-corpus passes.
+## Batch ledger (resumability: read this table first in any new session; run
+exactly one `pending` batch, mark it `done`, stop or continue)
 
-Module folders bucketed into 5 roughly-even groups (~140-150K words /
-~180-200K tokens raw each, leaving headroom under 500k once output is
-included):
-
-| Group | Modules | Words |
-|---|---|---|
-| G1 | 3. Life Stages (B) + 9. Advanced Negotiation Skills | 140,922 |
-| G2 | 1. Introduction to Strategic Intervention + Bonus Module URP Educator's Kit + 7. Group Dynamics | 152,037 |
-| G3 | Bonus Modules + 6. Overcoming Inner Conflicts | 143,994 |
-| G4 | 5. Individual Transformation + 8. Resiliency in Crisis Overcoming Grief | 146,601 |
-| G5 | 4. Finding Marital Passion + 2. Life Stages (A) | 146,182 |
-
-## Batch ledger (resumability: read this table first in any new session;
-run exactly one `pending` batch, mark it `done`, stop or continue)
-
-| # | Phase | Scope | Est. tokens | Status |
+| # | Track | Scope | Est. tokens | Status |
 |---|---|---|---|---|
-| 0 | Mechanical extraction | Convert all `.doc`/`.docx`/`.pdf` to clean staged `.txt` with module/source metadata headers (local tools only — pypdf, textutil — near-zero model tokens). Not gated by the 500k rule. | ~20K | pending |
-| 1 | Knowledge.md + Phase 1 research (dual-purpose read) | Group G1 | ~400K | pending |
-| 2 | Knowledge.md + Phase 1 research | Group G2 | ~430K | pending |
-| 3 | Knowledge.md + Phase 1 research | Group G3 | ~410K | pending |
-| 4 | Knowledge.md + Phase 1 research | Group G4 | ~420K | pending |
-| 5 | Knowledge.md + Phase 1 research | Group G5 | ~420K | pending |
-| 6 | Phase 1.5 checkpoint | Research-quality summary table shown to user for confirm/adjust | ~20K | pending |
-| 7 | knowledge.md finishing pass | Add TOC/front-matter/index across all 5 groups' content | ~60K | pending |
-| 8 | Phase 2 | Synthesis: mental models, decision heuristics, expression DNA, values/anti-patterns, lineage, honest boundary, coaching style — from the 6 condensed research files, not raw corpus | ~150K | pending |
-| 9 | Phase 2.5 checkpoint | Confirm synthesis with user | ~10K | pending |
-| 10 | Phase 3 | Construct new `instructions.md` from `references/skill-template.md` | ~100K | pending |
-| 11 | Phase 4 | Independent validation (sanity/edge/voice tests + `quality_check.py`) | ~150K | pending |
-| 12 | Phase 5 | Dual-agent refinement, checkpoint, apply | ~150K | pending |
-| 13 | Cleanup | Delete old instructions.md/research/sources content being replaced, finalize `.gitignore` for `knowledge.md` and staged sources, update this file's Status section, commit + push | ~20K | pending |
+| 0 | knowledge.md | One Python script extracts **all 155 files** (every type) to plain text and concatenates into `knowledge.md` with module/lesson headers + TOC. Pure script execution — no model reading of corpus content required. Not gated by the 500k rule; this is the entire knowledge.md deliverable in one shot. | ~10K (orchestration only) | pending |
+| P1 | Personality | Phase 0.5 (fresh skill scaffold, delete old content) + Phase 1 research pass over transcript group A (16 files, ~215K words / ~280K tokens): Introduction, Life Stages A, Life Stages B, Finding Marital Passion. Tag evidence into `references/research/0X-*.md`. | ~400K | pending |
+| P2 | Personality | Phase 1 research pass over transcript group B (16 files, ~180K words / ~235K tokens): Individual Transformation, Overcoming Inner Conflicts, Group Dynamics, Resiliency in Crisis, Advanced Negotiation, Bonus Modules. | ~350K | pending |
+| P1.5 | Personality | Phase 1.5 checkpoint: research-quality summary table shown to user. Decide here whether the *Awaken the Giant Within* supplement (batch P3) is needed. | ~15K | pending |
+| P3 | Personality (optional) | Only if P1.5 shows a gap: read *Awaken the Giant Within* (~260K tokens), tag into the thin dimension(s). | ~300K | conditional |
+| P4 | Personality | Phase 2 synthesis (mental models, decision heuristics, expression DNA, values/anti-patterns, lineage, honest boundary, coaching style) — from the condensed research files, not raw corpus. | ~150K | pending |
+| P4.5 | Personality | Phase 2.5 checkpoint: confirm synthesis with user. | ~10K | pending |
+| P5 | Personality | Phase 3: construct new `instructions.md` from `references/skill-template.md`. | ~100K | pending |
+| P6 | Personality | Phase 4: independent validation (sanity/edge/voice tests + `quality_check.py`). | ~150K | pending |
+| P7 | Personality | Phase 5: dual-agent refinement, checkpoint, apply. | ~150K | pending |
+| F | Both | Finalize: confirm `.gitignore` covers `knowledge.md` and staged sources, update this file's Status section, commit + push. | ~15K | pending |
 
-Total estimate: ~2.77M tokens across 14 batches; only batches 1-5 are "big"
-(~400-430K each), everything else is small.
+Only P1/P2 (and optional P3) are "big" batches; everything else is small.
+Batch 0 can run independently of the personality track in any order.
 
-## Open questions carried into execution (not blocking the plan, flagged for
-Phase 1 research to resolve with evidence)
+## Open questions carried into execution
 
-- Which modules/transcripts are actually Tony Robbins' own voice vs. other
-  certified Strategic Intervention trainers coaching the case-study clients?
-  Record per-module in `references/research/`, don't assume uniformly.
-- Dimension 04 (external-views) may still be thin — this corpus is
-  Robbins-Madanes-authored training material, not outside critique of
-  Robbins. Carry forward as an honest-boundary gap if so, same as the
-  previous instance did.
+- The 5-word "Jim 2" transcript extraction — check if it's a scan/image-only
+  page requiring a different extraction approach, or accept the loss of one
+  file out of 32.
+- Dimension 04 (external-views) will likely still be thin — this corpus is
+  Robbins-Madanes-authored training material, not outside critique.  Carry
+  forward as an honest-boundary gap, same as the previous instance did.
 
 ## Status
 
-Plan written 2026-11-05. No batches executed yet — user explicitly asked to
-stop after planning. Next action: run batch 0 (mechanical extraction) when
-given the go-ahead, then proceed batch-by-batch per the ledger above.
+v2 plan written 2026-11-05 after user feedback on v1 (decouple the two
+deliverables, use only Tony-led transcripts for personality). No batches
+executed yet. Next action: run batch 0 (knowledge.md script) and/or batch P1
+(personality research group A) when given the go-ahead — they're
+independent, can run in either order.
