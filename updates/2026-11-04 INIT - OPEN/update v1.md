@@ -104,11 +104,21 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
 - [ ] This is explicitly the part the user said we'd "adjust later" — don't
       pre-commit to a stack before Phase 2 shows what's actually needed.
 
-### Phase 4 — Adjust interaction model (open)
-- [ ] Revisit how a user actually talks to the finished agent (personality
-      skill + knowledge base together) once Phase 2 and 3 exist — this was
-      flagged explicitly as something to change, not keep as nuwa-skill's
-      default chat-with-a-perspective-skill pattern.
+### Phase 4 — Adjust interaction model (first step taken)
+- [x] First concrete adjustment: added
+      `.claude/skills/tony-robbins-perspective/system-prompt.md`, a
+      standalone always-on system-prompt export of the same distilled
+      content — no Claude Code skill-trigger phrases, no "exit the role"
+      escape, no local file-path references. For pasting into any other
+      agent/host so it's permanently the Tony Robbins persona rather than a
+      conditionally-triggered Claude Code skill. Same mental
+      models/heuristics/DNA/boundaries as `SKILL.md`; only the
+      activation/exit mechanics were dropped, since "this persona is the
+      whole agent" has no other mode to trigger from or fall back to.
+- [ ] Still open: how this interacts with the knowledge-base/RAG half once
+      Phase 3 exists (does the external agent get retrieval too, or is
+      system-prompt.md personality-only); whether this becomes a repeatable
+      per-person export step in the pipeline or stays a one-off for now.
 
 ## Status
 
