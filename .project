@@ -12,9 +12,11 @@ modules:
 # Revisit if a UI gets built for browsing generated knowledge bases.
 
 secrets: none
-# Current phase (personality distillation, vendored from nuwa-skill) needs no
-# API keys — it runs on Claude Code's own WebSearch/tools. The knowledge-base
-# / RAG phase will likely need an embeddings/vector-store key; add it via the
+# Current phase (personality distillation, SKILL.md forked from nuwa-skill
+# 2026-11-05) needs no API keys — build-time research still runs on Claude
+# Code's own WebSearch/tools; only the deployed persona's own runtime
+# Agentic Protocol was changed to RAG-only. The knowledge-base / RAG phase
+# will likely need an embeddings/vector-store key; add it via the
 # sync-secrets routine when that phase starts (see issues.txt).
 
 claude_md_generated: 2026-11-04

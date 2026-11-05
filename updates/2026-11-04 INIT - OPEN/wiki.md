@@ -65,6 +65,72 @@ any non-Chinese) subjects, extending this one regex to accept English
 synonyms is a candidate small, deliberate patch — not urgent since manual
 verification is cheap for one skill at a time.
 
+## 2026-11-05: deliberately forked away from nuwa-skill's trigger-based shape
+The one-off `system-prompt.md` export (Phase 4, "adjust interaction model")
+turned out to be the right direction, not a one-off: the user decided
+agent-creator will **only** produce always-on personality files from here on,
+not a Claude-Code-triggered `SKILL.md` per person. Rather than keep
+hand-converting each generated `SKILL.md` into a second always-on export,
+the methodology itself (`SKILL.md`, `references/skill-template.md`,
+`references/extraction-framework.md`, `references/fidelity-scorecard.md`)
+was edited in place to produce the always-on shape directly, as
+`instructions.md`. User's explicit call: keep file count minimal, edit in
+place rather than fork into parallel files, and stop treating upstream
+nuwa-skill as a verbatim baseline to preserve for future diffing — "we will
+only use this new approach."
+
+Exactly five changes, nothing else:
+1. **No frontmatter/trigger-phrase mechanism in the output.** The old
+   `description` field existed so Claude Code's skill-loader could decide
+   when to activate the skill. An always-on file has no activation
+   decision to make — it's not a skill lookup table entry, it's the whole
+   agent. `instructions.md` now starts directly with the title.
+2. **Agentic Protocol's runtime research step is RAG-only.** This is about
+   the *deployed persona's* behavior when it needs facts to answer a
+   question — it now may only query a RAG knowledge base provided to it,
+   never live WebSearch. Distinct from Phase 1's build-time research
+   (nuwa distilling the person in the first place), which is unaffected and
+   still may use WebSearch/local corpus.
+3. **Person Timeline section dropped**, no replacement. Agent 6's
+   timeline research is still collected (it still feeds the Identity Card's
+   "what I'm doing now" line) but no longer gets its own section in the
+   output.
+4. **Appendix: Research Sources section dropped**, no replacement — sourcing
+   now lives only as inline evidence citations inside Mental Models /
+   Decision Heuristics / Coaching Style / Honest Boundary, not a separate
+   bibliography. `fidelity-scorecard.md`'s 来源透明度 criterion was reworded
+   accordingly (it used to statically check for the now-gone appendix
+   section).
+5. **New Coaching Style section**, inserted after Expression DNA. Schema (8
+   fields: probing ratio, challenge/support balance, specificity
+   enforcement, resistance handling, reframing moves, pacing/arc, closing
+   mechanism, presence cues) was designed by studying
+   github.com/blaizew/personas' persona-anatomy approach for inspiration —
+   not copying its content. Content itself must be researched per-person
+   from the existing corpus (new Phase 2.7); the user was explicit that a
+   generic/assumed coaching style defeats the entire point. First run (Tony
+   Robbins) found strong evidence for 7 of 8 dimensions directly in the
+   three books (the lawyer/chocolate/CEO/Beverly-Hills-doctor scenes); only
+   Presence Cues came back thin, flagged honestly as lower-confidence
+   (it's self-reported physical staging in prose, not an observed record).
+
+Collateral fixes this forced, found by auditing the whole repo rather than
+just the 5 files already known to encode the methodology: Phase 0B's
+existing-skill scan read `SKILL.md`'s `description` field to match a vague
+need to an already-built persona — with no frontmatter left, it now reads
+the Identity Card's opening paragraph instead. Phase 5's Agent B used to
+review "whether the activation trigger covers real usage" — dropped, since
+there's no trigger anymore. The "update existing skill" flow used to refresh
+a "最新动态" sub-section that only existed inside the now-removed Timeline
+section — redirected to update Decision Heuristics / Coaching Style with new
+cases plus the Honest Boundary's research-date stamp instead.
+
+This supersedes the Phase 4 `system-prompt.md` experiment — that file and
+the old `SKILL.md` for Tony Robbins were retired once `instructions.md` was
+regenerated under the new template with the same underlying content (mental
+models/heuristics/expression DNA/values/lineage/honest boundary carried over
+unchanged) plus the researched Coaching Style section.
+
 ## Nuwa's own pipeline is the orchestration pattern, not just the output format
 `SKILL.md`'s Phase 1 (6 parallel research agents) and Phase 4 (independent
 validation agents, never self-graded) are themselves instances of

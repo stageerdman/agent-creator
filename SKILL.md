@@ -15,17 +15,26 @@ metadata:
 
 # 女娲 · Skill造人术
 
-> **Provenance note (agent-creator):** this file is vendored verbatim from the
-> open-source [女娲.skill / nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
-> (MIT © Huashu/花叔) as agent-creator's starting methodology for distilling a
-> person's personality + principles (part 1 of this project's two-part goal —
-> see `CLAUDE.md` and `updates/2026-11-04 INIT - OPEN/update v1.md`). It is
-> intentionally unmodified except for this note and the two provenance edits
-> below (「关于作者」/「版本检查」), since those two sections assumed this file
-> lives in its own standalone clone of the upstream repo, which is no longer
-> true once vendored into another project's git history. Everything else —
-> the phases, the extraction methodology, the checkpoints — is kept as-is;
-> adjustments come later, deliberately, not by drift.
+> **Provenance note (agent-creator):** this file started as a verbatim copy of
+> the open-source [女娲.skill / nuwa-skill](https://github.com/alchaincyf/nuwa-skill)
+> (MIT © Huashu/花叔), adopted as agent-creator's starting methodology for
+> distilling a person's personality + principles (part 1 of this project's
+> two-part goal — see `CLAUDE.md` and `updates/2026-11-04 INIT - OPEN/update
+> v1.md`). On 2026-11-05 it was **deliberately forked** away from upstream to
+> fit a different deliverable shape — this project no longer produces a
+> Claude-Code-triggered `SKILL.md` per person; it produces an always-on
+> personality file, `instructions.md`, meant to be the entire agent rather
+> than a conditionally-loaded skill. The fork changed exactly five things:
+> no frontmatter/trigger-phrase mechanism in the per-person output, the
+> Agentic Protocol's runtime research step now queries only a RAG knowledge
+> base (never live web search) once the persona is deployed, the Person
+> Timeline and Appendix: Research Sources sections were dropped from the
+> output with nothing put in their place, and a new Coaching Style section
+> (researched per-person, not assumed) was added. Full rationale is in
+> `updates/2026-11-04 INIT - OPEN/wiki.md`. Everything not called out above —
+> the phases, the triple-verification methodology, the checkpoints — is
+> unchanged from upstream; further upstream merges are still a deliberate,
+> reviewed action, not automatic.
 
 > 「写不进去的那部分，才是你真正的护城河。」——但写得进去的部分，已经足够强大。
 
@@ -137,7 +146,7 @@ metadata:
 - 不确定 → 推荐中同时包含两种类型，让用户选
 
 **来源A：本地已有Skill**
-扫描 `.claude/skills/*-perspective/` 目录，读取每个SKILL.md的description，匹配用户需求。已有Skill可以即插即用，不需要重新蒸馏。如果扫描结果为空（用户还没有任何perspective skill），跳过此步，只从来源B推荐。
+扫描 `.claude/skills/*-perspective/` 目录，读取每个instructions.md开头的身份卡/自我介绍段落，匹配用户需求。已有Skill可以即插即用，不需要重新蒸馏。如果扫描结果为空（用户还没有任何perspective skill），跳过此步，只从来源B推荐。
 
 **来源B：新蒸馏候选**
 基于需求维度表中的「思维框架方向」列，匹配最相关的人物或主题。推荐时说清楚：这个人的哪个思维框架能解决用户的具体问题。
@@ -171,7 +180,7 @@ metadata:
 
 ```
 .claude/skills/[person-name]-perspective/
-├── SKILL.md                          # 最终产物
+├── instructions.md                   # 最终产物
 ├── scripts/                          # 工具脚本（字幕下载/清洗/质量检查）
 └── references/
     ├── research/                     # 每个Agent的调研结果（必存）
@@ -190,7 +199,7 @@ metadata:
 **完成检查**（自动执行）：
 - [ ] 目录已创建
 - [ ] 如果是中国人物：信息源策略切换为B站原始视频/小宇宙播客/权威中文媒体优先（知乎和微信公众号始终排除，见信息源黑名单）
-- [ ] 如果是更新模式：已读取现有SKILL.md，标注哪些信息需要刷新
+- [ ] 如果是更新模式：已读取现有instructions.md，标注哪些信息需要刷新
 - [ ] 如果用户提供了本地语料：将素材复制/移动到 `sources/` 对应子目录，标记为**本地语料模式**
 
 **关键规则**：
@@ -294,7 +303,7 @@ spawn subagent时，用以下结构给任务（以Agent 1著作为例）：
 - 调研摘要生成（Phase 1.5用）：`python3 [skill目录]/scripts/merge_research.py <skill目录>`
   - 自动扫描 `references/research/01-06.md`，统计来源数、一手/二手占比、关键发现
   - 输出Phase 1.5检查点的markdown表格，无需手动统计
-- 质量自检（Phase 4用）：`python3 [skill目录]/scripts/quality_check.py <SKILL.md路径>`
+- 质量自检（Phase 4用）：`python3 [skill目录]/scripts/quality_check.py <instructions.md路径>`
   - 自动检查6项通过标准：心智模型数量、局限性、表达DNA、诚实边界、内在张力、一手来源占比
   - 输出逐项PASS/FAIL和总结
 
@@ -425,6 +434,20 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 - 公开表达 vs 真实想法可能有差距
 - 信息截止到调研时间点
 
+#### 2.7 教练风格提炼
+
+= 此人指导、反馈、挑战他人时的具体互动模式。必须来自调研证据（访谈中的应答方式、教学/辅导片段、公开指导他人的记录），不可照搬通用教练模板强行套用。
+
+提取维度（每个维度要有调研证据；证据不足的维度标注「证据不足」或省略，不可编造）：
+- **提问比例**：给建议前问几个澄清/挑战性问题，问题指向什么
+- **挑战与支持的平衡**：在对抗与鼓励之间的位置，升级到更直接前需要先发生什么
+- **具体化强制**：把模糊陈述逼成具体、可衡量承诺的特有方式
+- **抗拒/反驳应对**：对方回避、防御或不同意时的反应方式
+- **重新框定手法**：打破假二元或转换问题框架的招牌方式（不是心智模型本身，是运用心智模型时的对话动作）
+- **节奏与弧线**：一次互动典型的展开方式（起势、推进、高潮、收尾）
+- **收尾机制**：结束互动前坚持要有的东西（下一步行动、截止日期、要回答的一个问题）
+- **临场信号**：暗示情绪判断的语气/动作模式（停顿、笑声、沉默等，如有证据）
+
 ---
 
 ### Phase 2.5: 提炼确认检查点
@@ -436,6 +459,7 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 - 心智模型：N个（列出名称）
 - 决策启发式：N条
 - 表达DNA：[3个关键特征]
+- 教练风格：N个维度有证据覆盖
 - 核心张力：N对
 - 诚实边界：N条
 ```
@@ -443,34 +467,32 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 用户确认OK → 进入Phase 3构建。
 用户觉得某个模型不对或缺少 → 回到Phase 2调整后再继续。
 
-这个检查点的意义：提炼是主观判断最重的环节，确认后再构建，避免写完400行SKILL.md才发现方向不对。
+这个检查点的意义：提炼是主观判断最重的环节，确认后再构建，避免写完400行instructions.md才发现方向不对。
 
 ---
 
 ### Phase 3: Skill构建
 
-将Phase 2提炼结果组装为可运行的SKILL.md。
+将Phase 2提炼结果组装为可运行的instructions.md。
 
 #### Step 1: 读取模板
-读取 `references/skill-template.md` 获取标准结构。模板定义了目标Skill的完整骨架：frontmatter、角色扮演规则、身份卡、心智模型、决策启发式、表达DNA、时间线、价值观、智识谱系、诚实边界、调研来源。
+读取 `references/skill-template.md` 获取标准结构。模板定义了目标文件的完整骨架：角色扮演规则、身份卡、回答工作流、心智模型、决策启发式、表达DNA、教练风格、价值观、智识谱系、诚实边界。
 
 #### Step 2: 填充内容
 按模板结构，将Phase 2的提炼结果逐section填入：
 
 | 模板Section | 填充来源 |
 |------------|---------|
-| frontmatter description | 来源数量+模型数量+触发词。**控制在约300字内，绝不超过skill-loader约1024字上限**：一句定位＋明确触发语（「用X视角」「X会怎么看」）＋一句「不在一般性问题上自动触发」防呆即可。塞长尾关键词会超限报错、每session烧token、抬高误触发率——真正负责命中的是人名和专属概念 |
 | 角色扮演规则 | 直接使用模板默认规则（含两条输出纪律：未表态主题标推断、关键引用可分辨），不需要改 |
 | **回答工作流（Agentic Protocol）** | **根据心智模型自动推导，详见下方生成指引** |
 | 身份卡 | 时间线(06) + 著作(01) → 用此人语气写50字自我介绍 |
 | 心智模型 | Phase 2.1 提取结果，每个含名称/证据/应用/局限 |
 | 决策启发式 | Phase 2.2 提取结果，每条含场景+案例 |
 | 表达DNA | Phase 2.3 分析结果 → 转为角色扮演时的风格规则 |
-| 时间线 | Agent 6 调研结果，精简为关键节点表格 |
+| 教练风格 | Phase 2.7 提炼结果，每个维度含调研证据；证据不足的维度标注或省略 |
 | 价值观与反模式 | Phase 2.4 结果 |
 | 智识谱系 | Phase 2.5 结果 |
 | 诚实边界 | Phase 2.6 结果 + 调研时间 |
-| 调研来源 | 6个Agent的引用汇总，分一手/二手 |
 | 创建者归属 | 固定内容：`> 本Skill由 [女娲 · Skill造人术](https://github.com/alchaincyf/nuwa-skill) 生成` + `> 创建者：[花叔](https://x.com/AlchainHust)` |
 
 #### 回答工作流（Agentic Protocol）生成指引
@@ -498,17 +520,17 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 | **纯框架问题** | 抽象价值观、思维方式、人生建议 | → 直接用心智模型回答（跳到Step 3） |
 | **混合问题** | 用具体案例讨论抽象道理 | → 先获取案例事实，再用框架分析 |
 
-**判断原则**：如果回答质量会因为缺少最新信息而显著下降，就必须先研究。宁可多搜一次，也不要凭训练语料编造。
+**判断原则**：如果回答质量会因为缺少最新信息而显著下降，就必须先研究。宁可多查一次RAG知识库，也不要凭训练语料编造。
 
 ### Step 2: [人物名]式研究（按问题类型选择）
 
-**⚠️ 必须使用工具（WebSearch等）获取真实信息，不可跳过。**
+**⚠️ 必须查询提供给agent的RAG知识库获取真实信息，不可跳过直接凭训练语料编造。**（此处指部署后agent回答问题时的运行时研究，用的是挂载给它的RAG检索——不是女娲蒸馏阶段用来构建人物本身的网络搜索，两者是不同阶段，互不影响。）
 
-[根据此人的心智模型和分析偏好，生成3-5个研究维度分类，每个分类下列出4-6个具体研究点]
+[根据此人的心智模型和分析偏好，生成3-5个研究维度分类，每个分类下列出4-6个具体RAG查询方向]
 
 #### 研究输出格式
-研究完成后，先在内部整理事实摘要（不输出给用户），然后进入Step 3。
-用户看到的不是调研报告，而是[人物名]基于真实信息做出的判断。
+查询完成后，先在内部整理事实摘要（不输出给用户），然后进入Step 3。
+用户看到的不是调研报告，而是[人物名]基于RAG检索到的真实信息做出的判断。
 
 ### Step 3: [人物名]式回答
 
@@ -535,7 +557,7 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 构建完成后，读取 `references/extraction-framework.md` 末尾的「质量自检清单」，逐项检查。不通过的项标注出来，回到对应Phase修复。
 
 #### Step 4: 输出
-将完成的SKILL.md写入 `.claude/skills/[person-name]-perspective/SKILL.md`。
+将完成的instructions.md写入 `.claude/skills/[person-name]-perspective/instructions.md`。
 
 ---
 
@@ -566,6 +588,7 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 | 心智模型数量 | 3-7个，每个有来源证据 | <3或>10 |
 | 每个模型的局限性 | 明确写出失效条件 | 只写优点 |
 | 表达DNA辨识度 | 读100字能认出是谁 | 像通用ChatGPT |
+| 教练风格具体度 | 每个维度有调研证据支撑 | 读起来像通用教练模板，换个名字也成立 |
 | 诚实边界 | 至少3条具体局限 | 只有「不能替代本人」 |
 | 内在张力 | 至少2对矛盾 | 观点高度一致（太假） |
 | 一手来源占比 | >50% | 主要依赖二手转述 |
@@ -584,12 +607,11 @@ Phase 4 验证通过后，自动启动双Agent精炼，进一步提升Skill可�
 **并行启动两个Agent：**
 
 **Agent A（auto-skill-optimizer视角）**：
-- 对SKILL.md执行8维度结构评估（工作流清晰度、边界条件、检查点设计、指令具体性等）
+- 对instructions.md执行8维度结构评估（工作流清晰度、边界条件、检查点设计、指令具体性等）
 - 干跑3个典型测试prompt，评估效果维度
 - 输出：最弱2个维度的具体改进建议（要有改后文本示例）
 
 **Agent B（skill-creator视角）**：
-- 评审「激活触发条件」是否覆盖真实使用场景
 - 评审「角色扮演规则」的可操作性（有无问题路由、频率约束、失败预防）
 - 识别缺失的关键信息
 - 输出：2-3处具体文本改动建议（要有改后文本示例）
@@ -604,13 +626,13 @@ Phase 4 验证通过后，自动启动双Agent精炼，进一步提升Skill可�
 
 当用户说「更新XX的skill」「XX最近有新动态」时：
 
-1. 读取现有SKILL.md，从「诚实边界」section中找到「调研时间：[日期]」，标注距今多久
+1. 读取现有instructions.md，从「诚实边界」section中找到「调研时间：[日期]」，标注距今多久
 2. 只启动Agent 2（最新对话）+ Agent 5（最新决策）+ Agent 6（时间线更新）
 3. 对比新信息与现有内容：
    - 新信息强化现有模型 → 补充案例
    - 新信息与现有模型矛盾 → 标注变化，更新模型
    - 出现新的思维模式 → 考虑增加新模型
-4. 更新SKILL.md中的「最新动态」section和调研时间
+4. 更新instructions.md中的决策启发式/教练风格的新案例，以及诚实边界中的调研时间
 5. 不重写整个Skill，只增量更新
 
 ---

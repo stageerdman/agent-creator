@@ -13,22 +13,23 @@ capabilities for them:
 
 ## Approach
 
-Part 1 is solved by adopting, **verbatim**, the open-source
+Part 1 started as a verbatim adoption of the open-source
 [女娲.skill / nuwa-skill](https://github.com/alchaincyf/nuwa-skill) (MIT ©
-Huashu/花叔): `SKILL.md`, `references/`, and `scripts/` at this repo's root
-are a direct copy. Its 6-phase pipeline — parallel multi-agent research,
-triple-verified mental-model extraction, SKILL.md construction, independent
-quality validation, dual-agent refinement — already does what part 1 needs.
-See `SKILL.md`'s provenance note at the top for exactly what was and wasn't
-changed.
+Huashu/花叔) — `SKILL.md`, `references/`, and `scripts/` at this repo's root —
+then was deliberately forked on 2026-11-05 to produce an always-on
+personality file, `instructions.md`, instead of a Claude-Code-triggered
+skill per person. Its 6-phase pipeline — parallel multi-agent research,
+triple-verified mental-model extraction, instructions.md construction,
+independent quality validation, dual-agent refinement — still does what
+part 1 needs. See `SKILL.md`'s provenance note at the top for exactly what
+changed and `updates/2026-11-04 INIT - OPEN/wiki.md` for the full rationale.
 
 Part 2 — the structured knowledge base for RAG — isn't in nuwa-skill's scope.
 It's this project's open work; see
 `updates/2026-11-04 INIT - OPEN/update v1.md` for the plan.
 
-How we interact with the distilled agent, and how source data gets created
-and ingested, are both expected to be adjusted as this project develops —
-nothing about that is locked in yet.
+How source data gets created and ingested is still expected to be adjusted
+as this project develops — nothing about that is locked in yet.
 
 ## Using this
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-自动检查生成的SKILL.md是否通过Phase 4质量标准。
+自动检查生成的instructions.md是否通过Phase 4质量标准。
 对照通过标准表格逐项检查，输出通过/不通过和具体原因。
 
 用法:
-    python3 quality_check.py <SKILL.md路径>
+    python3 quality_check.py <instructions.md路径>
 
 示例:
-    python3 quality_check.py .claude/skills/elon-musk-perspective/SKILL.md
+    python3 quality_check.py .claude/skills/elon-musk-perspective/instructions.md
 """
 
 import sys
@@ -103,7 +103,7 @@ def check_primary_sources(content: str) -> tuple[bool, str]:
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python3 quality_check.py <SKILL.md路径>")
+        print("用法: python3 quality_check.py <instructions.md路径>")
         sys.exit(1)
 
     skill_path = Path(sys.argv[1])

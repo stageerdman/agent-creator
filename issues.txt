@@ -5,18 +5,18 @@
       has been chosen. This is the main open item from the INIT update — see
       updates/2026-11-04 INIT - OPEN/update v1.md for the planned next phase.
 
-- [ ] SKILL.md and references/ are in Chinese (vendored verbatim from
-      upstream nuwa-skill). Works fine as-is since Claude Code reads it
-      directly, but worth translating/adapting to English once we start
-      actually adjusting "how we interact with the AI" per the INIT brief —
-      not done now on purpose, to keep the first copy a faithful, unmodified
-      baseline.
+- [ ] SKILL.md and references/ are in Chinese (started as a verbatim vendor
+      copy of upstream nuwa-skill, then deliberately forked 2026-11-05 — see
+      SKILL.md's provenance note and updates/2026-11-04 INIT - OPEN/wiki.md).
+      Works fine as-is since Claude Code reads it directly, but worth
+      translating/adapting to English at some point — not done now on
+      purpose, out of scope for the 2026-11-05 fork.
 
-- [ ] No generated person-skill exists yet. The first real run through the
-      vendored SKILL.md (distilling an actual person from the user's course/
-      book folders) will be the real test of whether this approach fits
-      as-is or needs adjustment. Do that before investing in the RAG phase —
-      it may change what the knowledge base even needs to contain.
+- [ ] One generated person-instance exists: Tony Robbins, at
+      .claude/skills/tony-robbins-perspective/instructions.md, regenerated
+      under the 2026-11-05 fork (no frontmatter, RAG-only Agentic Protocol,
+      no Timeline/Appendix sections, researched Coaching Style section).
+      Use it as the reference example for the current template's shape.
 
 - [ ] `references/about-author.md` and the `examples/` folder from upstream
       nuwa-skill were deliberately not vendored (self-promotional content /

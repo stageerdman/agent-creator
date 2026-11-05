@@ -7,15 +7,19 @@ principles, callable as a perspective skill, and (2) a large, well-structured
 knowledge base of their material for RAG retrieval, so the agent can pull up
 the actual source instead of relying on a compressed summary.
 
-Part 1 is solved by adopting, **verbatim**, the open-source
+Part 1 started as a verbatim adoption of the open-source
 [女娲.skill / nuwa-skill](https://github.com/alchaincyf/nuwa-skill) (MIT ©
-Huashu/花叔): `SKILL.md`, `references/`, and `scripts/` at this repo's root are
-a direct copy — see `SKILL.md`'s provenance note for exactly what was and
-wasn't changed. Part 2, the structured knowledge base for RAG, is not in
+Huashu/花叔) — `SKILL.md`, `references/`, and `scripts/` at this repo's root —
+and was then deliberately forked on 2026-11-05 to fit this project's actual
+deliverable: not a Claude-Code-triggered skill per person, but an always-on
+personality file, `instructions.md`, meant to be the entire agent rather than
+a conditionally-loaded skill. See `SKILL.md`'s provenance note for exactly
+what changed and `updates/2026-11-04 INIT - OPEN/wiki.md` for the full
+rationale. Part 2, the structured knowledge base for RAG, is not in
 nuwa-skill's scope and is this project's open work; see
-`updates/2026-11-04 INIT - OPEN/update v1.md`. How we interact with the
-distilled agent and how source data gets created/ingested are both expected
-to be adjusted later — nothing about that is locked in yet.
+`updates/2026-11-04 INIT - OPEN/update v1.md`. How source data gets
+created/ingested is still expected to be adjusted later — nothing about that
+is locked in yet.
 
 This file is compiled from the global modules in `~/.ai-control/modules/`
 (STRUCTURE, CODING, WORKFLOW — UX is skipped, this project has no user-facing
@@ -63,7 +67,7 @@ cross-coupling.
 - **Test what matters.** Cover core logic, risky paths, and anything that would
   silently regress; skip tests for trivial glue. Phases in a roadmap mostly end
   with tests that lock in what they built. (`scripts/quality_check.py` is this
-  project's existing version of that for a generated SKILL.md.)
+  project's existing version of that for a generated instructions.md.)
 - **Idiomatic to the ecosystem.** Match the conventions, naming, and idioms of
   the stack and surrounding code. Read the neighbors before writing; follow the
   ecosystem's standard tooling for formatting, linting, and layout.
@@ -81,9 +85,9 @@ cross-coupling.
   design, run a throwaway spike outside the main code, inside the update folder,
   in an isolated environment. Capture findings in the update's `wiki.md`.
 - **Act as an orchestrator.** Prefer delegating to focused agents over doing
-  everything inline: decompose, fan out, synthesize. (The vendored SKILL.md
-  already does exactly this for the distillation pipeline itself — 6 parallel
-  research agents, then independent validation agents.)
+  everything inline: decompose, fan out, synthesize. (`SKILL.md`'s own
+  methodology already does exactly this for the distillation pipeline itself
+  — 6 parallel research agents, then independent validation agents.)
 - **Verify before moving on.** Verify by running the actual thing, not just a
   green test, before you commit and move to the next phase.
 
@@ -91,17 +95,21 @@ cross-coupling.
 
 ## Project-specific rules
 
-- **`SKILL.md`, `references/`, and `scripts/` at the repo root are vendored
-  from upstream nuwa-skill, not authored here.** Don't casually edit the
-  methodology itself (the phases, the triple-verification rules, the
-  checkpoints) — if it needs to change, that's a deliberate decision to
-  record in an update's `wiki.md`, not a drive-by edit. Pulling upstream
-  improvements later is also a deliberate, reviewed action, not automatic.
-- **No generated person-skill exists yet.** When distilling the first real
-  person, follow the vendored SKILL.md's own Phase 0.5 convention
-  (`.claude/skills/[person]-perspective/`) rather than inventing a new layout.
-  Do this before investing in the knowledge-base/RAG phase — it's the real
-  test of whether the vendored approach fits as-is.
+- **`SKILL.md`, `references/`, and `scripts/` at the repo root are a
+  deliberately maintained fork of upstream nuwa-skill, not a verbatim
+  vendor copy anymore.** The 2026-11-05 fork (see `SKILL.md`'s provenance
+  note and `updates/2026-11-04 INIT - OPEN/wiki.md`) is the only approach
+  this project uses going forward — don't reach for upstream's trigger-based,
+  web-search-driven `SKILL.md`-per-person shape. Further changes to the
+  methodology (the phases, the triple-verification rules, the checkpoints)
+  are still a deliberate decision recorded in an update's `wiki.md`, not a
+  drive-by edit.
+- **One generated person-instance exists: Tony Robbins**, at
+  `.claude/skills/tony-robbins-perspective/`, using the current convention —
+  directory layout `.claude/skills/[person]-perspective/` per Phase 0.5,
+  final deliverable named `instructions.md` (not `SKILL.md`). It was
+  regenerated under the 2026-11-05 fork; treat it as the reference example
+  for the current template's shape.
 - **The knowledge-base/RAG half of the goal is intentionally unscoped.** No
   chunking strategy, embedding model, vector store, or retrieval interface has
   been picked. Don't assume a stack when touching this area — that's an open

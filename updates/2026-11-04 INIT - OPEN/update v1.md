@@ -104,21 +104,37 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
 - [ ] This is explicitly the part the user said we'd "adjust later" — don't
       pre-commit to a stack before Phase 2 shows what's actually needed.
 
-### Phase 4 — Adjust interaction model (first step taken)
-- [x] First concrete adjustment: added
+### Phase 4 — Adjust interaction model (methodology forked, no longer a one-off)
+- [x] First concrete adjustment (superseded below): added
       `.claude/skills/tony-robbins-perspective/system-prompt.md`, a
       standalone always-on system-prompt export of the same distilled
       content — no Claude Code skill-trigger phrases, no "exit the role"
-      escape, no local file-path references. For pasting into any other
-      agent/host so it's permanently the Tony Robbins persona rather than a
-      conditionally-triggered Claude Code skill. Same mental
-      models/heuristics/DNA/boundaries as `SKILL.md`; only the
-      activation/exit mechanics were dropped, since "this persona is the
-      whole agent" has no other mode to trigger from or fall back to.
+      escape, no local file-path references.
+- [x] **2026-11-05: made the always-on shape the only shape.** User decided
+      agent-creator stops producing a Claude-Code-triggered `SKILL.md` per
+      person entirely — every future distillation produces `instructions.md`
+      directly. Edited the methodology in place (`SKILL.md`,
+      `references/skill-template.md`, `references/extraction-framework.md`,
+      `references/fidelity-scorecard.md`) rather than vendoring a second
+      parallel pipeline, per the user's explicit "keep file count minimal"
+      call. Five changes: dropped the frontmatter/trigger-phrase mechanism
+      entirely, made the Agentic Protocol's runtime research step RAG-only
+      (distinct from Phase 1's build-time research, unaffected), dropped
+      Person Timeline and Appendix: Research Sources with nothing put in
+      their place, and added a new Coaching Style section researched
+      per-person (schema inspired by github.com/blaizew/personas, content
+      from real evidence, not assumed). Full change list and rationale in
+      `wiki.md`.
+- [x] Regenerated Tony Robbins under the new template as `instructions.md`,
+      retiring both the old `SKILL.md` and the one-off `system-prompt.md` —
+      same mental models/heuristics/expression DNA/values/lineage/honest
+      boundary content, restructured, plus a newly-researched Coaching Style
+      section (strong evidence for 7/8 dimensions from the three source
+      books; Presence Cues flagged lower-confidence). Copy saved to
+      `~/Downloads/tony-robbins-instructions.md` per user request.
 - [ ] Still open: how this interacts with the knowledge-base/RAG half once
       Phase 3 exists (does the external agent get retrieval too, or is
-      system-prompt.md personality-only); whether this becomes a repeatable
-      per-person export step in the pipeline or stays a one-off for now.
+      instructions.md personality-only).
 
 ## Status
 
