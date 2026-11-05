@@ -42,6 +42,29 @@ an empty `.env` keeps the project honest about what it currently needs. The
 knowledge-base phase will very likely need one (embeddings API, vector-store
 auth) — that's a `sync-secrets` task for whenever Phase 3 starts, not now.
 
+## quality_check.py's style-marker check is Chinese-only — a real gap, not a false alarm to patch silently
+Running the vendored `scripts/quality_check.py` against the first real
+SKILL.md (Tony Robbins, English-language subject) surfaced a genuine
+coverage gap: `check_expression_dna()`'s style-marker regex only matches
+Chinese terms (句式/词汇/语气/幽默/节奏/确定性/引用/口头禅) with no English
+equivalents, unlike `check_limitations()` which *does* have an English
+fallback (`limitation|blind spot`). Result: a correctly-filled-out English
+Expression DNA section (6 style dimensions actually present) scores 0 and
+fails the automated check. Two other failures on the first run
+(模型局限性, 诚实边界) were genuine content/wording mismatches on this
+project's side — fixed by using "Limitation" instead of "Limit" and
+"Honest Boundary" (singular, matching the script's literal English
+alternative) instead of "Honest Boundaries" — those were real misses, not
+script bugs. The style-marker gap is different: it's a one-sided omission in
+vendored tooling, not methodology, so it wasn't patched inline per this
+project's rule on treating `scripts/` as a deliberate-change-only surface.
+Logged here instead; manually verified the actual Expression DNA content
+meets the check's real intent (≥3 distinct style dimensions) before treating
+the SKILL.md as passing. If this project distills more English-language (or
+any non-Chinese) subjects, extending this one regex to accept English
+synonyms is a candidate small, deliberate patch — not urgent since manual
+verification is cheap for one skill at a time.
+
 ## Nuwa's own pipeline is the orchestration pattern, not just the output format
 `SKILL.md`'s Phase 1 (6 parallel research agents) and Phase 4 (independent
 validation agents, never self-graded) are themselves instances of

@@ -64,13 +64,26 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
       contradictions (e.g. the embezzlement story is told with real
       self-criticism in `Awaken` Ch. 15 but purely triumphantly in both
       `Awaken` Ch. 2 and `Giant Steps`).
-- [ ] Dimensions 02 (conversations) and 04 (external-views) have **zero**
-      local-corpus coverage — books alone can't supply them. Per SKILL.md's
-      own Phase 0A rule, supplementing via web search is a cost checkpoint
-      that needs the user's go-ahead before running, not a default.
-- [ ] Haven't yet run Phase 2 (mental-model extraction/verification) or
-      Phase 3 (SKILL.md construction) — still at the Phase 1 research-file
-      stage.
+- [x] Dimensions 02 (conversations) and 04 (external-views) have **zero**
+      local-corpus coverage — books alone can't supply them. User's call:
+      proceed without them rather than add a web-search cost checkpoint;
+      recorded as an explicit gap in the SKILL.md's Honest Boundary section.
+- [x] Ran Phase 1.5 checkpoint (research-quality summary, user confirmed),
+      Phase 2 (5 mental models + 8 decision heuristics, triple-verified),
+      Phase 2.5 checkpoint (user confirmed), Phase 3 (constructed
+      `.claude/skills/tony-robbins-perspective/SKILL.md` from the template),
+      Phase 4 (independent two-agent validation: sanity-check 3/3 pass, edge
+      case pass, voice-check partial — found the role dropping its numbered-
+      list/sourcing habits under short casual prompts), and Phase 5 (dual-
+      agent refinement targeting exactly that gap, merged and applied with
+      user confirmation). **First full run of the vendored pipeline,
+      end-to-end, complete.**
+- [x] Ran `scripts/quality_check.py` against the result: 5/6 automated
+      checks pass. The 6th (Expression DNA style-marker detection) is a
+      confirmed false negative — the script's regex is Chinese-only with no
+      English fallback for that one check, unlike its others. Logged in
+      `wiki.md` rather than patched (vendored tooling, not methodology —
+      a deliberate-change-only surface per this file's project rules).
 - [ ] Note where the vendored approach rubs against local-corpus-only material
       (courses/books instead of public-figure research) — nuwa-skill assumes
       a public figure with 6 web-searchable dimensions; a course author's
@@ -99,10 +112,15 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
 
 ## Status
 
-Phase 1 done. Phase 2 in progress on Tony Robbins (local-corpus mode, books
-only): Phase 1 research extraction done and merged (4 of 6 dimensions, the
-ones local books can cover). Next decision point: whether to supplement the
-2 missing dimensions (conversations, external-views) with web search — a
-cost checkpoint per SKILL.md, needs the user's call — or proceed straight to
-mental-model extraction/SKILL.md construction on the 4 covered dimensions
-and treat the other 2 as an accepted gap for this skill.
+Phase 1 and Phase 2 (prove it on a real person) both done. The vendored
+nuwa-skill pipeline ran end-to-end on Tony Robbins in local-corpus-only mode
+(3 of 4 PDF books; one was a scanned image-only PDF, skipped) — every phase
+from 0.5 through 5, including both required confirmation checkpoints and
+the independent (non-self-graded) Phase 4/5 validation. Output:
+`.claude/skills/tony-robbins-perspective/SKILL.md`, usable now as a thinking-
+advisor perspective skill. Conversations/external-views dimensions are an
+accepted, documented gap (no web search run). This is the real test of
+whether the vendored approach fits as-is, called for at Phase 2's start —
+it does; no methodology adjustments were needed, only ordinary content
+iteration at the Phase 4/5 checkpoints. Next: Phase 3 (RAG/knowledge-base
+design) or distilling another person — both still open, no decision made.
