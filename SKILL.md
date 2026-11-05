@@ -170,7 +170,7 @@ metadata:
 
 #### Step 3: 用户选择
 
-- 选了已有Skill → 直接激活该Skill，任务完成
+- 选了已有Skill → 直接使用该文件，任务完成
 - 选了新蒸馏候选 → 进入Phase 0A确认细节 → Phase 0.5开始蒸馏
 - 都不满意 → 回到Step 1继续探索，或用户自己提出新人选
 
@@ -493,7 +493,6 @@ Phase 1启动前，**主动扫描 `.claude/skills/` 目录**，检查是否有�
 | 价值观与反模式 | Phase 2.4 结果 |
 | 智识谱系 | Phase 2.5 结果 |
 | 诚实边界 | Phase 2.6 结果 + 调研时间 |
-| 创建者归属 | 固定内容：`> 本Skill由 [女娲 · Skill造人术](https://github.com/alchaincyf/nuwa-skill) 生成` + `> 创建者：[花叔](https://x.com/AlchainHust)` |
 
 #### 回答工作流（Agentic Protocol）生成指引
 
@@ -618,7 +617,7 @@ Phase 4 验证通过后，自动启动双Agent精炼，进一步提升Skill可�
 
 **🔴 CHECKPOINT · 主Agent综合两份报告，应用不冲突的改进，展示变更摘要请用户确认。**
 
-精炼标准：改动必须让skill「激活即执行」，不只是增加内容，而是让AI拿到skill后知道先做什么、碰到什么停下来。
+精炼标准：改动必须让instructions.md「拿到就能用」，不只是增加内容，而是让AI读完后知道先做什么、碰到什么停下来。
 
 ---
 
