@@ -15,3 +15,7 @@ __pycache__/
 # local-corpus input for distillation, kept out of git per CLAUDE.md's rule
 # on sensitive source dumps. Research notes derived FROM it still get committed.
 .claude/skills/*/references/sources/
+
+# Merged RAG knowledge base — same sensitivity as the sources it's built from
+knowledge.md
+.claude/skills/*/knowledge.md
