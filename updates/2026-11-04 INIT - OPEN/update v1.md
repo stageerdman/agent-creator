@@ -44,16 +44,42 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
       own WebSearch/tooling, no API key needed yet.
 - [x] Create GitHub repo (private), connect, first commit.
 
-### Phase 2 — Prove it on a real person (next)
-- [ ] Run the vendored SKILL.md end-to-end on one real person using the
-      user's own course/book folder for them (local-corpus mode, per
-      SKILL.md's "本地语料优先" path) — this is the real test of whether the
-      as-is approach fits, before any adjustment or before investing in
-      Phase 3.
+### Phase 2 — Prove it on a real person (in progress)
+- [x] Picked Tony Robbins as the test subject, local-corpus mode, scoped to
+      PDF books only (no audio transcription). Source: user's own
+      `Tony Robbins/Books` folder — 4 PDFs, 1 (`Notes from a Friend`) turned
+      out to be scanned/image-only and was skipped (no text layer; OCR would
+      be a separate deliberate step, not attempted).
+- [x] Converted the 3 remaining books to plain text with `pypdf`. Raw text
+      lives in `.claude/skills/tony-robbins-perspective/references/sources/`
+      — **gitignored, not committed** (user's explicit call: these are
+      copyrighted published books, treated as sensitive per this file's own
+      rule on raw source dumps, even though the repo is private).
+- [x] Ran Phase 0.5 (skill directory scaffold) and Phase 1's
+      local-corpus-priority extraction: 3 parallel agents (one per book)
+      extracted the 4 dimensions books can plausibly cover (writings,
+      expression-DNA, decisions, timeline), then merged by hand into the
+      canonical `references/research/0{1,3,5,6}-*.md` files, cross-referencing
+      where multiple books corroborate the same belief/phrase and preserving
+      contradictions (e.g. the embezzlement story is told with real
+      self-criticism in `Awaken` Ch. 15 but purely triumphantly in both
+      `Awaken` Ch. 2 and `Giant Steps`).
+- [ ] Dimensions 02 (conversations) and 04 (external-views) have **zero**
+      local-corpus coverage — books alone can't supply them. Per SKILL.md's
+      own Phase 0A rule, supplementing via web search is a cost checkpoint
+      that needs the user's go-ahead before running, not a default.
+- [ ] Haven't yet run Phase 2 (mental-model extraction/verification) or
+      Phase 3 (SKILL.md construction) — still at the Phase 1 research-file
+      stage.
 - [ ] Note where the vendored approach rubs against local-corpus-only material
       (courses/books instead of public-figure research) — nuwa-skill assumes
       a public figure with 6 web-searchable dimensions; a course author's
-      material may not cleanly map to all 6.
+      material may not cleanly map to all 6. **Early finding**: books alone
+      cleanly cover writings/expression/decisions/timeline but structurally
+      cannot cover conversations (no unscripted material) or external-views
+      (no outside critique) — confirms the methodology's own
+      local-corpus-priority design (supplement only the missing dimensions)
+      rather than requiring a rework.
 
 ### Phase 3 — Design the knowledge-base / RAG half (open)
 - [ ] Decide what "well-structured for retrieval" means here: chunking unit
@@ -73,6 +99,10 @@ it source data). Part 2 has no prior art handed to us — it's open design work.
 
 ## Status
 
-Phase 1 done. Repo live on GitHub, private. Next: Phase 2 — pick a real
-person from the user's existing resource folders and run the vendored
-pipeline on them in local-corpus mode.
+Phase 1 done. Phase 2 in progress on Tony Robbins (local-corpus mode, books
+only): Phase 1 research extraction done and merged (4 of 6 dimensions, the
+ones local books can cover). Next decision point: whether to supplement the
+2 missing dimensions (conversations, external-views) with web search — a
+cost checkpoint per SKILL.md, needs the user's call — or proceed straight to
+mental-model extraction/SKILL.md construction on the 4 covered dimensions
+and treat the other 2 as an accepted gap for this skill.

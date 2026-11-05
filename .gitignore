@@ -10,3 +10,8 @@ __pycache__/
 
 # nuwa-skill's version-check bookkeeping file (local, not part of the method)
 .last-update-check
+
+# Raw source material (copyrighted books/transcripts/etc) a person provides —
+# local-corpus input for distillation, kept out of git per CLAUDE.md's rule
+# on sensitive source dumps. Research notes derived FROM it still get committed.
+.claude/skills/*/references/sources/
