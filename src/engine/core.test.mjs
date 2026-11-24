@@ -22,6 +22,16 @@ test("args: built-in tools off and dontAsk on, in both shapes", () => {
   }
 });
 
+test("args: the user's own MCP servers are never loaded (--strict-mcp-config, no --mcp-config)", () => {
+  // Live-measured 2026-11-24: a one-word "hi" cost 119,877 input tokens
+  // without this flag and 548 with it.
+  for (const stream of [true, false]) {
+    const args = buildClaudeArgs({ ...base, stream });
+    assert.ok(args.includes("--strict-mcp-config"));
+    assert.ok(!args.includes("--mcp-config"));
+  }
+});
+
 test("args: streaming needs stream-json + partial messages + verbose; one-shot uses json", () => {
   const stream = buildClaudeArgs({ ...base, stream: true });
   assert.equal(stream[stream.indexOf("--output-format") + 1], "stream-json");

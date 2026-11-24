@@ -26,6 +26,10 @@ export function buildClaudeArgs({ systemPrompt, message, resumeSessionId, model,
     // Without --tools "" every reply carries ~20k tokens of built-in tool
     // schemas (pitfall 5).
     "--tools", "",
+    // masters-wheel always paired this with its own --mcp-config. Without
+    // it, every MCP server the user has set up in Claude Code is loaded
+    // into every call: measured 119,877 vs 548 input tokens for "hi".
+    "--strict-mcp-config",
     ...optional("--resume", resumeSessionId),
     ...optional("--model", model),
     ...optional("--effort", effort),
