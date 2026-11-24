@@ -25,6 +25,9 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
   const routes = {
     "GET /": staticFile("index.html", "text/html; charset=utf-8"),
     "GET /app.js": staticFile("app.js", "text/javascript; charset=utf-8"),
+    "GET /sketch.js": staticFile("sketch.js", "text/javascript; charset=utf-8"),
+    "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
+    "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
     "GET /api/health": async (_req, res) => sendJson(res, 200, await engine.checkCli()),
     "POST /api/ask": askRoute(engine),
     ...agentRoutes(createAgents({ store, engine })),

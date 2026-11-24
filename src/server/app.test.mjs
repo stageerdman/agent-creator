@@ -53,3 +53,11 @@ test("GET / serves the page", async () => {
   assert.equal(response.status, 200);
   assert.match(await response.text(), /Agent Creator/);
 });
+
+test("GET serves the screen's scripts and styles", async () => {
+  for (const [path, type] of [["/app.js", "javascript"], ["/sketch.js", "javascript"], ["/app.css", "css"], ["/magic.css", "css"]]) {
+    const response = await fetch(`${base}${path}`);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers.get("content-type"), new RegExp(type), path);
+  }
+});

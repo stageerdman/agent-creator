@@ -2,34 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <title>Agent Creator</title>
-  <style>
-    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-    body { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; box-sizing: border-box; }
-    h1 { font-size: 1.25rem; margin: 0; }
-    #status { font-size: 0.875rem; opacity: 0.75; }
-    #status.bad { color: #c0392b; opacity: 1; }
-    #chat { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-    .msg { padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; line-height: 1.45; }
-    .user { align-self: flex-end; background: #2d6cdf; color: white; max-width: 80%; }
-    .ai { align-self: flex-start; background: color-mix(in srgb, currentColor 8%, transparent); max-width: 90%; }
-    .error { color: #c0392b; }
-    form { display: flex; gap: 8px; }
-    textarea { flex: 1; font: inherit; padding: 10px; border-radius: 10px; resize: vertical; min-height: 44px; }
-    button { font: inherit; padding: 0 18px; border-radius: 10px; border: 0; background: #2d6cdf; color: white; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: default; }
-  </style>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/magic.css">
 </head>
 <body>
-  <h1>Agent Creator</h1>
-  <div id="status" role="status">Checking for the Claude Code CLI…</div>
-  <div id="chat" aria-live="polite"></div>
-  <form id="ask">
-    <label for="message" hidden>Message</label>
-    <textarea id="message" placeholder="Ask anything. Enter sends, Shift+Enter adds a line." required></textarea>
-    <button id="send" type="submit">Send</button>
-  </form>
+  <header class="topbar">
+    <h1>Agent Creator</h1>
+    <div class="switcher">
+      <button id="switcher-btn" class="switcher-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="switcher-menu"><span id="switcher-name">New agent</span> <span aria-hidden="true">▾</span></button>
+      <div id="switcher-menu" class="menu" role="menu" aria-label="Agents" hidden></div>
+    </div>
+  </header>
+
+  <div class="views" role="tablist" aria-label="View">
+    <button id="view-chat" type="button" role="tab" aria-selected="true" aria-controls="chat-pane">Chat</button>
+    <button id="view-sketch" type="button" role="tab" aria-selected="false" aria-controls="sketch" aria-label="Sketch">Sketch<span class="dot" aria-hidden="true" hidden>•</span></button>
+  </div>
+
+  <main id="panes" class="panes" data-view="chat">
+    <section id="chat-pane" class="chat-pane" aria-label="Chat">
+      <div id="chat-scroll" class="chat-scroll">
+        <div class="chat-col">
+          <p id="note" class="note" hidden></p>
+          <div id="empty" class="empty" hidden>
+            <p class="empty-q">Who should this agent be? One line is enough.</p>
+            <div class="chips">
+              <button type="button" class="chip">A tough-love coach like Tony Robbins</button>
+              <button type="button" class="chip">A blunt editor for my newsletter</button>
+              <button type="button" class="chip">Me, for answering client emails</button>
+            </div>
+          </div>
+          <div id="log" class="log" role="log" aria-live="polite" aria-busy="false"></div>
+        </div>
+      </div>
+
+      <div class="composer-wrap">
+        <div id="banner" class="banner" role="alert" hidden>
+          <p>The Sketcher can't reach Claude right now.</p>
+          <div class="banner-row">
+            <span>Your text stays here.</span>
+            <button id="banner-btn" type="button" class="link-btn">Check again</button>
+            <button id="howto-btn" type="button" class="link-btn quiet" aria-expanded="false" aria-controls="howto">How to fix ▸</button>
+          </div>
+          <p id="howto" class="howto" hidden>Agent Creator uses Claude Code on this computer. Install it, run <code>claude</code> once in a terminal to sign in, then press the button again.</p>
+        </div>
+        <form id="composer" class="composer">
+          <div class="composer-lead" data-later="P3" hidden></div><!-- P3: add references -->
+          <label for="message" class="sr-only">Message</label>
+          <textarea id="message" rows="1" placeholder="Type here…" autocomplete="off"></textarea>
+          <button id="send" class="send" type="submit" aria-label="Send" disabled>
+            <svg class="i-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="sketch" class="sketch-pane" aria-labelledby="sketch-title" aria-busy="false">
+      <header class="sketch-head">
+        <h2 id="sketch-title">Sketch</h2>
+        <button id="keep" class="keep-btn" type="button" disabled title="Give it a name first">Keep</button>
+      </header>
+      <section class="references" data-later="P3" hidden></section><!-- P3: pinned references -->
+      <div id="sketch-scroll" class="sketch-scroll">
+        <div id="keep-card" class="keep-card" hidden>
+          <p class="keep-name"></p>
+          <p class="keep-line"></p>
+          <p class="keep-yours">Yours. You can keep changing it.</p>
+          <p class="keep-capability" data-later="P12" hidden></p><!-- P12: capability summary -->
+        </div>
+
+        <div class="draft-field" data-field="name" style="--magic-order: 0">
+          <div class="label-row">
+            <label for="f-name">Name<span class="tag"></span></label>
+            <button type="button" class="retry link-btn" hidden>Try again</button>
+          </div>
+          <input id="f-name" class="field" type="text" placeholder="A name" autocomplete="off">
+        </div>
+
+        <div class="draft-field" data-field="persona" style="--magic-order: 1">
+          <div class="label-row">
+            <label for="f-persona">Persona<span class="tag"></span></label>
+            <button type="button" class="retry link-btn" hidden>Try again</button>
+          </div>
+          <p id="h-persona" class="hint">Who they are: voice, character, point of view</p>
+          <textarea id="f-persona" class="field" rows="2" placeholder="Appears after your first message" aria-describedby="h-persona"></textarea>
+        </div>
+
+        <div class="draft-field" data-field="instructions" style="--magic-order: 2">
+          <div class="label-row">
+            <label for="f-instructions">Instructions<span class="tag"></span></label>
+            <button type="button" class="retry link-btn" hidden>Try again</button>
+          </div>
+          <p id="h-instructions" class="hint">What they do: job, rules, limits</p>
+          <textarea id="f-instructions" class="field" rows="2" placeholder="Appears after your first message" aria-describedby="h-instructions"></textarea>
+        </div>
+
+        <section class="capability-map" data-later="P12" hidden></section><!-- P12: What it knows · only you see this -->
+      </div>
+    </section>
+  </main>
+
   <script type="module" src="/app.js"></script>
 </body>
 </html>
