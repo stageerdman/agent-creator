@@ -57,14 +57,28 @@ All in this folder:
    - If a reply has no block, or a broken one, the draft stays as it is. The
      chat still shows the reply.
 5. **Autosave.** The draft is saved on every change (`status: 'draft'`).
-   "Save", or whatever Eraser's sign-off calls it, sets `status: 'saved'`. A
-   saved agent can be reopened and refined again, and the chat then continues
-   with `--resume`.
+   **Keep** (the only finish action, see the design) sets `status: 'saved'`.
+   Any change after Keep (hand edit or chat patch) sets it back to
+   `'draft'`. A kept agent can be reopened and refined again, and the chat
+   then continues with `--resume`.
 6. **Where agents live:** user data never goes in the repo (see the CLAUDE.md
    rule on personal material). Agents are saved under
    `AGENT_CREATOR_HOME` (default `~/.agent-creator`), in
    `agents/<id>/agent.json`. Tests point `AGENT_CREATOR_HOME` at a temp
    folder.
+7. **Names on screen** (from `magic-merlin.md`, used in the design): the
+   creator AI is the **Sketcher**, the draft panel is the **Sketch**, and
+   finishing is **Keep** / **Kept ✓**. In code the names stay plain
+   (`creator`, `draft`, `status: 'saved'`).
+8. **Research open questions, settled for P2:**
+   - Try it out: no separate mode. The Sketcher shows a sample answer as a
+     *voice card* (design S7). A real try-it box is P8.
+   - Undo: no button in P2. "Put the last version back" works by chat.
+     Checked in Phase 6 (design J3).
+   - Several agents: one small switcher in the top bar, no sidebar.
+   - Saved format: `agent.json` with the two fields `persona` and
+     `instructions`, kept apart on purpose. Writing an `instructions.md`
+     for the rest of the project is export work (P5/P6).
 
 ## Roadmap
 
@@ -72,9 +86,12 @@ Each phase ends with tests that lock in what it built. New code goes in
 `src/creator/`, which is pure and has no HTTP, so a future desktop shell can
 call it directly like the engine. The routes go in `src/server/routes/`.
 
-### Phase 0 — Research + design ✅ (this team)
+### Phase 0 — Research + design ✅ (Magic UX team, 2026-11-24)
 - `research-columbo.md`, `magic-merlin.md`, `design-jony.md`,
   `review-eraser.md`.
+- Eraser approved the design with eleven required changes (R1–R11). They
+  are now applied in `design-jony.md`, so **build `design-jony.md` as it
+  stands**. The review keeps the reasons.
 - **Test:** none (documents). The check is Eraser's sign-off.
 
 ### Phase 1 — Draft model (pure)
@@ -106,15 +123,27 @@ call it directly like the engine. The routes go in `src/server/routes/`.
   - Never quietly undo a hand edit.
   - Say plainly when the agent looks ready, but let the user decide.
   - The P1 rule against "Let me check…" narration (pitfall 11).
+  - It is told which fields the user has edited by hand since the creator
+    last changed them (`handEdited`). It asks before changing those fields.
+  - A sample answer "as the agent" is a markdown blockquote that starts with
+    `**[Name]:**`. The screen shows it as a voice card (design S7).
+  - It never says it saved or kept the agent. If asked to, it says the work
+    is autosaved and that Keep in the Sketch makes it theirs (review R2).
+  - No automatic recap when a chat is resumed. It gives one only if asked
+    (R6).
+  - "If that's [them], press Keep." comes at most once per agent, never
+    after Keep (R10). The prompt gets the draft `status`. The resumed
+    session tells the Sketcher whether it already gave the pointer.
 
   It has an empty `materials` slot for P3 (see below).
 - `src/creator/creatorTurn.mjs`:
-  `creatorTurn({ message, draft, sessionId }, { onSay, signal, engine })`.
+  `creatorTurn({ message, draft, handEdited, sessionId }, { onSay, signal, engine })`.
   It calls `engine.askAgent` with the creator prompt, sends filtered deltas
   to `onSay`, and resolves to `{ say, draft, changed, sessionId }`. The
   engine is passed in, as in `createApp(engine)`.
 - **Tests (fake CLI):**
-  - The prompt contains the current draft, hand edits included.
+  - The prompt contains the current draft, hand edits included, and the
+    `handEdited` field names.
   - Deltas reach `onSay` without the draft block.
   - The final `result` wins over the deltas.
   - The patch is applied and `changed` is right.
@@ -131,8 +160,11 @@ call it directly like the engine. The routes go in `src/server/routes/`.
   - `markSaved(id)`
   - `listAgents()`
 
-  A record is `{ id, draft, sessionId, createdAt, updatedAt }`, written to
-  `agents/<id>/agent.json`. Each write goes to a temp file and is then
+  A record is `{ id, draft, sessionId, handEdited, createdAt, updatedAt }`,
+  written to `agents/<id>/agent.json`. `handEdited` is the list of fields
+  the user changed by hand since the creator last changed them (design
+  H4). A hand edit adds a field, and a creator patch to that field removes
+  it. Any autosave of a kept agent sets `status` back to `'draft'`. Each write goes to a temp file and is then
   renamed, so a crash never leaves half a file. The `id` is a short random
   id. It is not built from the name, because the name changes while the user
   chats.
@@ -140,14 +172,22 @@ call it directly like the engine. The routes go in `src/server/routes/`.
   - The round trip works.
   - Autosave keeps `status: 'draft'`.
   - `markSaved` sets `'saved'`.
-  - Reopening a saved agent and editing it keeps the record.
+  - Reopening a saved agent and editing it keeps the record, and sets the
+    status back to `'draft'`.
+  - `handEdited` gains a field on a hand edit and loses it when a patch
+    changes that field.
   - `listAgents` sorts by `updatedAt`.
   - A missing id gives a clear error.
   - Nothing is written inside the repo.
 
 ### Phase 4 — Server routes
-- `POST /api/agents`: creates a new empty agent and returns `{ id }`.
-- `GET /api/agents` and `GET /api/agents/:id`.
+- `POST /api/agents`: returns `{ id }` of a new empty agent. If an empty
+  agent already exists, it returns that one, so hidden empty agents never
+  pile up on disk (R8).
+- `GET /api/agents`: items are `{ id, draft: { name, status }, updatedAt }`,
+  newest first. Agents whose name, persona and instructions are all empty
+  are left out (review R8).
+- `GET /api/agents/:id`: `{ id, draft, sessionId }`.
 - `POST /api/agents/:id/chat { message }` returns an SSE stream:
   - `delta`*: the chat text, with no draft block in it.
   - then `draft { draft, changed }` if anything changed.
@@ -156,21 +196,27 @@ call it directly like the engine. The routes go in `src/server/routes/`.
   Closing the request cancels the CLI (as in P1). The new draft and session
   are autosaved before `done`.
 - `PUT /api/agents/:id/draft { name?, persona?, instructions? }`: a hand
-  edit, autosaved.
-- `POST /api/agents/:id/save`: sets `status: 'saved'`.
+  edit, autosaved. It adds the fields to `handEdited` and returns the full
+  draft.
+- `POST /api/agents/:id/save` (the Keep button): sets `status: 'saved'` and
+  returns the full draft.
 - `GET /api/health` stays the same. The screen uses it for "CLI offline".
 - **Tests (server against the fake CLI):**
   - SSE order.
   - The draft block never appears in a `delta`.
   - A hand edit, then a chat turn: the prompt sees the hand edit, and the
     hand edit survives unless the patch changes that same field.
-  - Save sets the status.
+  - Save sets the status. A later hand edit or patch sets it back to
+    `'draft'`.
+  - Empty agents are left out of `GET /api/agents`, and a second
+    `POST /api/agents` reuses the empty one.
   - A bad id gives a 404, an empty message gives a 400.
   - A missing CLI gives an `error` event with `kind: 'not-installed'`.
 
 ### Phase 5 — The chat screen in the local app
 - Replace P1's prompt box in `src/server/public/` with the agent-creation
-  screen from `design-jony.md`, as signed off in `review-eraser.md`:
+  screen from `design-jony.md` (R1–R11 from `review-eraser.md` are already
+  applied there). The build order is in the design's §13:
   - the chat on one side and the live draft on the other
   - every state in the design: empty first visit, first message, draft
     growing, hand edit, creator asks a question, errors / CLI offline,
@@ -238,5 +284,7 @@ call it directly like the engine. The routes go in `src/server/routes/`.
 
 ## Status
 
-- 2026-11-24: Phase 0 in progress. The roadmap and research are written.
-  Magic, design and review come next from the Magic UX team.
+- 2026-11-24: Phase 0 done. Research, magic, design and review are written.
+  Eraser approved, and the required changes R1–R11 are applied in
+  `design-jony.md`. The roadmap now matches the design (Keep, `handEdited`,
+  the list shape, prompt rules R2/R6/R10). Next is Phase 1 (build).

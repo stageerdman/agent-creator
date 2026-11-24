@@ -4,6 +4,12 @@
 Columbo. Built on `research-columbo.md`, `magic-merlin.md` and the Roadmap in
 `update v1.md`. Build the version Eraser signs off in `review-eraser.md`.*
 
+> **Build this file as it stands.** Eraser's required changes R1–R11
+> (`review-eraser.md`) were applied during integration on 2026-11-24. Each
+> change is marked *(R#)* where it lands. The review explains why.
+> Rule from R1: the words *keep / kept* are used only for the Keep action
+> and its status.
+
 ## 1. The user goal
 
 > "I type one line about someone. A likeness appears. I correct it, by chat
@@ -47,7 +53,7 @@ Checked against `research-columbo.md` (the user model for P2):
 | #3 Answer questions (17) | Normal bubble, suggested answer inline, skipping is fine (S5). |
 | #4 Nudge by chat (17) | The chat input is always primary. Only changed fields react. |
 | #5 Try it out (15) | Voice card (S7). |
-| #6 Fix by hand (15) | Every field is a plain editable field, always visible, "✓ kept" and "yours" (S6). |
+| #6 Fix by hand (15) | Every field is a plain editable field, always visible, "✓ saved" and "yours" (S6). |
 | #7 Keep (13) | One button, card, "you can keep changing it" (S8). |
 | #8 Paste text (12) | Long-paste chip (S11). |
 | #10 Come back (12) | Opens the last agent, "Back to [Name]" line (S9). |
@@ -82,7 +88,7 @@ From Merlin, used lightly. Plain labels; the world lives in microcopy.
 | Waiting | **Sketching…** |
 | Creator changed a field | tag **new** |
 | User changed a field | tag **✎ yours** |
-| Hand edit saved | **✓ kept** (1.5 s) |
+| Hand edit saved | **✓ saved** (1.5 s) *(R1)* |
 
 ## 5. Layout
 
@@ -136,9 +142,10 @@ From Merlin, used lightly. Plain labels; the world lives in microcopy.
   Tony            Kept   · 2 min ago
   Newsletter ed.  Sketch · yesterday
   ```
-  Sorted by `updatedAt` (from `GET /api/agents`). An agent with an empty
-  name shows as "Untitled sketch". Choosing one loads it (S9). The menu is
-  the only list of agents in P2.
+  Sorted by `updatedAt` (from `GET /api/agents`). An agent whose name,
+  persona and instructions are all empty is not listed *(R8)*. An agent
+  with a persona but an empty name shows as "Untitled sketch". Choosing one
+  loads it (S9). The menu is the only list of agents in P2.
 - Nothing on the right. (The P1 CLI status line is gone; health shows only
   when it's bad, see S10.)
 
@@ -162,8 +169,8 @@ From Merlin, used lightly. Plain labels; the world lives in microcopy.
 ### Composer
 - One auto-growing textarea (1 to 8 lines, then it scrolls), radius 12 px,
   min height 44 px.
-- Placeholder: empty agent → "Describe your agent in one line…"; otherwise
-  → "Reply to the Sketcher…".
+- Placeholder: empty agent → "Type here…" *(R11: the S1 heading already
+  asks the question)*; otherwise → "Reply to the Sketcher…".
 - **Enter sends, Shift+Enter adds a line.** A round Send button (44 × 44,
   arrow icon, `aria-label="Send"`) inside the right edge. Disabled when the
   box is empty.
@@ -210,7 +217,7 @@ Chat pane (vertically centred in the pane):
         [ Me, for answering client emails ]
 
   ┌──────────────────────────────────────┐
-  │ Describe your agent in one line…  (↑)│
+  │ Type here…                        (↑)│
   └──────────────────────────────────────┘
 
 Sketch pane:
@@ -238,7 +245,9 @@ Sketch pane:
 - The user bubble appears at once. The chips are gone.
 - Below it: "Sketcher" label and **Sketching…** with three dots that pulse
   in sequence (a pencil rhythm, 1.2 s loop).
-- Sketch header: the title reads **Sketching…** in place of "Sketch".
+- Sketch header: the title reads **Sketching…** in place of "Sketch". This
+  happens on **every** turn, not only the first. It is the only place
+  besides the chat that says "Sketching…" *(R7)*.
 - The three fields get a slow, faint shimmer (left-to-right sheen, 1.6 s
   loop, 6% opacity). **This is the only time fields shimmer.**
 - Fields are read-only (rule H3).
@@ -295,8 +304,8 @@ On every `draft { draft, changed }` event:
 **Rules (one source of truth, hand edits win):**
 - **H1. Save:** a hand edit is sent with `PUT /api/agents/:id/draft` with
   just that field, on blur, and also after 1 s of no typing. On success, a
-  quiet **✓ kept** shows in the label row for 1.5 s, then the tag becomes
-  **✎ yours**.
+  quiet **✓ saved** *(R1)* shows in the label row for 1.5 s, then the tag
+  becomes **✎ yours**.
 - **H2. Yours:** "✎ yours" stays on that field until a `draft` event lists
   that field in `changed`. Then it becomes "new" (never both at once). The
   client keeps the `yours` set in memory only; on reload the marks are gone
@@ -304,9 +313,9 @@ On every `draft { draft, changed }` event:
 - **H3. No edits during a reply:** when the user sends a message, any
   unsaved hand edit is saved first (PUT, then the chat POST). While
   sketching, all three fields are read-only (`readonly`, not `disabled`, so
-  text can still be selected and read by screen readers). The label row
-  shows "Sketching…" in place of the tag area. When `done` or `error`
-  arrives, fields open again. This removes the one real conflict between
+  text can still be selected and read by screen readers). The tag area of
+  each label row stays empty while the reply runs; there is no per-field
+  "Sketching…" *(R7)*. When `done` or `error` arrives, fields open again. This removes the one real conflict between
   chat and hand edits.
 - **H4. The Sketcher knows:** every turn the server sends the whole current
   draft (with hand edits) into the prompt, plus the names of fields edited
@@ -316,10 +325,11 @@ On every `draft { draft, changed }` event:
   request stays `{ message }`.
 - **H5. Clearing a field:** allowed. An empty Name disables Keep again.
 - **H6. Save failed:** if the PUT fails, the label row shows
-  "Not saved · Retry" (error color). The text stays in the field. Retry
-  resends. A failed hand save blocks Send until it's resolved (otherwise
-  the Sketcher would see an old draft); the Send button tooltip says
-  "Save your edit first".
+  "Not saved · Try again" (error color) *(R4)*. The text stays in the
+  field. Try again resends. A failed or pending hand save never blocks
+  Send or Keep *(R5)*: pressing Send retries the PUT first. If it fails
+  again, the turn doesn't go out, the field keeps "Not saved · Try again",
+  and the composer keeps its text. The Sketcher never sees an old draft.
 
 ### S7. It speaks: a voice card (Merlin ★4)
 - Rendering rule: inside a Sketcher reply, a markdown blockquote that
@@ -337,6 +347,9 @@ On every `draft { draft, changed }` event:
 
   If that's him, press Keep.
   ```
+  - "If that's [them], press Keep." comes at most **once per agent**, after
+    the first voice card, and never after Keep. The creator prompt owns
+    this *(R10)*.
   - Indented 24 px, 1 px border, radius 12 px, 16 px padding.
   - Header: a 24 px circle with the name's first letter, then the name
     (13 px semibold). Uses the name in the blockquote, so it matches what
@@ -352,26 +365,32 @@ On every `draft { draft, changed }` event:
 ### S8. Finish: Keep (Merlin ★5)
 - **Keep** is a button in the Sketch header, right side. Accent outline
   style (not filled) so it never shouts over Send.
-- **Enabled when:** the name is not empty, status is `'draft'`, nothing is
-  sketching, and no hand save is pending.
-- **On click:** `POST /api/agents/:id/save`. On success:
+- **Enabled when:** the name is not empty, status is `'draft'`, and nothing
+  is sketching. A pending hand save does not disable it *(R5)*.
+- **On click:** first save any pending hand edit (PUT), then
+  `POST /api/agents/:id/save`. If either fails, see "Save failed" below.
+  On success:
   - The button is replaced by the status text **Kept ✓** (13 px, semibold,
     not a button).
   - A card settles at the top of the Sketch pane (fade + 8 px slide down,
     200 ms):
     ```
     ┌──────────────────────────────────────┐
-    │ Tony                          Kept ✓ │
+    │ Tony                                 │
     │ A high-energy coach who pushes you   │
     │ to act today.                        │
     │ Yours. You can keep changing it.     │
     └──────────────────────────────────────┘
     ```
     The second line is the persona's first sentence (up to the first `.`,
-    `!` or `?`, max 140 characters, with "…" if cut). No AI call.
-  - In the chat, a short local line from the Sketcher (not an AI turn):
-    "Kept. Come back any time to change it."
+    `!` or `?`, max 140 characters, with "…" if cut). No AI call. The card
+    has no "Kept ✓" of its own, because the header right above it already
+    says so *(R3)*.
+  - Nothing is added to the chat *(R3)*.
   - The switcher menu shows "Kept" next to it.
+  - If the user types "save it" or "done" in the chat, the Sketcher never
+    claims it saved or kept the agent. It says the work is autosaved and
+    points to Keep. Keep is the only way to finish *(R2, creator prompt)*.
 - **Reserved, later (P12):** the Keep card has one held line under
   "Yours…" for the short capability summary. Not rendered in P2.
 - **After Keep:** fields stay editable and the chat stays open. Any change
@@ -385,10 +404,11 @@ On every `draft { draft, changed }` event:
 - On open, the most recent agent loads with its draft, its status and
   **no old chat bubbles** (chat history is P9). The chat shows one centred
   line: **Back to Tony.** (13 px, 60%), and the composer has focus.
-- If the agent has a `sessionId`, the client asks for a recap only when the
-  user sends their first message (no automatic AI call on open, so opening
-  is instant and free). The creator prompt's resume rule makes the first
-  reply start with a one-line recap.
+- If the agent has a `sessionId`, the first message continues that session
+  (`--resume`), so the Sketcher knows the history. There is no AI call on
+  open, so opening is instant and free. There is **no automatic recap**
+  either: the Sketch on screen is the recap. The Sketcher gives one only
+  when asked ("where were we?") *(R6)*.
 - No marks show on fields after a reload (no "new", no "yours").
 
 ### S10. Errors and the CLI offline (Merlin "Sketcher is away")
@@ -396,12 +416,14 @@ On every `draft { draft, changed }` event:
 under it a line in the error color says what happened and offers
 **Try again**, which resends the same message. Any partial Sketcher text
 from that turn is removed. The draft is never touched by a failed turn.
-Fields open again.
+Fields open again. **While the offline banner shows, the line under the
+bubble has no Try again of its own.** The banner's button does the job
+*(R4)*.
 
 | Cause | When | Line under the user's bubble | Extra |
 |---|---|---|---|
 | CLI not installed | `GET /api/health` → `installed: false` on open | — (no bubble yet) | **Offline banner** above the composer (below). Send disabled; typing allowed. |
-| `error.kind = 'not-installed'` | mid-turn | "The Sketcher can't reach Claude right now. · Try again" | Offline banner appears. |
+| `error.kind = 'not-installed'` | mid-turn | "The Sketcher can't reach Claude right now." (no link, R4) | Offline banner appears, its button reads **Try again**. |
 | `error.kind = 'failed'` | the CLI ran and failed (includes not signed in) | "Something went wrong on Claude's side. · Try again · Details" | **Details** expands the `message` and `traceId` in 13 px monospace. |
 | `error.kind = 'bad-output'` | odd CLI output | "The Sketcher's reply came back garbled. · Try again" | Details as above. |
 | `error.kind = 'cancelled'` / user pressed Stop | | "Stopped. · Try again" (neutral color, not red) | — |
@@ -411,16 +433,20 @@ Fields open again.
 ```
 ┌──────────────────────────────────────────────────────────┐
 │ The Sketcher can't reach Claude right now.               │
-│ Your message is kept.            [ Check again ]  How to fix ▸ │
+│ Your text stays here.            [ Check again ]  How to fix ▸ │
 └──────────────────────────────────────────────────────────┘
 ```
+- "Your text stays here." replaces "Your message is kept." *(R1)*.
 - Sits directly above the composer, full composer width, error-tinted
   surface (6% error color), 13 px text.
 - "How to fix ▸" expands: "Agent Creator uses Claude Code on this
   computer. Install it, run `claude` once in a terminal to sign in, then
-  press Check again."
-- **Check again** re-runs `GET /api/health`. If it's back, the banner goes
-  away and Send is enabled; nothing else changes.
+  press the button again."
+- **One button, two labels** *(R4)*: **Try again** when there is a failed
+  turn, **Check again** when there isn't (for example on open). Both re-run
+  `GET /api/health`. If it's back, the banner goes away, Send is enabled,
+  and with Try again the failed turn is sent again. Clicking it is the
+  user's go-ahead, so the resend isn't a surprise.
 - Text in the composer is never cleared by an error.
 - `role="alert"` for the banner, so it's announced once.
 
@@ -436,8 +462,11 @@ Fields open again.
 ### S12. New agent
 - From the switcher: **+ New agent** → `POST /api/agents` → S1 with a clean
   chat. The previous agent is already autosaved; no prompt.
-- Disabled while sketching (the menu item shows the tooltip "Wait for the
-  Sketcher to finish").
+- If the current agent is still empty (no name, persona or instructions),
+  **+ New agent** does nothing new: it stays on the same S1 *(R8)*.
+- While sketching, **+ New agent and every agent row** in the menu are
+  disabled, with the tooltip "Wait for the Sketcher to finish" *(R9)*. The
+  switcher button itself still opens the menu, so the reason can be read.
 
 ## 7. Narrow screens (< 860 px)
 
@@ -478,7 +507,7 @@ blocks anything):
 |---|---|
 | First-sketch stagger | 200 ms fade each, 80 ms apart |
 | Fresh-line bar fade | 4 s, ease-out |
-| ✓ kept | shows 1.5 s, 150 ms fade out |
+| ✓ saved | shows 1.5 s, 150 ms fade out |
 | First voice card rise | 250 ms |
 | Keep card settle | 200 ms |
 | Sketching dots | 1.2 s loop |
@@ -493,7 +522,7 @@ until the next turn instead of fading. Tags stay (they carry the meaning).
   in both color schemes; raise opacity if a scheme fails).
 - Tap targets ≥ 44 × 44 px (Send/Stop, Keep, chips' padded area, switch,
   Try again).
-- Never color only: "new", "✎ yours", "✓ kept", "Kept ✓" are words.
+- Never color only: "new", "✎ yours", "✓ saved", "Kept ✓" are words.
 - Chat list: `role="log"`, `aria-live="polite"`. Deltas are **not**
   announced one by one; on `done`, one announcement: the reply text, then
   the change line ("Sketch: persona updated").
@@ -543,7 +572,8 @@ Nothing else goes into it. The P12 map never does.
 ```
 
 **How the chat updates it:**
-1. User sends → save any `pending` hand edit (PUT) → `fresh` cleared →
+1. User sends → save any `pending` or failed hand edit (PUT; if it fails,
+   stop here, R5) → `fresh` cleared →
    `phase = 'sketching'` → `POST /api/agents/:id/chat { message }`.
 2. `delta` → append text to the streaming Sketcher bubble (the server has
    already removed the `<draft>` block).
@@ -559,30 +589,32 @@ Nothing else goes into it. The P12 map never does.
    untouched.
 
 **Hand edit:** `PUT /api/agents/:id/draft { [field]: value }` → response
-is the full draft → `agent.draft = it`; add field to `yours`; ✓ kept.
+is the full draft → `agent.draft = it`; add field to `yours`; ✓ saved.
 
-**Keep:** `POST /api/agents/:id/save` → `status = 'saved'`.
+**Keep:** save any `pending` hand edit (PUT) → `POST /api/agents/:id/save`
+→ `status = 'saved'`.
 
-**What I assume of the server** (please confirm, Columbo):
+**What the server does** (confirmed in the Roadmap, Phases 3–4):
 - `PUT /draft` and `POST /save` return the full draft.
 - Any autosave after Keep (hand edit or chat patch) sets `status` back to
   `'draft'`.
 - The server tracks which fields were edited by hand since the creator
   last changed them, and passes those names into the creator prompt (H4).
-- `GET /api/agents` items include `{ id, draft: { name, status },
-  updatedAt }` for the switcher.
+  These names are kept in the agent record as `handEdited`.
+- `GET /api/agents` items are `{ id, draft: { name, status }, updatedAt }`
+  for the switcher. Empty agents are left out (R8).
 
 ## 11. Magic moments from Merlin: in or out
 
 | Moment | Verdict | Note |
 |---|---|---|
 | ★1 Fresh lines (bar, "new", change line) | **In** | Line-level tint in Instructions: later. |
-| ★2 Your own line ("✓ kept", "✎ yours", ask before changing) | **In** | Plus rule H3 (read-only while sketching). |
+| ★2 Your own line ("✓ saved", "✎ yours", ask before changing) | **In** | Plus rule H3 (read-only while sketching). "✓ kept" renamed (R1). |
 | ★3 First sketch (chips, shimmer, stagger) | **In** | Chips fill the box, they don't send. |
 | ★4 It speaks (voice card, first-breath rise) | **In** | Blockquote rule; card only after `done`. |
-| ★5 Keep (button, card, "yours", local line) | **In** | "Kept · changed since" cut: back to Keep instead. |
+| ★5 Keep (button, card, "yours") | **In** | "Kept · changed since" cut: back to Keep instead. Local chat line cut (R3). |
 | Sketching… dots | **In** | |
-| Back to [Name] | **In** | Static line on open; recap comes with the first reply (no AI call on open). |
+| Back to [Name] | **In** | Static line on open; no AI call on open and no automatic recap (R6). |
 | Pasted note chip | **In** | |
 | Sketcher is away | **In** | Offline banner + one error rule. |
 | References (P3) / What it knows (P12) | **Reserved, later** | Hidden in P2. |
@@ -597,33 +629,31 @@ is the full draft → `agent.draft = it`; add field to `yours`; ✓ kept.
 | Switcher menu | + New agent · [Name] Kept/Sketch · [time] · Untitled sketch |
 | Empty prompt | Who should this agent be? One line is enough. |
 | Chips | A tough-love coach like Tony Robbins · A blunt editor for my newsletter · Me, for answering client emails |
-| Composer placeholder | Describe your agent in one line… / Reply to the Sketcher… / Ask how [Name] would answer something real… (once) |
+| Composer placeholder | Type here… (empty agent) / Reply to the Sketcher… / Ask how [Name] would answer something real… (once) |
 | Send / Stop | aria: Send / Stop |
 | Chat sender labels | You · Sketcher |
 | Sketch title | Sketch / Sketching… |
 | Field labels | Name · Persona · Instructions |
 | Field hints | Who they are: voice, character, point of view · What they do: job, rules, limits |
 | Empty field placeholders | A name · Appears after your first message |
-| Tags | new · ✎ yours · ✓ kept · Not saved · Retry |
+| Tags | new · ✎ yours · ✓ saved · Not saved · Try again |
 | Change line | Sketch: [fields] updated |
 | Voice card caption | sample, from the current sketch |
 | Keep | Keep · Kept ✓ · Couldn't keep · Try again · tooltip: Give it a name first |
-| Keep card | [Name] · Kept ✓ · [first sentence of persona] · Yours. You can keep changing it. |
-| Local line after Keep | Kept. Come back any time to change it. |
+| Keep card | [Name] · [first sentence of persona] · Yours. You can keep changing it. |
 | Return | Back to [Name]. |
 | Loading (> 1 s) | Opening… |
 | Errors | see S10 table |
-| Offline banner | The Sketcher can't reach Claude right now. Your message is kept. · Check again · How to fix ▸ |
-| How to fix | Agent Creator uses Claude Code on this computer. Install it, run `claude` once in a terminal to sign in, then press Check again. |
-| Send blocked tooltip | Save your edit first |
-| New agent blocked tooltip | Wait for the Sketcher to finish |
+| Offline banner | The Sketcher can't reach Claude right now. Your text stays here. · Try again (failed turn) / Check again (none) · How to fix ▸ |
+| How to fix | Agent Creator uses Claude Code on this computer. Install it, run `claude` once in a terminal to sign in, then press the button again. |
+| Switcher blocked tooltip (New agent and every row, while sketching) | Wait for the Sketcher to finish |
 
 ## 13. Build order and checks (for Uncle Bob)
 
 Build and check each piece on its own before joining them:
 1. Static layout, wide and narrow, with a fake draft (S1, S9 look).
 2. The field component: label row with tag slot, hint, auto-grow, save on
-   blur/idle, ✓ kept, yours, readonly mode.
+   blur/idle, ✓ saved, yours, readonly mode.
 3. The chat list: user bubble, Sketcher text, change line, voice card,
    pasted-note chip, error line.
 4. The non-DOM module: SSE parser, the reducer in §10, health → offline.
