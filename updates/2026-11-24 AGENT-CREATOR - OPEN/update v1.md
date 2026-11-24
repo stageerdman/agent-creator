@@ -288,3 +288,17 @@ call it directly like the engine. The routes go in `src/server/routes/`.
   Eraser approved, and the required changes R1–R11 are applied in
   `design-jony.md`. The roadmap now matches the design (Keep, `handEdited`,
   the list shape, prompt rules R2/R6/R10). Next is Phase 1 (build).
+- 2026-11-24: Phases 1–4 done (backend). `src/creator/` holds the draft
+  model, reply splitting + stream filter, the creator prompt, one turn,
+  the agent store and `agents.mjs` (the use cases the routes call). Routes
+  in `src/server/routes/agents.mjs`, path params via `src/server/router.mjs`.
+  Two deviations from the plan, both small:
+  - `creatorTurn` returns `{ say, patch, sessionId }`; `agents.chat`
+    applies the patch to the draft as it is *after* the reply, so a save
+    that lands mid-turn is never lost.
+  - The stream filter hides only the block itself (`<draft>`…`</draft>`),
+    not everything after it, and `splitReply` does the same, so the
+    streamed text and the final `say` always agree.
+  Tests: 34 new offline tests (`npm test`), plus a live end-to-end test
+  against the real `claude` (`npm run test:live`, passes in ~30 s). See
+  `wiki.md`. Next: Phase 5 (the screen) and the full Phase 6 walk-through.
