@@ -113,3 +113,35 @@ the flag list and event handling stay identical.
 13. **Errors come from 3 places** — exit code, `is_error` in `result`, stderr.
     Check all three; prefer stderr text, then result text, then a generic line.
 14. Latency: ~2.3 s cold, ~1 s on `--resume` — fine for chat, not for anything snappy.
+
+## P1 build notes (2026-11-24)
+
+**Ported to Node, not Rust.** Agent Creator had no app and this environment
+can only run `node`/`npm`, so the engine is plain ESM with zero
+dependencies in `src/engine/`. Mapping from the Rust original:
+
+| masters-wheel | Agent Creator |
+|---|---|
+| `util.rs::resolve_binary` | `src/engine/resolveBinary.mjs` (+ `~/.local/bin`, `~/.claude/local`) |
+| arg building in `claude_cli.rs` / `assistant.rs` | `src/engine/claudeArgs.mjs` (the one CLI seam) |
+| `ask_agent` event match + `extract_context_usage` | `src/engine/streamEvents.mjs` |
+| `spawn_blocking` + stderr thread + `BufReader::lines` | `src/engine/cliProcess.mjs` (async spawn, parallel stderr, readline, AbortSignal kill) |
+| `ask_agent` | `src/engine/askAgent.mjs` (`onDelta` callback instead of a Tauri event) |
+| `run_claude` | `src/engine/runClaude.mjs` |
+| `askAgent.ts` invoke + `listen("ask-agent-progress")` | `POST /api/ask` → SSE (one stream per request, so no jobId filter needed) |
+
+**New lesson: `--strict-mcp-config` is required even with no MCP.**
+masters-wheel always passed it alongside its own `--mcp-config`. Without it,
+the CLI loads every MCP server the user has set up in Claude Code. Measured
+live: `"hi"` cost **119,877** input tokens without the flag and **548** with
+it. Locked in by a test in `src/engine/core.test.mjs`. This is the MCP-side
+twin of pitfall 5 (`--tools ""` for built-ins).
+
+**Verified live** against `claude` 2.1.322 through the running server:
+deltas stream in, a message starting with `---` arrives intact, `--resume`
+with the returned session id keeps memory across turns, and closing the
+request mid-stream kills the CLI (logged as `kind: cancelled`).
+
+**Testing seam:** `spawn` is injectable. `src/engine/testing/fakeClaude.mjs`
+replays the CLI's real output shapes, so every runner and route test runs
+offline in well under a second.

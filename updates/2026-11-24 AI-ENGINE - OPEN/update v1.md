@@ -37,14 +37,14 @@ Each phase ends with tests that lock in what it built.
 ### Phase 0 — Research ✅
 masters-wheel studied: the files to copy and 14 pitfalls are in `wiki.md`.
 
-### Phase 1 — Scaffold + shared logger
+### Phase 1 — Scaffold + shared logger ✅
 - `package.json` (no deps), `npm start`, `npm test` (`node --test`).
 - `src/log/logger.mjs`: one JSON-lines logger used everywhere, with
   module, function and trace id on every line.
 - `.project` gets `run:` and `test:` lines.
 - **Tests:** the logger writes the context fields and respects `LOG_LEVEL`.
 
-### Phase 2 — Pure engine core
+### Phase 2 — Pure engine core ✅
 Copied from `util.rs`, `claude_cli.rs` and `assistant.rs`:
 - `resolveBinary.mjs`: Homebrew paths plus `~/.local/bin` and
   `~/.claude/local`, falling back to the bare name.
@@ -60,7 +60,7 @@ Copied from `util.rs`, `claude_cli.rs` and `assistant.rs`:
   values are dropped, delta/result parsing works, usage sums the four token
   fields.
 
-### Phase 3 — Process runners
+### Phase 3 — Process runners ✅
 - `runClaude.mjs` (one-shot, `--output-format json`) and `askAgent.mjs`
   (streaming, `onDelta` callback). Both use `cwd = os.tmpdir()` so no
   CLAUDE.md leaks in, read stderr in parallel with stdout, check errors from
@@ -73,7 +73,7 @@ Copied from `util.rs`, `claude_cli.rs` and `assistant.rs`:
   streamed deltas, the final result winning over the deltas, a non-zero exit
   with stderr, `is_error`, a missing binary, and cancel.
 
-### Phase 4 — Local app: server + minimal page
+### Phase 4 — Local app: server + minimal page ✅
 - `GET /`: one page with a prompt box that shows the answer live as it streams.
 - `POST /api/ask` → Server-Sent Events: `delta`*, then `done`
   `{text, sessionId, contextTokens, contextWindow}`, or `error`. The client
@@ -83,13 +83,17 @@ Copied from `util.rs`, `claude_cli.rs` and `assistant.rs`:
 - **Tests:** server integration against the fake CLI (SSE order, error
   event, health).
 
-### Phase 5 — Live verification
+### Phase 5 — Live verification ✅
 - Run the real `claude` through `/api/ask` on PORT and confirm deltas stream
   in and a session id comes back. Record what was learned in `wiki.md`.
 
 ## Status
 
-- 2026-11-24: Phase 0 done, roadmap written. Phases 1–5 in progress.
+- 2026-11-24: Phases 0–5 done; 26 tests pass. The live check found one real
+  bug: without `--strict-mcp-config` the user's own MCP servers loaded into
+  every call (120k tokens for "hi"). It is fixed and has a test; see
+  `wiki.md` → "P1 build notes".
+- Next (outside P1): the build-job mode spike for P2/P5.
 
 ## Not in P1 (on purpose)
 

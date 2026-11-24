@@ -38,6 +38,15 @@ Point Claude Code (or any Agent-Skills-compatible runtime) at this repo's
 for the full flow, checkpoints, and anti-patterns. `scripts/` holds the
 subtitle-download/cleaning and quality-check helpers the skill calls out to.
 
+## The app and its AI engine
+
+All AI work runs in the background through the AI CLI you already have
+installed and logged in (Claude Code first). There's no API key. The engine
+(`src/engine/`) is a zero-dependency Node port of masters-wheel's. `npm start`
+serves a small local page on `PORT` where you can send a prompt and watch the
+answer stream in. `npm test` runs the tests. See
+`updates/2026-11-24 AI-ENGINE - OPEN/` for the plan and lessons.
+
 ## Project layout
 
 Follows the AI Control standard (`.project`, `CLAUDE.md`, `updates/`,

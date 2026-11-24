@@ -7,9 +7,9 @@ modules:
   - CODING
   - WORKFLOW
 
-# No user-facing UI surface yet (this is a methodology + scripts repo,
-# used conversationally through Claude Code) — UX module not pulled in.
-# Revisit if a UI gets built for browsing generated knowledge bases.
+# Started as a methodology + scripts repo; P1 (2026-11-24) added a minimal
+# local page for the AI engine. UX module not pulled in yet; revisit as the
+# app grows (P2+).
 
 secrets: none
 # Current phase (personality distillation, SKILL.md forked from nuwa-skill
