@@ -3,30 +3,20 @@
 // listen("ask-agent-progress"): one stream per request, so no jobId filter
 // is needed. Closing the request cancels the CLI.
 
-import { BadRequest, openEventStream, readJson } from "../http.mjs";
+import { readJson, requireMessage, streamEvents } from "../http.mjs";
 
 export function askRoute(engine) {
   return async (req, res, { traceId }) => {
-    const { message, sessionId } = await readJson(req);
-    if (typeof message !== "string" || !message.trim()) throw new BadRequest("`message` must be a non-empty string.");
+    const body = await readJson(req);
+    const message = requireMessage(body);
+    const resumeSessionId = typeof body.sessionId === "string" ? body.sessionId : undefined;
 
-    const send = openEventStream(res);
-    const controller = new AbortController();
-    res.on("close", () => {
-      if (!res.writableFinished) controller.abort();
-    });
-
-    try {
+    await streamEvents(res, traceId, async ({ send, signal }) => {
       const reply = await engine.askAgent(
-        { message, resumeSessionId: typeof sessionId === "string" ? sessionId : undefined },
-        { onDelta: (text) => send("delta", { text }), signal: controller.signal, traceId },
+        { message, resumeSessionId },
+        { onDelta: (text) => send("delta", { text }), signal, traceId },
       );
       send("done", reply);
-    } catch (error) {
-      // The engine already logged it with the traceId; the client just
-      // needs to know what kind of failure it was.
-      send("error", { kind: error.kind ?? "internal", message: error.message, traceId });
-    }
-    res.end();
+    });
   };
 }

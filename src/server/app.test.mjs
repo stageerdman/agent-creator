@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { askAgent, checkCli } from "../engine/index.mjs";
 import { fakeSpawn } from "../engine/testing/fakeSpawn.mjs";
 import { createApp } from "./app.mjs";
+import { parseSse } from "./testing/sse.mjs";
 
 // The real engine, with the CLI swapped for the fake per scenario.
 let scenario = "stream-ok";
@@ -16,13 +17,6 @@ after(() => server.close());
 
 const post = (body) =>
   fetch(`${base}/api/ask`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-
-function parseSse(text) {
-  return text.trim().split("\n\n").map((block) => ({
-    event: block.match(/^event: (.*)$/m)[1],
-    data: JSON.parse(block.match(/^data: (.*)$/m)[1]),
-  }));
-}
 
 test("POST /api/ask streams deltas then done with the session id", async () => {
   scenario = "stream-ok";

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node src/server/main.mjs",
-    "test": "LOG_LEVEL=silent node --test \"src/**/*.test.mjs\""
+    "test": "LOG_LEVEL=silent node --test \"src/**/*.test.mjs\"",
+    "test:live": "CLAUDE_LIVE=1 LOG_LEVEL=warn node --test \"src/**/*.live.test.mjs\""
   }
 }

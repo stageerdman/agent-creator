@@ -27,7 +27,15 @@ const scenarios = {
   },
   "stream-is-error": () => out(result("Credit balance too low", { is_error: true })),
   "stream-no-result": () => out(delta("partial")),
-  "once-ok": () => out(result(`Echo: ${message}`)),
+  // The creator replying with a draft block whose body is the message, so
+  // a test picks the patch by what it sends. The tag is split across deltas.
+  "creator-patch": () => {
+    const block = `<draft>${message}</draft>`;
+    out(delta("Here's a first sketch. <dr"));
+    out(delta(block.slice(3)));
+    out(result(`Here's a first sketch. ${block}`));
+  },
+  "once-ok":() => out(result(`Echo: ${message}`)),
   "once-bad-json": () => process.stdout.write("not json\n"),
   "version": () => process.stdout.write("9.9.9 (Claude Code)\n"),
   // Streams one delta then never finishes, so only a cancel ends it.
