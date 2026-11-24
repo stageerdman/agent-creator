@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Creator</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; box-sizing: border-box; }
+    h1 { font-size: 1.25rem; margin: 0; }
+    #status { font-size: 0.875rem; opacity: 0.75; }
+    #status.bad { color: #c0392b; opacity: 1; }
+    #chat { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+    .msg { padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; line-height: 1.45; }
+    .user { align-self: flex-end; background: #2d6cdf; color: white; max-width: 80%; }
+    .ai { align-self: flex-start; background: color-mix(in srgb, currentColor 8%, transparent); max-width: 90%; }
+    .error { color: #c0392b; }
+    form { display: flex; gap: 8px; }
+    textarea { flex: 1; font: inherit; padding: 10px; border-radius: 10px; resize: vertical; min-height: 44px; }
+    button { font: inherit; padding: 0 18px; border-radius: 10px; border: 0; background: #2d6cdf; color: white; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <h1>Agent Creator</h1>
+  <div id="status" role="status">Checking for the Claude Code CLI…</div>
+  <div id="chat" aria-live="polite"></div>
+  <form id="ask">
+    <label for="message" hidden>Message</label>
+    <textarea id="message" placeholder="Ask anything. Enter sends, Shift+Enter adds a line." required></textarea>
+    <button id="send" type="submit">Send</button>
+  </form>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
