@@ -20,3 +20,7 @@ secrets: none
 # sync-secrets routine when that phase starts (see issues.txt).
 
 claude_md_generated: 2026-11-04
+
+# Local app (P1 AI engine): a zero-dependency Node server, reads PORT.
+run: npm start
+test: npm test

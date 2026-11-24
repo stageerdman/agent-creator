@@ -1,0 +1,14 @@
+{
+  "name": "agent-creator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent Creator — AI work runs through the user's own local AI CLI (Claude Code first).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server/main.mjs",
+    "test": "node --test \"src/**/*.test.mjs\""
+  }
+}
