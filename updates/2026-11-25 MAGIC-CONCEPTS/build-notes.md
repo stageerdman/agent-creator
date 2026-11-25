@@ -5,7 +5,7 @@ Open `index.html` by double-click. No install, no server, no network: every page
 ## The pages
 
 - **index.html** — the three concepts, each with its name and a one-line pitch. Click one to open it.
-- **glade-fireflies.html** (Concept A) — agents are fireflies in a night glade. Ready ones fly in step; ones still learning are scattered.
+- **glade-fireflies.html** (Concept A) — agents are fireflies in a night glade. A ready agent's fireflies blink in step; a studying agent's fireflies are still scattered, falling into step as each file is learned.
 - **remembering-sea.html** (Concept B) — agents are lights in a calm sea. Files sink in as they are learned.
 - **neon-after-rain.html** (Concept C) — agents are neon signs on a wet street. Files travel as sparks along a wire into the sign.
 
