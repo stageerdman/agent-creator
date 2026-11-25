@@ -124,9 +124,11 @@ test("agents: hand edits reach the prompt and only a patch to that field clears 
   await agents.chat(id, "add a job");
   assert.match(engine.calls[0].systemPrompt, /"persona": "You are calm\."/);
   assert.match(engine.calls[0].systemPrompt, /changed them: persona\./);
+  assert.match(engine.calls[0].systemPrompt, /typed these lines themselves[^]*- persona: You are calm\./);
   const record = await store.loadAgent(id);
   assert.equal(record.draft.persona, "You are calm.");
   assert.deepEqual(record.handEdited, ["persona"]);
+  assert.deepEqual(record.handLines, { persona: ["You are calm."] });
 });
 
 test("agents: Keep, then any change makes it a draft again", async () => {

@@ -26,14 +26,16 @@ How you change the draft:
 Write your chat reply first. Then, only if you change any field, end with exactly one block in this form:
 <draft>{"persona": "the full new text of this field"}</draft>
 - Valid JSON. Only the keys name, persona and instructions, and only the ones you change, each with its full new text.
-- No block when nothing changes. Never mention the block or show it in any other form.`;
+- No block when nothing changes. Never mention the block or show it in any other form.
+- If the user typed lines into a field themselves (listed at the end), the new text of that field must still contain each of them, word for word, unless the user asked to drop or change that line. A request to rewrite "everything" is not such a request.`;
 
 // `materials` is the P3 slot (a summary of uploaded material); empty in P2.
-export function buildCreatorPrompt({ draft, handEdited = [], materials = "" }) {
+export function buildCreatorPrompt({ draft, handEdited = [], handLines = {}, materials = "" }) {
   return [
     RULES,
     keepPointerRule(draft.status),
     currentDraft(draft, handEdited),
+    userLines(handLines),
     materials && `<materials>\n${materials}\n</materials>`,
   ].filter(Boolean).join("\n\n");
 }
@@ -44,6 +46,16 @@ function keepPointerRule(status) {
     return "The user has already pressed Keep. Don't point them to Keep again unless they ask how to finish.";
   }
   return `Right after your first sample answer, you may end with one line: "If that's [the agent's name or pronoun], press Keep." Do this at most once in this whole chat: if you already said it earlier, never say it again.`;
+}
+
+// The lines the user typed in by hand: a rewrite keeps what each one says.
+function userLines(handLines) {
+  const rows = Object.entries(handLines).flatMap(([field, lines]) => lines.map((line) => `- ${field}: ${line}`));
+  if (!rows.length) return "";
+  return [
+    "The user typed these lines themselves. Any new text you write for that field keeps each line word for word, unless the user asked to drop or change that exact line:",
+    ...rows,
+  ].join("\n");
 }
 
 function currentDraft(draft, handEdited) {

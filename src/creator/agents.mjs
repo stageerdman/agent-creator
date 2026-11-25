@@ -1,7 +1,7 @@
 // The creator's use cases: what the server routes (and later a desktop
 // shell) call. Store and engine are passed in; no HTTP here.
 
-import { applyPatch, isEmpty, trackHandEdits } from "./draft.mjs";
+import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
 const summary = ({ id, draft, updatedAt }) => ({ id, draft: { name: draft.name, status: draft.status }, updatedAt });
@@ -25,13 +25,14 @@ export function createAgents({ store, engine }) {
     async chat(id, message, { onSay, signal, traceId } = {}) {
       const before = await store.loadAgent(id);
       const turn = await creatorTurn(
-        { message, draft: before.draft, handEdited: before.handEdited, sessionId: before.sessionId },
+        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, sessionId: before.sessionId },
         { engine, onSay, signal, traceId },
       );
       const latest = await store.loadAgent(id);
       const { draft, changed } = applyPatch(latest.draft, turn.patch);
       const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
-      await store.saveDraft(id, { draft, handEdited, sessionId: turn.sessionId });
+      const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
+      await store.saveDraft(id, { draft, handEdited, handLines, sessionId: turn.sessionId });
       return { say: turn.say, draft, changed, sessionId: turn.sessionId };
     },
 
@@ -41,7 +42,8 @@ export function createAgents({ store, engine }) {
       const { draft, changed } = applyPatch(record.draft, fields);
       if (changed.length === 0) return draft;
       const handEdited = trackHandEdits(record.handEdited, changed, "hand");
-      return (await store.saveDraft(id, { draft, handEdited })).draft;
+      const handLines = trackHandLines(record.handLines, record.draft, draft, "hand");
+      return (await store.saveDraft(id, { draft, handEdited, handLines })).draft;
     },
 
     keep: async (id) => (await store.markSaved(id)).draft,

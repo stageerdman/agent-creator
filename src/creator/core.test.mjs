@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyPatch, emptyDraft, isEmpty, trackHandEdits } from "./draft.mjs";
+import { applyPatch, emptyDraft, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
 import { splitReply, streamFilter } from "./creatorReply.mjs";
 import { buildCreatorPrompt } from "./creatorPrompt.mjs";
 
@@ -35,6 +35,27 @@ test("trackHandEdits: a hand edit marks a field, a creator change clears it", ()
   const marked = trackHandEdits(["name"], ["persona"], "hand");
   assert.deepEqual(marked, ["name", "persona"]);
   assert.deepEqual(trackHandEdits(marked, ["persona", "instructions"], "creator"), ["name"]);
+});
+
+test("trackHandLines: lines typed by hand are remembered, dropped when gone", () => {
+  const before = draft({ instructions: "Be loud.\nEnd with one step." });
+  const typed = draft({ instructions: 'Be loud.\nEnd with one step.\nNever say "awesome".' });
+  const lines = trackHandLines({}, before, typed, "hand");
+  assert.deepEqual(lines, { instructions: ['Never say "awesome".'] });
+  // a creator rewrite that keeps the line keeps it tracked (and adds none of its own); one that rewords it drops it
+  assert.deepEqual(trackHandLines(lines, typed, draft({ instructions: 'Shout.\nNever say "awesome".' }), "creator"), lines);
+  assert.deepEqual(trackHandLines(lines, typed, draft({ instructions: "Shout. No 'awesome'." }), "creator"), {});
+  // the user deleting it by hand drops it too
+  assert.deepEqual(trackHandLines(lines, typed, before, "hand"), {});
+  // old records without the field
+  assert.deepEqual(trackHandLines(undefined, before, before, "creator"), {});
+});
+
+test("the creator prompt quotes the lines the user typed by hand", () => {
+  const prompt = buildCreatorPrompt({ draft: draft(), handEdited: ["instructions"], handLines: { instructions: ['Never say "awesome".'] } });
+  assert.match(prompt, /typed these lines themselves/);
+  assert.match(prompt, /instructions: Never say "awesome"\./);
+  assert.doesNotMatch(buildCreatorPrompt({ draft: draft() }), /typed these lines/);
 });
 
 test("splitReply without a block keeps the text and gives no patch", () => {

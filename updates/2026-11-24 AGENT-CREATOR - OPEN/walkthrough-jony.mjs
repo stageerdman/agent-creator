@@ -89,6 +89,7 @@ const snap = () => page.evaluate(() => {
     card: { hidden: card.hidden, text: card.innerText },
     logCount: document.querySelector("#log").childElementCount,
     lastReply: last?.querySelector(".say")?.innerText ?? null,
+    replyCount: replies.length,
     lastChange: last?.querySelector(".change-line")?.textContent ?? null,
     lastError: document.querySelector(".msg.user:last-of-type .turn-error, .turn-error:last-of-type")?.innerText ?? null,
     lastErrorNeutral: [...document.querySelectorAll(".turn-error")].at(-1)?.classList.contains("neutral") ?? null,
@@ -444,7 +445,7 @@ async function main() {
   await page.click("#send");
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"));
   s = await snap();
-  check("W1", "Stop: partial text gone, 'Stopped. · Try again' neutral, Sketch unchanged, fields open", (s.lastReply === null && s.lastError === "Stopped. · Try again" && s.lastErrorNeutral === true && s.persona.value === w1Before.persona.value && !s.persona.readOnly), `${s.lastError} neutral=${s.lastErrorNeutral}`);
+  check("W1", "Stop: partial text gone, 'Stopped. · Try again' neutral, Sketch unchanged, fields open", (s.replyCount === w1Before.replyCount && s.lastError === "Stopped. · Try again" && s.lastErrorNeutral === true && s.persona.value === w1Before.persona.value && !s.persona.readOnly), `${s.lastError} neutral=${s.lastErrorNeutral}`);
   await page.click(".turn-error .link-btn");
   await page.waitForFunction(() => document.querySelector("#send").classList.contains("stop"));
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"), null, { timeout: 240_000 });
@@ -461,7 +462,7 @@ async function main() {
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"), null, { timeout: 15_000 });
   const lostMs = Date.now() - killAt;
   s = await snap();
-  check("W1", "server down: 'Lost the connection to the app. · Try again' within seconds, nothing stuck", s.lastError === "Lost the connection to the app. · Try again" && s.title === "Sketch" && s.lastReply === null && lostMs < 5000, `${lostMs} ms: ${s.lastError}`);
+  check("W1", "server down: 'Lost the connection to the app. · Try again' within seconds, nothing stuck", s.lastError === "Lost the connection to the app. · Try again" && s.title === "Sketch" && s.replyCount === w1Sketch.replyCount && lostMs < 5000, `${lostMs} ms: ${s.lastError}, title ${s.title}, replies ${w1Sketch.replyCount}→${s.replyCount}`);
   check("W1", "Sketch unchanged and composer text kept", s.persona.value === w1Sketch.persona.value && s.composer === "half-typed note", s.composer);
   await startServer();
   await page.locator(".turn-error .link-btn").last().click();

@@ -31,6 +31,25 @@ export function trackHandEdits(handEdited, changed, source) {
   return handEdited.filter((field) => !changed.includes(field));
 }
 
+// The exact lines the user typed by hand, per field ({ instructions: [...] }),
+// so the creator can be told what to keep word for word on a rewrite.
+// A hand edit adds its new lines; any line no longer in the field is dropped.
+export function trackHandLines(handLines = {}, before, after, source) {
+  const next = {};
+  // The name is one value, not lines of rules; a rename covers it.
+  for (const field of FIELDS.filter((f) => f !== "name")) {
+    const now = new Set(linesOf(after[field]));
+    const old = new Set(linesOf(before[field]));
+    const added = source === "hand" ? [...now].filter((line) => !old.has(line)) : [];
+    const kept = (handLines[field] ?? []).filter((line) => now.has(line));
+    const lines = [...new Set([...kept, ...added])];
+    if (lines.length) next[field] = lines;
+  }
+  return next;
+}
+
+const linesOf = (text = "") => text.split("\n").map((line) => line.trim()).filter(Boolean);
+
 export function markKept(draft) {
   return { ...draft, status: "saved" };
 }
