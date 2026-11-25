@@ -606,17 +606,7 @@ body.face-change .face img {
 }
 
 .divider.first-words {
-  animation: magic-fade 250ms ease-out both;
-}
-
-@keyframes magic-fade {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  animation: magic-fade-in 250ms ease-out both;
 }
 
 .switch-dot {
@@ -630,19 +620,7 @@ body.face-change .face img {
 }
 
 .card.just-kept {
-  animation: magic-card-settle 250ms ease-out both;
-}
-
-@keyframes magic-card-settle {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  animation: magic-arrive 250ms ease-out both;
 }
 
 .mark.ready.is-new {
@@ -650,24 +628,13 @@ body.face-change .face img {
 }
 
 #empty.is-leaving {
-  animation: magic-fade 180ms ease-out reverse both;
+  animation: magic-fade-in 180ms ease-out reverse both;
 }
 
-/* A toast arrives: rise 4 px and fade, 200 ms. It never moves again. */
-.toast {
-  animation: magic-toast-rise 200ms ease-out both;
-}
-
-@keyframes magic-toast-rise {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
+/* A toast arrives: rise 4 px and fade, 200 ms. It never moves again.
+   Error toasts stay still (E1: no magic on errors). */
+.toast:not(.is-error) {
+  animation: magic-arrive 200ms ease-out both;
 }
 
 /* ── Reduced motion: everything still, meaning kept ────────────────────── */

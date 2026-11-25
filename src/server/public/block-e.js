@@ -1,12 +1,12 @@
 // Block E: grow and shape. One-pile top-up (E1), the map moves (E2), remove
-// a reference with Undo (E3), the face sheet (E4), the Palette (E5).
+// a reference with Undo (E3), the face sheet (E4). The E5 Palette was cut
+// (MAGIC-PASS X3): DNA is the one home for what an agent is made of.
 // design-jony-block-E.md. Every change after Keep is live (X4).
 
 import {
-  P2, el, btn, closeBtn, bus, store, nameOf, shortName, fileById, note, face, sheet, closeSheet,
-  picker, paletteStrip, wait, nowIso, dayMonth,
+  P2, el, btn, bus, store, nameOf, shortName, fileById, note, face, sheet, closeSheet,
+  picker, wait, nowIso, dayMonth,
 } from "/components.js";
-import { mergePersona } from "/sketch.js";
 import { nav } from "/block-a.js";
 import * as B from "/block-b.js";
 import * as C from "/block-c.js";
@@ -280,104 +280,4 @@ function useFace(a) {
   if (inSketcher(a)) $("face-slot").replaceChildren(face(a, 48, { onclick: () => openFace(a), label: `${nameOf(a)}'s face` }));
   logLine(a, o.kind === "photo" ? "Face: new photo" : "Face: new face");
   bus.emit("changed");
-}
-
-// ── E5 Palette ────────────────────────────────────────────────────────────
-
-const TRAIT_COLOURS = ["#A8B48E", "#B5A0C4", "#C49A8A", "#8FB0B5", "#C4B48A"];
-let paletteOf = null;
-let busy = false;
-
-function paletteHost() {
-  let host = $("palette");
-  if (!host) {
-    host = el("div", { id: "palette", class: "knows sketch-scroll palette-view", hidden: true });
-    $("dna-passage").after(host);
-  }
-  return host;
-}
-
-export const paletteOpen = () => Boolean(paletteOf);
-
-export async function openPalette(a) {
-  if (!inSketcher(a)) await nav.open(a.id, "sketcher");
-  paletteOf = a.id;
-  $("right-switch").hidden = true;
-  $("dna").hidden = true;
-  $("dna-passage").hidden = true;
-  $("sketch-scroll").hidden = true;
-  paletteHost().hidden = false;
-  if (P2.isNarrow?.()) P2.setView("sketch");
-  renderPalette(a);
-  paletteHost().querySelector("input")?.focus();
-}
-
-export function closePalette() {
-  if (!paletteOf) return false;
-  paletteOf = null;
-  paletteHost().hidden = true;
-  $("right-switch").hidden = false;
-  C.showSketch();
-  return true;
-}
-
-export const escape = () => closePalette();
-
-function mix(a) {
-  const groups = (a.palette ?? []).map((p) => ({ ...p }));
-  const traits = (a.traits ?? []).map((t, i) => ({ id: `trait-${t.id}`, label: t.label, detail: `${t.value} of 5 · a trait`, colour: TRAIT_COLOURS[i % TRAIT_COLOURS.length], share: t.value * 3 }));
-  return [...groups, ...traits];
-}
-
-function renderPalette(a) {
-  const host = paletteHost();
-  const name = shortName(a);
-  const refs = a.references?.total ?? 0;
-  const traits = a.traits ?? [];
-  const head = [refs ? `${refs} references` : null, `${traits.length} traits`].filter(Boolean).join(", ");
-  const segments = mix(a);
-  const rows = traits.map((t) => {
-    const sentence = el("span", "trait-line", t.sketchLine[t.value]);
-    const group = el("div", { class: "trait-steps", role: "radiogroup", "aria-label": `${t.label}: ${t.sketchLine[t.value]}` });
-    for (let v = 1; v <= 5; v += 1) {
-      group.append(el("label", "step",
-        el("input", { type: "radio", name: `trait-${t.id}`, value: v, checked: v === t.value, disabled: busy, "aria-label": `${t.label} ${v} of 5`, onchange: () => setTrait(a, t, v) }),
-        el("span", "dot", "")));
-    }
-    return el("div", "trait-row", el("span", "trait-label", t.label), group, sentence);
-  });
-  host.replaceChildren(
-    el("div", "palette-head", el("h3", "knows-h", `Palette · what ${name} is mixed from · ${head}`, busy ? el("span", "muted", " · Sketching…") : null),
-      closeBtn(closePalette, "Close Palette")),
-    el("div", "palette-mix", paletteStrip(segments), el("span", "muted small", "stand-in look")),
-    el("p", "palette-names muted small", segments.map((s) => s.label).join(" · ")),
-    el("ul", "sr-only", ...segments.map((s) => el("li", "", `${s.label} · ${s.detail}`))),
-    el("div", "traits", ...rows));
-}
-
-async function setTrait(a, t, v) {
-  if (busy || v === t.value) return;
-  const from = t.value;
-  busy = true;
-  t.value = v;
-  renderPalette(a);
-  const bubble = P2.addUserBubble(`${t.label}: ${from} → ${v}`, -1);
-  P2.els.empty.hidden = true;
-  void bubble;
-  a.instructionsBase ??= (mergePersona(a.draft).instructions ?? "");
-  a.traitLines = { ...(a.traitLines ?? {}), [t.id]: t.sketchLine[v] };
-  await wait(700);
-  a.draft.instructions = `${a.instructionsBase} ${Object.values(a.traitLines).join(" ")}`.trim();
-  delete a.draft.persona;
-  B.sketcherSay(a, `Done. ${t.label} is ${v} of 5 now: "${t.sketchLine[v]}"`, {
-    lines: [{ text: "Sketch: instructions updated ↗", onClick: () => { closePalette(); P2.markUpdated("instructions"); } }],
-  });
-  if (P2.state.agent?.id === a.id) {
-    P2.takeDraft({ ...a.draft });
-    const tag = P2.fields.instructions.tag;
-    tag.textContent = " new";
-    tag.className = "tag new";
-  }
-  busy = false;
-  if (paletteOf === a.id) renderPalette(a);
 }

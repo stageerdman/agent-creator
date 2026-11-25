@@ -9,7 +9,6 @@ import { mergePersona } from "/sketch.js";
 import * as B from "/block-b.js";
 import * as C from "/block-c.js";
 import * as D from "/block-d.js";
-import * as E from "/block-e.js";
 import * as F from "/block-f.js";
 
 const $ = (id) => document.getElementById(id);
@@ -121,7 +120,6 @@ hooks.menu = () => {
   if (!a || a.real) return [];
   const name = nameOf(a);
   const items = [];
-  if (name) items.push({ label: "Palette", run: () => E.openPalette(a) });
   if (a.keptAt) items.push({ label: `Export ${name}…`, run: () => F.openExport(a) });
   if (items.length) items.push("-");
   items.push({ label: `Delete ${name || "this sketch"}…`, run: () => openDelete(a) });
@@ -291,7 +289,7 @@ addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (sheetOpen()) { e.preventDefault(); closeSheet(); return; }
     if (store.screen === "talk" && D.escape()) { e.preventDefault(); return; }
-    if (store.screen === "sketcher" && (E.escape() || C.escape())) { e.preventDefault(); return; }
+    if (store.screen === "sketcher" && C.escape()) { e.preventDefault(); return; }
     return;
   }
   if (!cmd) return;
@@ -317,9 +315,11 @@ export async function boot() {
   $("demo-host").replaceChildren(demoPill(demoItems));
   dropOverlay({
     target: () => {
-      const a = nav.current();
-      if (store.screen === "home" || !a || !a.real) return "for a new agent"; // see B.onDrop
-      return nameOf(a) ? `into ${nameOf(a)}'s DNA` : "into the DNA";
+      // Same rule as B.onDrop: Home or a demo agent makes a new agent; else the open one gets the files.
+      const agent = P2.state.agent;
+      if (store.screen === "home" || !agent || mockAgent(agent.id)) return "for a new agent";
+      const name = P2.fields.name.input.value.trim();
+      return name ? `into ${name}'s DNA` : "into the DNA";
     },
     onDrop: (entries) => B.onDrop(entries),
   });

@@ -24,7 +24,8 @@ let newFiles = { paths: new Set(), seen: false };
 
 const mockOf = () => store.agents.find((x) => x.id === P2.state.agent?.id) ?? null;
 const current = () => mockOf() ?? (P2.state.agent ? { id: P2.state.agent.id, draft: P2.state.agent.draft } : null);
-const nameFor = (a) => (a && nameOf(a) ? shortName(a) : "It");
+const nameFor = (a) => (a && nameOf(a) ? shortName(a) : "It"); // starts a sentence
+const nameIn = (a) => (a && nameOf(a) ? shortName(a) : "it"); // mid-sentence
 const filesOf = (a) => a?.references?.files ?? [];
 
 // ── Profile's own data (description and hand moves) stay on this Mac ─────
@@ -164,7 +165,7 @@ export const showingDna = (a) => Boolean(a) && showing === a.id && (!$("dna").hi
 
 export function renderDna(a) {
   if (!a || passage || showing !== a.id) return;
-  const name = nameFor(a);
+  const name = nameIn(a);
   const subs = dnaLayers({ name, map: a.map ?? [], files: filesOf(a), total: a.references?.total });
   for (const s of subs) {
     const sub = $("dna").querySelector(`[data-layer="${s.id}"] .dna-sub`);
@@ -178,7 +179,7 @@ export function renderDna(a) {
 }
 
 function renderMade(a) {
-  const name = nameFor(a);
+  const name = nameIn(a);
   const files = sourcesOf(a.map ?? [], filesOf(a));
   const host = $("dna-made");
   if (!files.length) {
@@ -235,7 +236,7 @@ export async function addFiles(entries) {
     // D2: files but no words yet → the creator asks who this is.
     if (!P2.els.log.childElementCount) P2.waitForWords?.(files.length);
   } catch (error) {
-    toast(`Couldn't add the files: ${error.message}`);
+    toast(`Couldn't add the files: ${error.message}`, null, { error: true });
   }
   showDna(current());
 }
@@ -263,7 +264,7 @@ function setPart(index) {
   for (const r of rows) r.classList.toggle("is-active", behind.has(r.dataset.file));
   own.textContent = behind.size
     ? `${behind.size} ${behind.size === 1 ? "file" : "files"} behind this line`
-    : `${nameFor(a)}'s own view · no reference`;
+    : `${nameOf(a) ? `${shortName(a)}'s` : "Its"} own view · no reference`;
 }
 
 function renderLooks(a) {
