@@ -107,8 +107,14 @@ function renderTop() {
   const studying = store.agents.find((x) => x.study && ["studying", "paused"].includes(x.study.state));
   const s = studying?.study;
   $("top-study").replaceChildren(studying && !(store.screen === "sketcher" && store.current === studying.id)
-    ? btn(s.state === "paused" ? "Studying paused" : `Studying · ${s.done} of ${s.total}`, () => openAgent(studying.id, "sketcher"), "study-pill")
+    ? btn(studyLine(s), () => openStudying(studying), "study-pill")
     : "");
+}
+
+// The top-bar study line opens `What [Name] knows`, where the Study block lives.
+async function openStudying(a) {
+  await openAgent(a.id, "sketcher");
+  C.showKnows(a);
 }
 
 $("home-link").addEventListener("click", goHome);
@@ -130,7 +136,7 @@ hooks.menu = () => {
 // ── A1 Home ───────────────────────────────────────────────────────────────
 
 const latestTalk = (a) => [...(a.talks ?? [])].sort((x, y) => y.updatedAt.localeCompare(x.updatedAt))[0];
-const studyLine = (s) => (s.state === "paused" ? "Studying paused" : s.state === "stopped" ? `Stopped · ${s.done} of ${s.total} studied` : `Studying · ${s.done} of ${s.total}`);
+const studyLine = (s) => (s.state === "paused" ? "Studying paused" : s.state === "stopped" ? `Stopped · ${s.done} of ${s.total} studied` : `Studying · about ${s.etaMin ?? 1} min left`);
 
 function mark(a) {
   if (a.importedFrom && !a.openedAt) return el("span", "mark new", "new here");
@@ -184,11 +190,12 @@ function openDelete(a) {
   const name = nameOf(a) || "this sketch";
   const talks = a.talks?.length ?? 0;
   const refs = a.references?.total ?? 0;
-  const counts = [talks && `${talks} ${talks === 1 ? "talk" : "talks"}`, refs && `${refs} references`].filter(Boolean).join(" · ");
+  const parts = [talks && `${name}'s ${talks} past ${talks === 1 ? "talk" : "talks"}`, refs && `what ${name} learned from ${refs} ${refs === 1 ? "reference" : "references"}`].filter(Boolean);
+  const counts = parts.length ? `This deletes ${parts.join(" and ")}. ` : "";
   const studying = a.study && ["studying", "paused"].includes(a.study.state);
   sheet({
     title: `Delete ${name}?`,
-    body: [counts && el("p", "", counts), el("p", "", "Your files on this Mac aren't touched."), studying && el("p", "", "Studying stops."), el("p", "", "This can't be undone.")],
+    body: [el("p", "", `${counts}Your files on this Mac aren't touched.`), studying && el("p", "", "Studying stops."), el("p", "", "This can't be undone.")],
     actions: [
       btn("Cancel", () => closeSheet(), "btn", { "data-focus": "" }),
       btn(`Delete ${name}`, () => {

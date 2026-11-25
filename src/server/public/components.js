@@ -177,8 +177,7 @@ export function studyBlock(a, { onStop, onResume, onCheck, onAside } = {}) {
   const box = el("div", { class: "study", role: "status" });
   if (!s) return box;
   if (s.state === "studying") {
-    if (s.resumed) box.append(el("p", "study-note", "Picked up where it left off"));
-    box.append(el("p", "study-line", `Studying · ${s.current} (${s.stage}) · ${s.done} of ${s.total}`));
+    box.append(el("p", "study-line", s.resumed ? `Picked up where it left off · ${s.done} of ${s.total}` : `Studying · ${s.current} (${s.stage}) · ${s.done} of ${s.total}`));
     const slow = s.stage === "listening" ? " · listening is the slow part" : "";
     box.append(el("p", "study-sub", `about ${s.etaMin} min left${slow} · you can close the app, it keeps going`, " ", btn("Stop", onStop, "link-btn")));
   } else if (s.state === "stopped") {

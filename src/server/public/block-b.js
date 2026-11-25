@@ -99,6 +99,8 @@ export function renderStudy(a) {
   } else {
     host.hidden = false;
     const s = a.study;
+    // `Picked up where it left off` shows for about 10 s, then the normal line.
+    if (s.resumed && !s.resumedTimer) s.resumedTimer = setTimeout(() => { if (a.study === s) { s.resumed = false; renderStudy(a); } }, 10000);
     const parts = [studyBlock(a, {
       onStop: () => stopStudy(a), onResume: () => resumeStudy(a), onCheck: () => checkAgain(a),
     })];
@@ -120,8 +122,9 @@ export const doorShowing = () => !P2.els.empty.hidden;
 function renderDoor(a) {
   P2.els.empty.querySelector(".door")?.remove();
   const door = el("button", { class: "door", onclick: chooseFolder },
-    el("strong", "", "Add references"),
-    el("span", "", "a folder of their books, talks or notes · your files stay on this Mac"));
+    el("strong", "", "Or bring their references"),
+    el("span", "", "Drop a folder or files here, or paste a path"),
+    el("span", "", "Your files stay on this Mac · Claude reads them to study"));
   P2.els.empty.append(door);
 }
 
