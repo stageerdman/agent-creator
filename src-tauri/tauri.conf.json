@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Agent Creator",
+  "mainBinaryName": "Agent Creator",
+  "version": "0.1.0",
+  "identifier": "app.agent-creator",
+  "build": {
+    "beforeBuildCommand": "node scripts/stage-mac-app.mjs"
+  },
+  "app": {
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "category": "Productivity",
+    "icon": ["icons/icon.png", "icons/icon.icns"],
+    "resources": { "../dist/stage/app/": "app/" },
+    "macOS": { "minimumSystemVersion": "12.0" }
+  }
+}

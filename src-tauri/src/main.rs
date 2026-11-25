@@ -1,0 +1,62 @@
+//! Agent Creator's Mac shell: starts the local Node app and shows it in a
+//! native window drawn by macOS's own WebKit. No browser is involved.
+
+mod alert;
+mod node;
+mod server;
+
+use std::path::PathBuf;
+use std::sync::Mutex;
+use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+
+/// Holds the server for the app's life; taking it out stops the server.
+struct ServerSlot(Mutex<Option<server::Server>>);
+
+fn main() {
+    let app = tauri::Builder::default()
+        .setup(|app| {
+            let server = match start_server(app.path().resource_dir()?.join("app")) {
+                Ok(server) => server,
+                Err(e) => {
+                    eprintln!("main: {e}");
+                    alert::fatal("Agent Creator could not start", &e);
+                    std::process::exit(1); // a clean quit, not a crash report
+                }
+            };
+            open_window(app, &server.url())?;
+            app.manage(ServerSlot(Mutex::new(Some(server))));
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("main: could not build the app");
+
+    app.run(|handle, event| {
+        if let RunEvent::Exit = event {
+            if let Some(slot) = handle.try_state::<ServerSlot>() {
+                if let Ok(mut server) = slot.0.lock() {
+                    server.take(); // dropping it stops the server
+                }
+            }
+        }
+    });
+}
+
+fn start_server(app_dir: PathBuf) -> Result<server::Server, String> {
+    let home = std::env::var("HOME").map(PathBuf::from).map_err(|_| "main: HOME is not set".to_string())?;
+    let data_dir = std::env::var("AGENT_CREATOR_HOME").map(PathBuf::from).unwrap_or_else(|_| home.join(".agent-creator"));
+    let node = node::find(&app_dir, &home)
+        .ok_or("Agent Creator needs Node.js 22 or newer. Install it, then open Agent Creator again.")?;
+    server::Server::start(&server::Launch { node: &node, app_dir: &app_dir, data_dir: &data_dir, home: &home })
+        .map_err(|e| format!("{e}. See ~/.agent-creator/app.log."))
+}
+
+fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
+    let url = url.parse().expect("main: server URL is always valid");
+    WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+        .title("Agent Creator")
+        .inner_size(1200.0, 860.0)
+        .min_inner_size(900.0, 640.0)
+        .center()
+        .build()?;
+    Ok(())
+}

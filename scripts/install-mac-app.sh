@@ -1,12 +1,12 @@
 #!/bin/sh
-# Installs dist/Agent Creator.app into /Applications (or ~/Applications when
+# Installs the Tauri-built Agent Creator.app into /Applications (or ~/Applications when
 # /Applications is not writable), replacing the old copy, and registers it
 # with Launch Services and Spotlight so it shows up in search right away.
 # Prints the installed path on the last line. Usage: npm run install:app
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILT="$ROOT/dist/Agent Creator.app"
+BUILT="$ROOT/src-tauri/target/release/bundle/macos/Agent Creator.app"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 [ -d "$BUILT" ] || { echo "install-mac-app: no build at $BUILT (run npm run build:app)" >&2; exit 1; }

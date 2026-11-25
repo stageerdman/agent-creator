@@ -9,8 +9,12 @@ package-lock.json
 .walkthrough-home/
 .scratch/
 
-# The built macOS app (npm run build:app)
+# The built macOS app (npm run build:app): staged code, Tauri build output,
+# icons drawn at build time by scripts/stage-mac-app.mjs
 dist/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
 
 # OS / editor
 .DS_Store

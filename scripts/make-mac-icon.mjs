@@ -1,6 +1,7 @@
 // Writes the Agent Creator app icon as a macOS .icns file, with no tools
 // beyond Node: each size is drawn as RGBA pixels, packed as PNG, and stored
-// in a PNG-based .icns entry. Usage: node scripts/make-mac-icon.mjs <out.icns>
+// in a PNG-based .icns entry (or one 512 px PNG for a .png path).
+// Usage: node scripts/make-mac-icon.mjs <out.icns|out.png>
 import { writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 
@@ -90,6 +91,12 @@ function icns() {
   return icnsBlock("icns", body);
 }
 
-const out = process.argv[2];
-if (!out) throw new Error("make-mac-icon: missing output path (usage: node scripts/make-mac-icon.mjs <out.icns>)");
-writeFileSync(out, icns());
+export function writeIcon(out) {
+  writeFileSync(out, out.endsWith(".png") ? png(512) : icns());
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const out = process.argv[2];
+  if (!out) throw new Error("make-mac-icon: missing output path (usage: node scripts/make-mac-icon.mjs <out.icns|out.png>)");
+  writeIcon(out);
+}

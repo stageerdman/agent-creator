@@ -9,9 +9,13 @@
   },
   "scripts": {
     "start": "node src/server/main.mjs",
-    "build:app": "sh scripts/build-mac-app.sh && sh scripts/install-mac-app.sh",
+    "build:app": "npm install --silent --no-audit --no-fund && tauri build --bundles app && sh scripts/install-mac-app.sh",
+    "test:shell": "cargo test --manifest-path src-tauri/Cargo.toml",
     "start:app": "sh scripts/start-mac-app.sh",
     "test": "LOG_LEVEL=silent node --test \"src/**/*.test.mjs\"",
     "test:live": "CLAUDE_LIVE=1 LOG_LEVEL=warn node --test \"src/**/*.live.test.mjs\""
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.6"
   }
 }
