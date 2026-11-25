@@ -38,7 +38,7 @@
   .scenes button[aria-current="true"] { background: var(--haze); color: var(--ink); }
   .sound { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
   .sound[aria-pressed="true"] { color: var(--ink); }
-  body:not([data-scene="birth"]):not([data-scene="talk"]) .sound { visibility: hidden; }   /* sound lives on Birth and Talk only */
+  body:not([data-scene="birth"]):not([data-scene="talk"]) .sound { visibility: hidden; } /* sound plays only on Birth and Talk */
 
   .scene { position: fixed; inset: 48px 0 0 0; z-index: 2; display: flex; flex-direction: column; align-items: center; }
   .scene[hidden] { display: none !important; }
@@ -230,9 +230,9 @@ function generic(n) { const a = []; for (let i = 0; i < n; i++) a.push(mkFile('f
 
 const MARCUS_OLD = ['Letters to a young manager.pdf', 'Talk — Leading through doubt.txt', 'Interview, radio (2018).txt', 'Notebook 1.md', 'Notebook 2.md', 'Notebook 3.md', 'Workshop day 1.txt', 'Workshop day 2.txt', 'Q&A transcripts.txt', 'Essays 2015–2019.pdf', 'Commencement speech.txt', 'Book draft, ch 1–4.docx', 'Book draft, ch 5–9.docx', 'Podcast ep 12.txt', 'Podcast ep 31.txt', 'Margin notes.md', 'Team memos.pdf', 'Reading list.md'];
 const MARCUS_NEW = [
-  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'It’s a scan · add a text version', false],
+  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'It’s a scan · add a text version'],
   ['Mentoring calls (March).txt', 640e3, 6100], ['Podcast ep 57.txt', 190e3, 3900], ['Board letters 2020.pdf', 3.1e6, 8600],
-  ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet', false], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
+  ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet'], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
   ['Notebook 4.md', 80e3, 5200], ['Interview, 2022.txt', 260e3, 10600], ['Letters, part 2.pdf', 2.2e6, 11800]
 ];
 const MAYA_FILES = ['Studio lectures, week 1.txt', 'Studio lectures, week 2.txt', 'Studio lectures, week 3.txt', 'Studio lectures, week 4.txt', 'Studio lectures, week 5.txt', 'Studio lectures, week 6.txt',
@@ -241,7 +241,7 @@ const MAYA_FILES = ['Studio lectures, week 1.txt', 'Studio lectures, week 2.txt'
 const AGENTS = [
   { id: 'tony', name: 'Tony', files: generic(30) },
   { id: 'marcus', name: 'Marcus', files: MARCUS_OLD.map((n, i) => mkFile(n, 4e4 + (hash(n) % 3000) * 1000)).concat(
-      MARCUS_NEW.map(([n, s, d, reason, retry]) => mkFile(n, s, { status: 'waiting', pct: 0, dur: d, fail: !!reason, reason: reason || '', retry: !!retry }))) },
+      MARCUS_NEW.map(([n, s, d, reason]) => mkFile(n, s, { status: 'waiting', pct: 0, dur: d, fail: !!reason, reason: reason || '' }))) },
   { id: 'ada', name: 'Ada', files: generic(22) },
 ];
 const MAYA = { id: 'maya', name: 'Maya', files: MAYA_FILES.map(n => mkFile(n, 1e5)), born: false };
@@ -279,7 +279,6 @@ function addRealFiles(list, x, y) {
   world.filesArrived(added, x == null ? null : { x, y });
   renderFiles();
 }
-function retry(f) { f.status = 'reading'; f.t0 = Date.now(); f.dur = 3000; f.pct = 0;   /* same cause, same result: a retry never fakes success */ run.celebrated = false; world.fileRetry(f); renderFiles(); }
 function tickRun() {
   const t = Date.now(); let changed = false;
   for (const f of MARCUS.files) {
@@ -311,10 +310,6 @@ function renderFiles() {
     li.innerHTML = `<span class="mark" aria-hidden="true"></span><span class="fname"></span><span class="fsize">${fmtSize(f.size)}</span><span class="fstate"><span></span></span>`;
     li.querySelector('.fname').textContent = f.name; li.querySelector('.fname').title = f.name;
     li.querySelector('.fstate span').textContent = st;
-    if (f.status === 'failed' && f.retry) {
-      const b = document.createElement('button'); b.className = 'quiet-btn'; b.textContent = 'Try again';
-      b.onclick = () => retry(f); li.querySelector('.fstate').appendChild(b);
-    }
     ul.appendChild(li);
   }
   world.paintSigns();
@@ -774,7 +769,6 @@ const world = {
   filesArrived() { },
   fileLearned(f) { if (scene === 'files') spark(f); },
   fileFailed() { },
-  fileRetry() { },
   allDone() { if (scene === 'files') setTimeout(() => filesSign.flutterAll(), 560); },
   notice() { },
   firstWords(a, unknown) { if (talkSign) talkSign.cls('dim', unknown); if (!unknown && !reduced) paceTarget = 0; },

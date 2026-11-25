@@ -4,7 +4,7 @@
 
 **Goal I checked against:** the user picks an agent and talks to them, or gives them files and can see, honestly and at a glance, what was learned.
 
-**Verdict: RETURNED. There are 5 small cuts, all for Jony.** The flows are already lean. Home → Talk is one click on every page, Birth can be skipped, and Talk never waits on the magic. The cuts are about labels, honesty and dead controls, not extra steps.
+**First verdict: RETURNED** (now APPROVED, see the re-check below). **There were 5 small cuts, all for Jony.** The flows are already lean. Home → Talk is one click on every page, Birth can be skipped, and Talk never waits on the magic. The cuts are about labels, honesty and dead controls, not extra steps.
 
 ## Cuts
 
@@ -14,16 +14,20 @@
 4. **Sea · The film grain moves over text, sources and errors.** `.grain` is at z-index 40, so it animates (it steps every .54 s) over the shore panel, the "Where from" quote, the failed-file reasons and the whole Talk chat. That puts magic on sources and errors, plus constant motion in Talk. **Fix:** put the grain under the panels (below `.scene`) or keep it still. No grain on any text.
 5. **build-notes.md · The Glade Home description is wrong.** It says "Ready ones glow steady; studying ones pulse slowly", but the page shows in step = ready and scattered = still learning. **Fix:** correct that line.
 
-## Resolved (Columbo, at integration)
+## Re-check (Eraser, after Jony's rework — commits ef4d09b + 34c4c19)
 
-All 5 cuts were fixed during integration:
-1. The count line now says "N of 30 learned" on all three pages.
-2. The scan now reads "It’s a scan · add a text version" and has no Try again button. `retry()` no longer clears `fail`, so a retry with the same cause fails again.
-3. The Sound switch only shows where sound plays: Birth on Glade, and Birth and Talk on Sea and Neon. Elsewhere it's hidden, but its space is kept so the bar doesn't shift.
-4. The Sea grain moved to z-index 0. It sits above the sea canvas and below every panel, so there's no grain on text, sources or errors.
-5. The Glade line in build-notes.md is corrected.
+I checked each of the 5 cuts in the code:
+1. **Count:** `${c.learned} of ${c.total} learned` on all three pages. Done.
+2. **Scan:** it reads "It’s a scan · add a text version". `retry()`, the Try again button, the retry field and `world.fileRetry` are gone from all three pages (a search for "retry" finds nothing), and nothing sets `fail` back to false. Failed rows show only their reason. That's one dead control fewer than asked for. Done.
+3. **Sound:** it's hidden off Birth on Glade, and off Birth and Talk on Sea and Neon. `body.dataset.scene` is set in `go()`, which every scene change and the first load go through. Its space is kept, so the bar doesn't shift. Done.
+4. **Sea grain:** grain is at z 1, scenes at 2, Birth at 5 and the bar at 10. Grain only falls on the sea canvas, never on text, sources or errors. Done.
+5. **build-notes.md:** the Glade line now reads "Ready ones fly in step; ones still learning are scattered." Done.
 
-**Status: signed.**
+The inline scripts parse on all three pages. No new steps, controls or labels were added. The common path is still **3 steps** (target 3).
+
+**Watch later:** if a file can ever really be retried (for example, after a text version is added), offer the retry on the new file and not as a button on the old row.
+
+**Signed: APPROVED.** Eraser, 2026-11-25.
 
 ## Checked and clean
 

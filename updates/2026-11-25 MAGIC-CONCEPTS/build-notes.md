@@ -5,7 +5,7 @@ Open `index.html` by double-click. No install, no server, no network: every page
 ## The pages
 
 - **index.html** — the three concepts, each with its name and a one-line pitch. Click one to open it.
-- **glade-fireflies.html** (Concept A) — agents are fireflies in a night glade. A ready agent's fireflies blink in step; a studying agent's fireflies are still scattered, falling into step as each file is learned.
+- **glade-fireflies.html** (Concept A) — agents are fireflies in a night glade. Ready ones fly in step; ones still learning are scattered.
 - **remembering-sea.html** (Concept B) — agents are lights in a calm sea. Files sink in as they are learned.
 - **neon-after-rain.html** (Concept C) — agents are neon signs on a wet street. Files travel as sparks along a wire into the sign.
 
@@ -17,7 +17,7 @@ The top bar has **Home · Birth · Files · Talk**. Every moment works on its ow
 
 1. **Home** — three agents. Tony and Ada are *Ready*; Marcus shows *Studying · 18 of 30*. You can tell them apart at a glance by light alone, and the label says it in plain words.
 2. **Birth** — Maya arrives. It takes its time; **Skip** jumps straight to the end. **Sound off/on** toggles the soft sound (off by default).
-3. **Files** — Marcus's files: what went in, what is still going, and what failed, readable without watching. Two files fail with a plain reason: a scanned 1998 diary PDF and a voice memo (.m4a). You can drop real files onto the page: they are added to Marcus and stay on this Mac (nothing is uploaded).
+3. **Files** — Marcus's files: what went in, what is still going, and what failed, readable without watching. Two files fail with a plain reason and next step: a scanned 1998 diary PDF ("It's a scan · add a text version") and a voice memo (.m4a). Neither offers Try again, since retrying the same file can't change the result. The count reads "18 of 30 learned" on every page. The Sound switch shows only where sound plays: Birth on all pages, plus Talk on Sea and Neon. You can drop real files onto the page: they are added to Marcus and stay on this Mac (nothing is uploaded).
 4. **Talk** — a question is already filled in; press **Send**. The first words appear at once. The answer shows a plain **Where from** source with a quote. The second prefilled question shows an honest "Not in Marcus's references" reply. Sources, quotes and errors get no magic.
 
 ## Mock data
