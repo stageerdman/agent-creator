@@ -6,6 +6,7 @@ import {
   P2, el, btn, bus, store, mockAgent, nameOf, shortName, note, face, c8Surface, studyBlock,
   paletteStrip, picker, wait, nowIso, dayMonth,
 } from "/components.js";
+import { mergePersona } from "/sketch.js";
 import { nav } from "/block-a.js";
 import * as C from "/block-c.js";
 import * as E from "/block-e.js";
@@ -195,7 +196,7 @@ async function refsFlow(item) {
 function freshAgent(id) {
   const t = structuredClone(store.templates[id]);
   stopTimers(mockAgent(id));
-  const a = { ...t, mock: true, draft: { name: "", persona: "", instructions: "", status: "draft" }, keptAt: null,
+  const a = { ...t, mock: true, draft: { name: "", instructions: "", status: "draft" }, keptAt: null,
     references: { root: null, total: 0, size: "0 MB", files: [], groups: [], aside: [], batches: [] },
     study: null, map: [], likeness: null, talks: [], face: { kind: "letter", src: null, iconOptions: t.face.iconOptions },
     make: { phase: "door" }, openedAt: nowIso(), ready: false, faceNew: false };
@@ -280,8 +281,9 @@ export function mockTurn(a, message) {
     return say(a.gapAnswer.text, { lines: [{ text: `Where from · Day 4 – Session 8.mp4 · ${r.location}`, onClick: () => C.showPassage(a, r) }] });
   }
   if (!nameOf(a)) {
-    const draft = { ...a.draft, name: "Clara", persona: a.draft.persona || "A patient teacher who explains one thing at a time." };
-    return say("(Demo) Here's a first pass. I called her Clara; change anything in the Sketch, or tell me more.", { draft, changed: ["name", ...(a.draft.persona ? [] : ["persona"])] });
+    const had = Boolean(a.draft.instructions?.trim());
+    const draft = { ...a.draft, name: "Clara", instructions: had ? a.draft.instructions : "A patient teacher who explains one thing at a time." };
+    return say("(Demo) Here's a first pass. I called her Clara; change anything in the Sketch, or tell me more.", { draft, changed: ["name", ...(had ? [] : ["instructions"])] });
   }
   return say(`(Demo) The Sketcher would answer here and redraw ${shortName(a)}. Try "make ${subjOf(a)} warmer" in the real app.`);
 }
@@ -354,14 +356,15 @@ function firstImpressions(a) {
   a.firstImpressionsShown = true;
   const fi = store.templates.ines.study.firstImpressions;
   a.study.firstImpressions = structuredClone(fi);
-  const draft = { ...a.draft, ...fi.draft };
-  Object.assign(a.draft, fi.draft);
-  sketcherSay(a, lines().inesImpressions, { lines: [{ text: "Sketch: name and persona updated ↗", onClick: () => { P2.markUpdated("name"); P2.markUpdated("persona"); } }] });
+  const draft = mergePersona({ ...a.draft, ...fi.draft });
+  Object.assign(a.draft, draft);
+  delete a.draft.persona;
+  sketcherSay(a, lines().inesImpressions, { lines: [{ text: "Sketch: name and instructions updated ↗", onClick: () => { P2.markUpdated("name"); P2.markUpdated("instructions"); } }] });
   if (P2.state.agent?.id === a.id) {
     P2.takeDraft(draft);
     P2.markUpdated("name");
-    P2.markUpdated("persona");
-    const tag = P2.fields.persona.tag;
+    P2.markUpdated("instructions");
+    const tag = P2.fields.instructions.tag;
     tag.textContent = " first impressions";
     tag.className = "tag new";
     afterLoadLight(a);
@@ -428,14 +431,15 @@ function finish(a) {
   a.faceNew = true;
   a.ready = true;
   a.make = { phase: "finished" };
-  const draft = { ...a.draft, ...t.finalDraft };
-  Object.assign(a.draft, t.finalDraft);
+  const { persona: finalPersona = "", ...finalRest } = t.finalDraft;
+  const draft = mergePersona({ ...a.draft, ...finalRest, persona: finalPersona });
+  Object.assign(a.draft, draft);
+  delete a.draft.persona;
   const voice = `${lines().inesFinished}\n\n> **${shortName(a)}:** ${t.voiceSample.text}`;
-  sketcherSay(a, voice, { lines: [{ text: "Sketch: persona and instructions updated ↗", onClick: () => { P2.markUpdated("persona"); P2.markUpdated("instructions"); } }] });
+  sketcherSay(a, voice, { lines: [{ text: "Sketch: instructions updated ↗", onClick: () => { P2.markUpdated("instructions"); } }] });
   sketcherSay(a, lines().inesFaces, { lines: [{ text: "Face: three to pick from ↗", onClick: () => E.openFace(a) }] });
   if (P2.state.agent?.id === a.id) {
     P2.takeDraft(draft);
-    P2.markUpdated("persona");
     P2.markUpdated("instructions");
     afterLoadLight(a);
     setHint(`Ask about any line, like "why Rough on pricing?"…`);
@@ -449,10 +453,8 @@ function renderKeepExtras(a) {
   const slot = P2.els.keepCard.querySelector(".keep-capability");
   if (!a?.keptAt) { slot.hidden = true; slot.replaceChildren(); return; }
   slot.hidden = false;
-  const name = shortName(a);
   const parts = [c8Surface(a, { onOpen: () => C.showKnows(a) })];
   if (!a.map?.length) parts.push(btn("Add references", () => E.topUp(a), "btn primary"));
-  parts.push(btn(`Talk to ${name} →`, () => nav.open(a.id, "talk"), "btn primary talk-to"));
   slot.replaceChildren(...parts);
 }
 
@@ -462,7 +464,7 @@ export function afterKeep(agent) {
   a.keptAt ??= nowIso();
   a.ready = false;
   a.faceNew = false;
-  C.showSketch(); // the Keep card (and Talk to [Name] →) lives in the Sketch
+  C.showSketch(); // the Keep card lives in the Sketch; Talk is the mode switch at the top
   renderKeepExtras(a);
   renderFaceSlot(a, a);
   $("rs-knows").textContent = `What ${shortName(a)} knows`;

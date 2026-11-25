@@ -6,6 +6,7 @@ import {
   P2, el, btn, closeBtn, bus, store, nameOf, shortName, fileById, note, face, sheet, closeSheet,
   picker, paletteStrip, wait, nowIso, dayMonth,
 } from "/components.js";
+import { mergePersona } from "/sketch.js";
 import { nav } from "/block-a.js";
 import * as B from "/block-b.js";
 import * as C from "/block-c.js";
@@ -366,16 +367,17 @@ async function setTrait(a, t, v) {
   const bubble = P2.addUserBubble(`${t.label}: ${from} → ${v}`, -1);
   P2.els.empty.hidden = true;
   void bubble;
-  a.personaBase ??= a.draft.persona;
+  a.instructionsBase ??= (mergePersona(a.draft).instructions ?? "");
   a.traitLines = { ...(a.traitLines ?? {}), [t.id]: t.sketchLine[v] };
   await wait(700);
-  a.draft.persona = `${a.personaBase} ${Object.values(a.traitLines).join(" ")}`.trim();
+  a.draft.instructions = `${a.instructionsBase} ${Object.values(a.traitLines).join(" ")}`.trim();
+  delete a.draft.persona;
   B.sketcherSay(a, `Done. ${t.label} is ${v} of 5 now: "${t.sketchLine[v]}"`, {
-    lines: [{ text: "Sketch: persona updated ↗", onClick: () => { closePalette(); P2.markUpdated("persona"); } }],
+    lines: [{ text: "Sketch: instructions updated ↗", onClick: () => { closePalette(); P2.markUpdated("instructions"); } }],
   });
   if (P2.state.agent?.id === a.id) {
     P2.takeDraft({ ...a.draft });
-    const tag = P2.fields.persona.tag;
+    const tag = P2.fields.instructions.tag;
     tag.textContent = " new";
     tag.className = "tag new";
   }

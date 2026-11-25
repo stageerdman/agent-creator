@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   readEvents, parseEventBlock, applyDraftEvent, changeLine, firstSentence, errorLine,
   splitPaste, replyBlocks, inlineRuns, switcherRows, timeAgo, mergePersona,
@@ -145,4 +146,21 @@ test("switcherRows: newest first, Untitled sketch, Kept or Sketch", () => {
     { id: "a", name: "Old", status: "Sketch", when: "yesterday" },
   ]);
   assert.equal(timeAgo("2026-11-24T12:00:00Z", now), "just now");
+});
+
+// ── SKETCH-REWORK phase 1: one Instructions box, no Talk to, no top study line ──
+const pub = new URL("./", import.meta.url);
+const read = (name) => readFileSync(new URL(name, pub), "utf8");
+const pageFiles = () => [...readdirSync(pub).filter((f) => /^block-.*\.js$/.test(f)), "components.js", "app.js", "index.html", "app.css"];
+
+test("P1: no Persona field, no Talk to section, no top-bar study line", () => {
+  const html = read("index.html");
+  assert.doesNotMatch(html, />Persona</, "index.html still labels a Persona field");
+  assert.doesNotMatch(html, /f-persona|top-study/);
+  for (const f of pageFiles()) {
+    const src = read(f);
+    assert.doesNotMatch(src, /Studying · about/, `${f} still says "Studying · about"`);
+    assert.doesNotMatch(src, /study-pill|talk-to\b/, `${f} still has the pill or the Talk to button`);
+    assert.doesNotMatch(src, /markUpdated\("persona"\)|fields\.persona|persona updated/, `${f} still points at Persona`);
+  }
 });

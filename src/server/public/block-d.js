@@ -7,6 +7,7 @@ import {
   P2, el, btn, closeBtn, store, nameOf, shortName, subj, when, dayMonth, nowIso, face, passagePanel, sheet, closeSheet,
   stream, wait, note, fileById,
 } from "/components.js";
+import { mergePersona } from "/sketch.js";
 import { nav } from "/block-a.js";
 import * as E from "/block-e.js";
 
@@ -381,12 +382,12 @@ function divider(a, m) {
 async function seeSketch(a) {
   await nav.open(a.id, "sketcher");
   if (P2.state.agent?.id === a.id) {
-    P2.takeDraft({ ...P2.state.agent.draft, ...a.draft });
-    const f = P2.fields.persona;
+    P2.takeDraft(mergePersona({ ...P2.state.agent.draft, ...a.draft }));
+    const f = P2.fields.instructions;
     f.tag.textContent = " from your talk";
     f.tag.className = "tag new";
     f.wrap.scrollIntoView({ block: "nearest" });
-    P2.markUpdated("persona");
+    P2.markUpdated("instructions");
   }
 }
 
@@ -556,7 +557,7 @@ function renderFix() {
   const log = el("div", { class: "fix-log log", role: "log", "aria-live": "polite" }, ...fix.log.map((m) => {
     if (m.role === "user") return el("div", "msg user", el("div", "who", "You"), el("div", "bubble", m.text), m.error ? el("div", "turn-error", m.error) : null);
     const node = el("div", "msg sketcher", el("div", "who", "Sketcher"), el("div", "say", m.waiting ? el("span", "waiting", "Sketching… ") : el("p", "", m.text)));
-    if (m.line) node.append(btn("Sketch: persona updated · from your talk ↗", () => seeSketch(a), "change-line"));
+    if (m.line) node.append(btn("Sketch: instructions updated · from your talk ↗", () => seeSketch(a), "change-line"));
     return node;
   }));
   const t = el("textarea", { id: "fix-msg", rows: 1, placeholder: "Say what's wrong…", "aria-label": "Say what's wrong", autocomplete: "off" });
@@ -593,15 +594,17 @@ async function fixSend(text) {
   const patch = script?.patch ?? ` ${text.replace(/\s+$/, "")}`;
   const reply = script?.reply ?? `Got it. I've redrawn ${shortName(a)}.`;
   Object.assign(waiting, { waiting: false, text: reply, line: true });
-  a.draft.persona = `${a.draft.persona.trim()}${patch}`;
+  const base = mergePersona(a.draft).instructions ?? "";
+  a.draft.instructions = `${base.trim()}${patch}`;
+  delete a.draft.persona;
   if (f.msg.scriptId) (a.fixed ??= {})[f.msg.scriptId] = true;
   f.changed = true;
   f.patch = patch;
   // X22: the fix turns are part of the Sketcher's chat, under a divider.
   note(a.id, { kind: "divider", text: `From your talk · "${shortQ(f.question)}"` });
   note(a.id, { kind: "user", text });
-  note(a.id, { kind: "say", text: reply, lines: [{ text: "Sketch: persona updated · from your talk ↗", onClick: () => { P2.markUpdated("persona"); } }] });
-  if (P2.state.agent?.id === a.id) P2.state.agent.draft = { ...P2.state.agent.draft, persona: a.draft.persona };
+  note(a.id, { kind: "say", text: reply, lines: [{ text: "Sketch: instructions updated · from your talk ↗", onClick: () => { P2.markUpdated("instructions"); } }] });
+  if (P2.state.agent?.id === a.id) P2.state.agent.draft = { ...P2.state.agent.draft, instructions: a.draft.instructions };
   renderFix();
   $("fix-msg")?.focus();
 }
@@ -617,7 +620,7 @@ function closeFix() {
   if (f.changed) {
     const msgs = cur.talk.messages;
     const i = msgs.indexOf(f.msg);
-    msgs.splice(i + 1, 0, { role: "divider", text: `${shortName(f.a)} was redrawn · persona updated`, divider: { kind: "redrawn", patch: f.patch } });
+    msgs.splice(i + 1, 0, { role: "divider", text: `${shortName(f.a)} was redrawn · instructions updated`, divider: { kind: "redrawn", patch: f.patch } });
     const t = $("talk-msg");
     t.value = f.question;
     grow(t);

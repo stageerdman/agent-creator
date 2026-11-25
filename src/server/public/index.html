@@ -17,7 +17,6 @@
       <div id="switcher-menu" class="menu" role="menu" aria-label="Agent" hidden></div>
     </div>
     <span class="grow"></span>
-    <span id="top-study"></span>
     <div id="mode" class="mode in-agent" role="tablist" aria-label="Mode" hidden>
       <button id="mode-talk" type="button" role="tab" aria-selected="false">Talk</button>
       <button id="mode-sketcher" type="button" role="tab" aria-selected="true">Sketcher</button>
@@ -101,21 +100,12 @@
           <input id="f-name" class="field" type="text" placeholder="A name" autocomplete="off">
         </div>
 
-        <div class="draft-field" data-field="persona" style="--magic-order: 1">
-          <div class="label-row">
-            <label for="f-persona">Persona<span class="tag"></span></label>
-            <button type="button" class="retry link-btn" hidden>Try again</button>
-          </div>
-          <p id="h-persona" class="hint">Who they are: voice, character, point of view</p>
-          <textarea id="f-persona" class="field" rows="2" placeholder="Appears after your first message" aria-describedby="h-persona"></textarea>
-        </div>
-
-        <div class="draft-field" data-field="instructions" style="--magic-order: 2">
+        <div class="draft-field" data-field="instructions" style="--magic-order: 1">
           <div class="label-row">
             <label for="f-instructions">Instructions<span class="tag"></span></label>
             <button type="button" class="retry link-btn" hidden>Try again</button>
           </div>
-          <p id="h-instructions" class="hint">What they do: job, rules, limits</p>
+          <p id="h-instructions" class="hint">Who they are and what they do: voice, job, rules, limits</p>
           <textarea id="f-instructions" class="field" rows="2" placeholder="Appears after your first message" aria-describedby="h-instructions"></textarea>
         </div>
 

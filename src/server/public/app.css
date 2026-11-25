@@ -352,12 +352,8 @@ button.face:hover { box-shadow: 0 0 0 3px var(--line); }
 .draft-field[data-field="name"]:has(.face-slot .face) { padding-left: 64px; min-height: 64px; }
 .face-slot .tag.new { position: absolute; top: 50px; left: 0; width: 48px; text-align: center; font-size: 12px; margin: 0; }
 
-/* ── Top bar: studying pill, mode switch, Demo ─────────── */
+/* ── Top bar: mode switch, Demo ─────────── */
 
-.study-pill {
-  min-height: 32px; padding: 0 12px; border-radius: 16px; border: 0; font-size: 13px;
-  background: color-mix(in srgb, var(--warm-text) 12%, transparent); color: var(--warm-text);
-}
 .mode { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--line); }
 .mode[hidden] { display: none; }
 .mode button { min-height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: none; font-weight: 600; font-size: 13px; }

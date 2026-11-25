@@ -48,7 +48,7 @@ export function openExport(a) {
     title: `Export ${name}`,
     body: [
       el("div", "export-who", face(a, 48), el("h3", "sheet-h", "Packed")),
-      dl([["Name", name], ["Persona", `${words(a.draft.persona)} words`], ["Instructions", `${words(a.draft.instructions)} words`],
+      dl([["Name", name], ["Instructions", `${words(`${a.draft.persona ?? ""} ${a.draft.instructions ?? ""}`)} words`],
         ["Face", faceWord(a)], ["Knowledge", knowledge(a)]]),
       studying ? el("p", "sheet-note", "Studying isn't finished. The file has what's studied so far.") : null,
       el("h3", "sheet-h", "Stays here"),
@@ -90,7 +90,7 @@ export function importFile(file) {
   const existing = store.agents.find((a) => nameOf(a) === info.name);
   const preview = { id: "preview", keptAt: nowIso(), draft: { name: info.name }, face: { kind: "icon", src: template?.face?.iconOptions?.[0] ?? null } };
   const list = [el("div", "export-who", face(preview, 48)),
-    dl([["Name", info.name], ["Persona", `${info.persona} words`], ["Instructions", `${info.instructions} words`], ["Face", info.face], ["Knowledge", info.knowledge]])];
+    dl([["Name", info.name], ["Instructions", `${(info.persona ?? 0) + (info.instructions ?? 0)} words`], ["Face", info.face], ["Knowledge", info.knowledge]])];
   if (!existing) {
     return sheet({
       title: `Import ${info.name}?`,

@@ -5,6 +5,7 @@ import {
   P2, hooks, el, btn, bus, store, loadStore, refreshReal, mockAgent, isMock, nameOf, shortName, when,
   firstSentence, face, sheet, closeSheet, sheetOpen, demoPill, dropOverlay, nowIso, picker,
 } from "/components.js";
+import { mergePersona } from "/sketch.js";
 import * as B from "/block-b.js";
 import * as C from "/block-c.js";
 import * as D from "/block-d.js";
@@ -105,17 +106,7 @@ function renderTop() {
   $("mode").hidden = !kept;
   $("mode-talk").setAttribute("aria-selected", String(store.screen === "talk"));
   $("mode-sketcher").setAttribute("aria-selected", String(store.screen === "sketcher"));
-  const studying = store.agents.find((x) => x.study && ["studying", "paused"].includes(x.study.state));
-  const s = studying?.study;
-  $("top-study").replaceChildren(studying && !(store.screen === "sketcher" && store.current === studying.id)
-    ? btn(studyLine(s), () => openStudying(studying), "study-pill")
-    : "");
-}
-
-// The top-bar study line opens `What [Name] knows`, where the Study block lives.
-async function openStudying(a) {
-  await openAgent(a.id, "sketcher");
-  C.showKnows(a);
+  // SKETCH-REWORK: no study line in the top bar. Progress lives on the Home card and in DNA.
 }
 
 $("home-link").addEventListener("click", goHome);
@@ -137,7 +128,7 @@ hooks.menu = () => {
 // ── A1 Home ───────────────────────────────────────────────────────────────
 
 const latestTalk = (a) => [...(a.talks ?? [])].sort((x, y) => y.updatedAt.localeCompare(x.updatedAt))[0];
-const studyLine = (s) => (s.state === "paused" ? "Studying paused" : s.state === "stopped" ? `Stopped · ${s.done} of ${s.total} studied` : `Studying · about ${s.etaMin ?? 1} min left`);
+const studyLine = (s) => (s.state === "paused" ? "Studying paused" : s.state === "stopped" ? `Stopped · ${s.done} of ${s.total} studied` : `Studying · ${s.done} of ${s.total}`);
 
 function mark(a) {
   if (a.importedFrom && !a.openedAt) return el("span", "mark new", "new here");
@@ -148,7 +139,7 @@ function mark(a) {
 
 function summary(a) {
   const shorts = (a.map ?? []).filter((l) => l.level === "sharp" && l.short).map((l) => l.short).slice(0, 2); // A1: 1–2 Sharp lines
-  return shorts.length ? shorts.join(" · ") : firstSentence(a.draft.persona);
+  return shorts.length ? shorts.join(" · ") : firstSentence(mergePersona(a.draft).instructions ?? "");
 }
 
 function card(a) {
