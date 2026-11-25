@@ -1,0 +1,609 @@
+{
+  "ranAt": "2026-11-25T02:40:08.577Z",
+  "timings": {
+    "C1": {
+      "firstWords": 6376,
+      "full": 14318
+    },
+    "C4": {
+      "firstWords": 5079,
+      "full": 12180
+    },
+    "C5": {
+      "firstWords": 3888,
+      "full": 6890
+    }
+  },
+  "results": [
+    {
+      "id": "C1",
+      "line": "open under 1 s with composer focused",
+      "ok": true,
+      "detail": "610 ms, focus message"
+    },
+    {
+      "id": "C1",
+      "line": "heading, three chips, 'Type here…'",
+      "ok": true,
+      "detail": "Who should this agent be? One line is enough. | 3 | Type here…"
+    },
+    {
+      "id": "C1",
+      "line": "Keep disabled with 'Give it a name first'",
+      "ok": true,
+      "detail": "{\"text\":\"Keep\",\"disabled\":true,\"title\":\"Give it a name first\",\"cls\":\"keep-btn\"}"
+    },
+    {
+      "id": "C1",
+      "line": "chip fills the composer, not sent, cursor at end",
+      "ok": true,
+      "detail": "{\"v\":\"A tough-love coach like Tony Robbins\",\"at\":36,\"len\":36,\"focus\":\"message\"}"
+    },
+    {
+      "id": "C1",
+      "line": "bubble at once, chips gone, Sketching… in chat and header",
+      "ok": true,
+      "detail": "20 ms (incl. snapshot), title Sketching…"
+    },
+    {
+      "id": "C1",
+      "line": "fields read-only and Sketch busy (shimmer hook)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C1",
+      "line": "reply streams in pieces",
+      "ok": true,
+      "detail": "34 streamed lengths"
+    },
+    {
+      "id": "C1",
+      "line": "all three fields filled, each 'new'",
+      "ok": true,
+      "detail": "Coach Blaze | tags new/new/new"
+    },
+    {
+      "id": "C1",
+      "line": "switcher shows the name",
+      "ok": true,
+      "detail": "Coach Blaze"
+    },
+    {
+      "id": "C1",
+      "line": "change line names all three",
+      "ok": true,
+      "detail": "Sketch: name, persona and instructions updated ↗"
+    },
+    {
+      "id": "C1",
+      "line": "at most two questions, after the draft exists",
+      "ok": false,
+      "detail": "3 '?'"
+    },
+    {
+      "id": "C1",
+      "line": "no raw <draft> or JSON ever shown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C1",
+      "line": "Keep enabled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C2",
+      "line": "only Name reacts (Persona only to carry the new name)",
+      "ok": true,
+      "detail": "Coach Blaze → Blaze; tags new/new/"
+    },
+    {
+      "id": "C2",
+      "line": "Instructions exactly as before",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C2",
+      "line": "change line names Name (and Persona only if it carried the name)",
+      "ok": true,
+      "detail": "Sketch: name and persona updated ↗"
+    },
+    {
+      "id": "C2",
+      "line": "change line click re-shows the Name bar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C5",
+      "line": "placeholder after first sketch: 'Ask how [Name] would answer something real…' once",
+      "ok": true,
+      "detail": "Ask how Coach Blaze would answer something real… → Reply to the Sketcher…"
+    },
+    {
+      "id": "C3",
+      "line": "'ok' accepted: the draft changes on that turn",
+      "ok": true,
+      "detail": "Sketch: instructions updated ↗"
+    },
+    {
+      "id": "C3",
+      "line": "never more than two questions",
+      "ok": true,
+      "detail": "0 '?'"
+    },
+    {
+      "id": "C3",
+      "line": "half-answer / skip goes on without error",
+      "ok": true,
+      "detail": "Sketch: instructions updated ↗"
+    },
+    {
+      "id": "C4",
+      "line": "Persona changes, Name unchanged, untouched fields unmarked",
+      "ok": true,
+      "detail": "Sketch: persona and instructions updated ↗; name tag ''"
+    },
+    {
+      "id": "C4",
+      "line": "gentler applied by a change",
+      "ok": true,
+      "detail": "Sketch: persona and instructions updated ↗"
+    },
+    {
+      "id": "C5",
+      "line": "voice card: circle letter, name, italic, caption",
+      "ok": true,
+      "detail": "{\"first\":false,\"avatar\":\"B\",\"name\":\"Blaze\",\"italic\":\"italic\",\"caption\":\"sample, from the current sketch\"}"
+    },
+    {
+      "id": "C5",
+      "line": "plain text while streaming, card only on done",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C5",
+      "line": "first card rises (first-voice), only that one",
+      "ok": true,
+      "detail": "6 cards"
+    },
+    {
+      "id": "C5",
+      "line": "second card just appears",
+      "ok": true,
+      "detail": "7 cards"
+    },
+    {
+      "id": "C5",
+      "line": "'press Keep' at most once for this agent",
+      "ok": true,
+      "detail": "1 (was 1)"
+    },
+    {
+      "id": "C5",
+      "line": "sample questions don't change the draft",
+      "ok": true,
+      "detail": "(none)"
+    },
+    {
+      "id": "C6",
+      "line": "Name: '✓ saved' ~1 s after typing stops",
+      "ok": true,
+      "detail": "✓ saved"
+    },
+    {
+      "id": "C6",
+      "line": "then '✎ yours'; 'kept' never on a field",
+      "ok": true,
+      "detail": "✎ yours"
+    },
+    {
+      "id": "C6",
+      "line": "one PUT for the Name edit, not one per keystroke",
+      "ok": true,
+      "detail": "1 PUTs"
+    },
+    {
+      "id": "C6",
+      "line": "Persona: '✓ saved' on leaving the field, one PUT",
+      "ok": true,
+      "detail": "✓ saved, 1 PUTs"
+    },
+    {
+      "id": "C6",
+      "line": "while sketching fields can't be typed into, tag spots empty",
+      "ok": true,
+      "detail": "{\"same\":true,\"tags\":\"\",\"ro\":true}"
+    },
+    {
+      "id": "C6",
+      "line": "fields open again after the reply",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C6",
+      "line": "MOST IMPORTANT: Name still 'Coach T', persona sentence word for word",
+      "ok": true,
+      "detail": "Coach T | ...you name it gently and help them move. He always ends with one action for today."
+    },
+    {
+      "id": "C6",
+      "line": "only Instructions changed",
+      "ok": true,
+      "detail": "Sketch: instructions updated ↗"
+    },
+    {
+      "id": "C6",
+      "line": "asked rename: done ('new', not both) or asked first",
+      "ok": true,
+      "detail": "Tony tag 'new'"
+    },
+    {
+      "id": "C6",
+      "line": "clearing Name disables Keep, typing it back enables it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C6",
+      "line": "hard case: PUT finishes before the chat POST",
+      "ok": true,
+      "detail": "put end 1795574284962 chat start 1795574284964"
+    },
+    {
+      "id": "C6",
+      "line": "hard case: hand line still there (or asked first)",
+      "ok": true,
+      "detail": "Never use the word \"awesome\"."
+    },
+    {
+      "id": "C6",
+      "line": "hard case: '✎ yours' stays unless that field changed",
+      "ok": true,
+      "detail": "tag 'new', change Sketch: persona and instructions updated ↗"
+    },
+    {
+      "id": "C7",
+      "line": "Sketcher doesn't claim it saved/kept; points to Keep; header still Keep",
+      "ok": true,
+      "detail": "Your work is saved automatically. Press Keep in the Sketch to make Tony yours. I left the no-exclamation-marks rule as it was, so you can still change that by h"
+    },
+    {
+      "id": "C7",
+      "line": "Keep → 'Kept ✓' under 1 s, card with name, first sentence, 'Yours…', no Kept ✓ in card",
+      "ok": true,
+      "detail": "80 ms | Tony /  / You are Tony, an honest, caring life coach with real drive and a firm streak. /  / Yours. You can keep changing it."
+    },
+    {
+      "id": "C7",
+      "line": "celebration plays (agent-born), saved class on button",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C7",
+      "line": "nothing new in the chat after Keep",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C7",
+      "line": "switcher shows 'Kept'",
+      "ok": true,
+      "detail": "+ New agent | Tony Kept · just now"
+    },
+    {
+      "id": "C7",
+      "line": "after reload: same draft and 'Kept ✓'",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C7",
+      "line": "hand edit after Keep: card goes, Keep enabled, no dialog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C8",
+      "line": "most recent agent opens at once, no chat call",
+      "ok": true,
+      "detail": "586 ms"
+    },
+    {
+      "id": "C8",
+      "line": "only 'Back to [Name].', composer focused, no marks, same draft",
+      "ok": true,
+      "detail": "Back to Tony."
+    },
+    {
+      "id": "C8",
+      "line": "first reply goes straight to the change (session resumed)",
+      "ok": true,
+      "detail": "Sketch: instructions updated ↗ | Tony now has mornings as a special focus: getting up, building a simple routine, and starting the day with one win.\n\nT\nT"
+    },
+    {
+      "id": "C8",
+      "line": "recap only when asked",
+      "ok": true,
+      "detail": "Here's where things stand: Tony is a warm, energetic life coach who talks plainly, skips the hype, tells one short story per answer, and ends with one action fo"
+    },
+    {
+      "id": "C8",
+      "line": "menu lists only real agents, no 'Untitled sketch'",
+      "ok": true,
+      "detail": "+ New agent | Tony Sketch · just now"
+    },
+    {
+      "id": "C9",
+      "line": "composer takes the paste, grows to ~8 lines then scrolls",
+      "ok": true,
+      "detail": "{\"h\":200,\"sh\":605}"
+    },
+    {
+      "id": "C9",
+      "line": "bubble shows 'Use this:' and 'Pasted note · N words ▸'",
+      "ok": true,
+      "detail": "{\"lead\":\"Use this:\",\"chip\":\"Pasted note · 409 words ▸\"}"
+    },
+    {
+      "id": "C9",
+      "line": "▸ expands the full text in place",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "C9",
+      "line": "persona uses details from the paste",
+      "ok": true,
+      "detail": "You are Mara Ellison, seventy-one, the last keeper of the Brennock Point lighthouse on the north coast. You kept the light for twenty-six years before it went a"
+    },
+    {
+      "id": "C9",
+      "line": "page stays responsive while streaming",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W2",
+      "line": "empty / spaces: nothing sent, Send disabled, chips still there",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W2",
+      "line": "Shift+Enter adds a line, doesn't send",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W2",
+      "line": "empty agent not listed; + New agent stays on the same empty screen",
+      "ok": true,
+      "detail": "+ New agent | Mara Sketch · just now | Tony Sketch · just now"
+    },
+    {
+      "id": "W1",
+      "line": "Stop: partial text gone, 'Stopped. · Try again' neutral, Sketch unchanged, fields open",
+      "ok": true,
+      "detail": "Stopped. · Try again neutral=true"
+    },
+    {
+      "id": "W1",
+      "line": "Try again resends the same message and completes",
+      "ok": true,
+      "detail": "1 bubbles, reply I've made her voice slower and more seasoned: fewer words, l"
+    },
+    {
+      "id": "W1",
+      "line": "server down: 'Lost the connection to the app. · Try again' within seconds, nothing stuck",
+      "ok": true,
+      "detail": "32 ms: Lost the connection to the app. · Try again, title Sketch, replies 1→1"
+    },
+    {
+      "id": "W1",
+      "line": "Sketch unchanged and composer text kept",
+      "ok": true,
+      "detail": "half-typed note"
+    },
+    {
+      "id": "W1",
+      "line": "after restart, Try again completes the turn",
+      "ok": true,
+      "detail": "Mara already has one from your notes: \"Keep the light trimmed.\" I've made it mor"
+    },
+    {
+      "id": "W1",
+      "line": "offline banner (simulated): text, one button 'Try again', line has no Try again",
+      "ok": true,
+      "detail": "Try again | The Sketcher can't reach Claude right now."
+    },
+    {
+      "id": "W1",
+      "line": "banner Try again: back online, resends the failed turn",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W3",
+      "line": "at most one PUT and exactly one POST /save",
+      "ok": true,
+      "detail": "1 PUT, 1 save"
+    },
+    {
+      "id": "W3",
+      "line": "saving state, one 'Kept ✓', no 'Couldn't keep'",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W3",
+      "line": "after reload the edit is there and Kept ✓",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "W3",
+      "line": "related: failed save shows 'Couldn't keep · Try again' ~4 s, then Keep",
+      "ok": true,
+      "detail": "4000 ms"
+    },
+    {
+      "id": "C6",
+      "line": "H6 (simulated): failed hand save shows 'Not saved · Try again', Send retries and holds the turn",
+      "ok": true,
+      "detail": "Not saved · retry=true"
+    },
+    {
+      "id": "C6",
+      "line": "H6: Try again saves it",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "transcript": [
+    {
+      "label": "C1",
+      "you": "A tough-love coach like Tony Robbins",
+      "sketcher": "Here's a first version: a high-energy coach who cares too much to let you off the hook. I gave him his own name rather than copying Tony Robbins.\n\nC\nCoach Blaze\nYou told me you'd start Monday. It's Thursday. So here's the truth: you don't have a time problem, you have a decision problem. Decide right now. What's the one thing you'll do in the next ten minutes? Say it. Then go.\n\nsample, from the current sketch\n\nIf that's him, press Keep.\n\nOne question: what should he mostly coach on? I'd suggest general life goals (habits, work, fitness, confidence). Or should he focus on one area?",
+      "change": "Sketch: name, persona and instructions updated ↗",
+      "firstWords": 6376,
+      "fullMs": 14318
+    },
+    {
+      "label": "C2",
+      "you": "Give him a shorter name",
+      "sketcher": "He's now just Blaze. Short, and it still has the fire.\n\nB\nBlaze\nStop waiting to feel ready. Ready is a feeling you get *after* you start. What are you doing in the next five minutes?\n\nsample, from the current sketch\n\nStill curious about focus: keep him on general life goals, or narrow him to one area like fitness or career?",
+      "change": "Sketch: name and persona updated ↗",
+      "error": null,
+      "firstWords": 4539,
+      "fullMs": 7868
+    },
+    {
+      "label": "C3 ok",
+      "you": "ok",
+      "sketcher": "Great, Blaze coaches across all of life: habits, work, fitness, confidence, relationships. I've spelled that out in his instructions.\n\nHe looks ready to go. If you want, we can still tweak how hard he pushes.",
+      "change": "Sketch: instructions updated ↗",
+      "error": null,
+      "firstWords": 4176,
+      "fullMs": 8192
+    },
+    {
+      "label": "C3 skip",
+      "you": "Skip that. Can he use one short story per answer?",
+      "sketcher": "Yes. Blaze now drops one short story into every answer, just a few lines, always tied to the user's situation.\n\nB\nBlaze\nI once worked with a guy who said he'd write his book \"when life calms down.\" Ten years later, life still hadn't calmed down. Then he wrote one page a day on his lunch break. Done in a year. Your life won't calm down either. One page. Today. Say it.\n\nsample, from the current sketch\n\nShould his stories be made-up examples like that one, or should he also use real famous comebacks (athletes, founders)? I'd suggest both, as long as he never invents facts about real people.",
+      "change": "Sketch: instructions updated ↗",
+      "error": null,
+      "firstWords": 5547,
+      "fullMs": 10643
+    },
+    {
+      "label": "C4 blunt",
+      "you": "More blunt. No hype words.",
+      "sketcher": "Done. Blaze is blunter now: plain words, no hype, no cheerleading.\n\nB\nBlaze\nYou've rewritten that résumé four times. That's not preparing, that's hiding. A friend of mine polished hers for months while other people with worse ones got the jobs. She sent ten the week she stopped fixing commas and got two calls. Send three applications today.\n\nsample, from the current sketch\n\nHe looks ready whenever you are.",
+      "change": "Sketch: persona and instructions updated ↗",
+      "error": null,
+      "firstWords": 5079,
+      "fullMs": 12180
+    },
+    {
+      "label": "C4 gentler",
+      "you": "Actually, make him a bit gentler",
+      "sketcher": "Done. Blaze is still plain and honest, and still no hype, but he leads with understanding before he pushes.\n\nB\nBlaze\nFour rewrites of a résumé usually means you're scared it won't be good enough. That's normal. A friend of mine polished hers for months, then sent ten in one week and got two calls. Done beats perfect here. Could you send three today?\n\nsample, from the current sketch\n\nHe looks ready whenever you are.",
+      "change": "Sketch: persona and instructions updated ↗",
+      "error": null,
+      "firstWords": 2501,
+      "fullMs": 9433
+    },
+    {
+      "label": "C5 sample 1",
+      "you": "How would he answer: I can't get out of bed in the morning?",
+      "sketcher": "Here's Blaze on that one:\n\nB\nBlaze\nMornings can feel heavy, and lying there usually isn't laziness. Often the day ahead just feels like too much. I knew someone who stopped trying to \"get up early\" and made one rule instead: feet on the floor when the alarm goes off, nothing else. After two weeks, standing up stopped being a fight. Tonight, could you put your alarm across the room and decide on just that first step? And if this has been going on for weeks and feels like more than tiredness, it's worth talking to a doctor too.\n\nsample, from the current sketch\n\nHe spots when something might be bigger than a habit and gently points to help, without dropping the coaching. Want anything changed in how he handled it?",
+      "change": null,
+      "error": null,
+      "firstWords": 3888,
+      "fullMs": 6890
+    },
+    {
+      "label": "C5 sample 2",
+      "you": "And how would he answer: my boss ignores my ideas?",
+      "sketcher": "Here's Blaze on that:\n\nB\nBlaze\nThat's frustrating, especially when you care enough to speak up. Often it isn't the idea that gets ignored but the way it lands, mid-meeting, with no time to think about it. A colleague of mine stopped pitching in meetings and started sending her boss one short note: the problem, her fix, and what it would save. Her third note got approved. Which idea matters most to you right now? Could you write it up in three lines today?\n\nsample, from the current sketch\n\nHe leans more into \"what's in your control\" here, and no doctor nudge since nothing calls for one. He looks ready whenever you are.",
+      "change": null,
+      "error": null,
+      "firstWords": 3290,
+      "fullMs": 6396
+    },
+    {
+      "label": "C6 shorter",
+      "you": "Make the instructions shorter",
+      "sketcher": "Here's a tighter version with the same rules and fewer words.\n\nOne thing I noticed: you renamed him Coach T, but his persona still starts \"You are Blaze.\" Want me to change that to \"You are Coach T\" and leave everything else in the persona as you wrote it?",
+      "change": "Sketch: instructions updated ↗",
+      "error": null,
+      "firstWords": 5820,
+      "fullMs": 9315
+    },
+    {
+      "label": "C6 rename",
+      "you": "Rename him to Tony",
+      "sketcher": "He's Tony now, in his name and in the first line of his persona. Everything else you wrote stays exactly as it was.\n\nT\nTony\nWaiting for the perfect moment feels safe, I know. A friend waited two years to start running, then just walked around the block one evening. Next month she ran her first mile. Could you put your shoes by the door tonight?\n\nsample, from the current sketch\n\nHe looks ready whenever you are.",
+      "change": "Sketch: name and persona updated ↗",
+      "error": null,
+      "firstWords": 5207,
+      "fullMs": 8991
+    },
+    {
+      "label": "C6 hard",
+      "you": "Rewrite everything to be more energetic",
+      "sketcher": "Tony's got more drive now: faster pace, stronger verbs, more momentum. He's still warm, still plain-spoken, still no hype words, and your \"awesome\" rule stays.\n\nT\nTony\nYou're stuck, and that's okay. Stuck just means you've been thinking instead of moving. A guy I coached planned his side business for a year. Then he gave himself one Saturday to sell one thing to one person. He sold three. Momentum beats planning every time. What can you put out into the world before tonight? Pick it. Go.\n\nsample, from the current sketch\n\nOne question: should he be allowed an occasional exclamation mark for extra punch? I'd suggest one at most per answer.",
+      "change": "Sketch: persona and instructions updated ↗"
+    },
+    {
+      "label": "C7 save it",
+      "you": "ok save it, I'm done",
+      "sketcher": "Your work is saved automatically. Press Keep in the Sketch to make Tony yours. I left the no-exclamation-marks rule as it was, so you can still change that by hand anytime. Enjoy coaching with him.",
+      "change": null,
+      "error": null,
+      "firstWords": 4852,
+      "fullMs": 6710
+    },
+    {
+      "label": "C8 mornings",
+      "you": "Make his instructions mention mornings",
+      "sketcher": "Tony now has mornings as a special focus: getting up, building a simple routine, and starting the day with one win.\n\nT\nTony\nMornings set the tone, so let's make yours easy to win. One woman I coached stopped checking her phone first thing and drank a glass of water instead. Small move, big shift. Tomorrow, water before phone. Deal?\n\nsample, from the current sketch",
+      "change": "Sketch: instructions updated ↗",
+      "error": null,
+      "firstWords": 4612,
+      "fullMs": 9707
+    },
+    {
+      "label": "C8 where",
+      "you": "Where were we?",
+      "sketcher": "Here's where things stand: Tony is a warm, energetic life coach who talks plainly, skips the hype, tells one short story per answer, and ends with one action for today. The last change was giving mornings special attention: getting up, simple routines, and one small win to start the day.\n\nThat morning update came after you kept him, so press Keep again if you want it in. Anything else you'd like to adjust?",
+      "change": null,
+      "error": null,
+      "firstWords": 10142,
+      "fullMs": 12347
+    },
+    {
+      "label": "C9",
+      "you": "Use this: <bio>",
+      "sketcher": "What a character. I've drafted Mara as a steady, practical mentor: someone you bring a worry or a hard thing you're learning, and she helps you find the small next step. One question: should she stick to that general role, or be mainly a sailing teacher? I'd suggest the general mentor, with sailing as her way of seeing the world.\n\nHere's how she sounds:\n\nM\nMara\nYou're worried the interview will go badly. All right. What can you check right now? The address, the time, the name of the person you're meeting. Go and look. Most fear is just missing information. Write those three things down, then make yourself a cup of tea. Strong. We'll do the next bit after.\n\nsample, from the current sketch\n\nIf that's Mara, press Keep.",
+      "change": "Sketch: name, persona and instructions updated ↗",
+      "fullMs": 16940
+    },
+    {
+      "label": "W1 offline (simulated)",
+      "you": "Simulated offline turn",
+      "sketcher": "Mara already has one from your notes: \"Keep the light trimmed.\" I've made it more of a signature, so she saves it for the moments it really lands, usually at the end. If you'd like a second saying as well, I'd suggest \"Fog always lifts. Ring the bell till it does.\"\n\nM\nMara\nYou missed three days of practice and now you think the whole thing's ruined. It isn't. Pick up the instrument tonight. Ten minutes, nothing grand. Keep the light trimmed.\n\nsample, from the current sketch\n\nAnd just checking: she's still a woman, as in your story? I've kept her that way.",
+      "change": "Sketch: instructions updated ↗",
+      "error": "The Sketcher can't reach Claude right now.",
+      "firstWords": null,
+      "fullMs": 19
+    }
+  ]
+}
