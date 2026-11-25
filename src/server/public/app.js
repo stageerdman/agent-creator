@@ -222,6 +222,7 @@ function renderKeep() {
     btn.disabled = saved || !named || busy;
     btn.title = !saved && !named ? "Give it a name first" : "";
   }
+  btn.hidden = saved && !state.keepFailed; // X4: Keep happens once, then every change is live
   els.keepCard.hidden = !saved;
   if (saved) {
     const { name, persona } = state.agent.draft;

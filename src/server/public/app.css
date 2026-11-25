@@ -466,6 +466,7 @@ body.show-mock [data-mock] { outline: 1px dotted color-mix(in srgb, var(--warm-t
   border-radius: var(--radius); border: 1.5px dashed color-mix(in srgb, currentcolor 22%, transparent); background: none;
 }
 .door:hover { background: var(--line); }
+body.dragging .door { border-style: solid; border-color: var(--accent); }
 .door span { font-size: 13px; opacity: var(--muted); }
 .user .bubble.refs-bubble { background: var(--raised); color: inherit; border: 1px solid var(--line); }
 .refs-chip { display: flex; flex-direction: column; }
@@ -631,7 +632,8 @@ body.show-mock [data-mock] { outline: 1px dotted color-mix(in srgb, var(--warm-t
 /* ── D Talk ────────────────────────────────────────────── */
 
 .talk { flex: 1; min-height: 0; display: flex; }
-.talk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.talk-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.talk-views { display: none; }
 .talk-side {
   flex: 0 0 300px; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;
   background: var(--raised); border-left: 1px solid var(--line);
@@ -683,7 +685,15 @@ body.show-mock [data-mock] { outline: 1px dotted color-mix(in srgb, var(--warm-t
 .fix-example { height: auto; min-height: 36px; padding: 6px 12px; text-align: left; font-size: 13px; border-radius: 12px; }
 
 @media (width < 860px) {
+  .right-switch { display: none !important; } /* X3: the .views tabs carry it */
   .talk { flex-direction: column; }
-  .talk-side { flex: none; max-height: 40vh; border-left: 0; border-top: 1px solid var(--line); }
+  .talk-views {
+    flex: none; display: flex; margin: 8px 16px; padding: 2px; border-radius: 10px; background: var(--line);
+  }
+  .talk-views button { flex: 1; height: 40px; border: 0; border-radius: 8px; background: none; font-weight: 600; }
+  .talk-views button[aria-selected="true"] { background: Canvas; box-shadow: 0 1px 2px rgb(0 0 0 / 12%); }
+  .talk-views .dot { color: #e8a33d; margin-left: 4px; }
+  .talk[data-view="chat"] .talk-side, .talk[data-view="side"] .talk-main { display: none; }
+  .talk-side { flex: 1; min-height: 0; max-width: none; border-left: 0; }
   .home { padding: 24px 16px; }
 }

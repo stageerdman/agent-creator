@@ -22,6 +22,21 @@ export function init() {
     if (a) showKnows(a);
     else showKnowsReal();
   });
+  // X3: narrow screens get one switch [ Chat | Sketch | What [Name] knows ];
+  // the right-pane switch hides there and these two tabs drive it.
+  $("view-sketch").addEventListener("click", () => $("rs-sketch").click());
+  $("view-knows").addEventListener("click", () => $("rs-knows").click());
+  const sync = () => {
+    const onSketch = $("panes").dataset.view === "sketch";
+    const knows = $("rs-knows").getAttribute("aria-selected") === "true";
+    $("view-knows").firstChild.textContent = $("rs-knows").textContent;
+    $("view-knows").hidden = $("right-switch").hidden;
+    $("view-knows").setAttribute("aria-selected", String(onSketch && knows && !$("right-switch").hidden));
+    $("view-sketch").setAttribute("aria-selected", String(onSketch && (!knows || $("right-switch").hidden)));
+  };
+  new MutationObserver(sync).observe($("right-switch"), { subtree: true, childList: true, characterData: true, attributes: true });
+  new MutationObserver(sync).observe($("panes"), { attributes: true, attributeFilter: ["data-view"] });
+  sync();
 }
 
 export function escape() {

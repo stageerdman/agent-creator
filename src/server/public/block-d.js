@@ -31,7 +31,13 @@ export function init() {
   send.innerHTML = $("send").innerHTML;
   const form = el("form", { id: "talk-form", class: "composer" }, textarea, send);
   const banner = el("div", { id: "talk-banner", class: "banner", role: "alert", hidden: true });
+  // X3: narrow Talk has one switch [ Chat | Past talks ], one pane at a time.
+  const views = el("div", { class: "talk-views", role: "tablist", "aria-label": "View" },
+    el("button", { id: "tv-chat", type: "button", role: "tab", "aria-selected": "true", onclick: () => setTalkView("chat") }, "Chat"),
+    el("button", { id: "tv-side", type: "button", role: "tab", "aria-selected": "false", onclick: () => setTalkView("side") }, "Past talks"));
+  $("talk").dataset.view = "chat";
   $("talk").replaceChildren(
+    views,
     el("section", "talk-main",
       el("div", { id: "talk-scroll", class: "chat-scroll" },
         el("div", "chat-col", el("div", { id: "talk-log", class: "log", role: "log", "aria-live": "polite" }))),
@@ -50,6 +56,12 @@ export function init() {
   document.addEventListener("click", (e) => {
     if (menuFor && !e.target.closest(".row-menu, .row-more")) { menuFor = null; renderSide(); }
   });
+}
+
+function setTalkView(v) {
+  $("talk").dataset.view = v;
+  $("tv-chat").setAttribute("aria-selected", String(v === "chat"));
+  $("tv-side").setAttribute("aria-selected", String(v === "side"));
 }
 
 const grow = (t) => { t.style.height = "auto"; t.style.height = `${Math.min(t.scrollHeight, 200)}px`; };
@@ -91,6 +103,7 @@ export function openTalk(a, { talkId } = {}) {
   if (!talk && a.real) talk = realTalks.get(a.id) ?? null;
   talk ??= blankTalk(a);
   cur = { a, talk };
+  setTalkView("chat");
   $("talk-msg").placeholder = `Talk to ${shortName(a)}…`;
   $("talk-msg").value = prefill ?? "";
   prefill = null;
@@ -392,6 +405,7 @@ function renderSide() {
 function closeSide() {
   if (side === "fix") return closeFix();
   side = "past";
+  setTalkView("chat");
   renderSide();
   passageFrom?.isConnected ? passageFrom.focus() : $("talk-msg").focus();
   passageFrom = null;
@@ -401,6 +415,7 @@ function closeSide() {
 function openPassage(a, r, link) {
   if (side === "fix") return; // the fix panel stays put; one panel at a time
   side = "passage";
+  setTalkView("side"); // narrow: the passage opens as a full view with ✕ back
   passageFrom = link;
   const panel = passagePanel(r, a, { close: true, onClose: closeSide, used: true });
   const host = $("talk-side");
@@ -523,6 +538,7 @@ function openFix(a, m, index) {
     log: [{ role: "sketcher", text: f?.open ?? `You said this isn't ${shortName(a)}. What would ${subj(a)} say instead, or what's wrong with it?` }],
   };
   side = "fix";
+  setTalkView("side");
   renderLog();
   renderFix();
   $("fix-msg")?.focus();
@@ -596,6 +612,7 @@ function closeFix() {
   const f = fix;
   fix = null;
   side = "past";
+  setTalkView("chat");
   if (!f) return renderSide();
   if (f.changed) {
     const msgs = cur.talk.messages;

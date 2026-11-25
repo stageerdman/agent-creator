@@ -71,7 +71,8 @@ export async function refreshReal() {
 export const mockAgent = (id) => store.agents.find((a) => a.id === id);
 export const isMock = (id) => Boolean(mockAgent(id));
 export const nameOf = (a) => a?.draft?.name?.trim() || "";
-export const shortName = (a) => nameOf(a).split(" ")[0] || "it";
+// Before the name lands, a laid-out folder (`Ines Duarte – The Quiet Deal`) names the person (B2).
+export const shortName = (a) => nameOf(a).split(" ")[0] || a?.references?.root?.split(/ [–-] /)[0]?.split(" ")[0] || "it";
 export const fileById = (a, id) => a.references.files.find((f) => f.id === id) ?? (id === store.demo?.extras.moneyFile.id ? store.demo.extras.moneyFile : null);
 
 export function note(agentId, entry) { (store.notes[agentId] ??= []).push(entry); }
@@ -284,14 +285,16 @@ export function dropOverlay({ target, onDrop }) {
       ? el("p", "drop-big", "Drop · import this agent")
       : el("div", "", el("p", "drop-big", "Drop · your files stay on this Mac"), el("p", "drop-sub", "Claude reads them to study"), t && el("p", "drop-for", t)));
     overlay.hidden = false;
+    document.body.classList.toggle("dragging", !zip);
   };
+  const hide = () => { overlay.hidden = true; document.body.classList.remove("dragging"); };
   addEventListener("dragenter", (e) => { e.preventDefault(); depth += 1; if (depth === 1) show(e); });
   addEventListener("dragover", (e) => e.preventDefault());
-  addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) overlay.hidden = true; });
+  addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) hide(); });
   addEventListener("drop", (e) => {
     e.preventDefault();
     depth = 0;
-    overlay.hidden = true;
+    hide();
     const files = [...(e.dataTransfer?.files ?? [])].map((f) => f.name);
     onDrop(files);
   });

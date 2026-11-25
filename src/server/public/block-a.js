@@ -92,6 +92,7 @@ async function newAgentFlow() {
   await refreshReal();
   store.current = id;
   setScreen("sketcher");
+  P2.els.message.focus(); // A2: the composer is focused (it was hidden when P2 loaded)
 }
 
 // ── Top bar ───────────────────────────────────────────────────────────────
@@ -146,7 +147,7 @@ function mark(a) {
 }
 
 function summary(a) {
-  const shorts = (a.map ?? []).filter((l) => l.level === "sharp" && l.short).map((l) => l.short).slice(0, 3);
+  const shorts = (a.map ?? []).filter((l) => l.level === "sharp" && l.short).map((l) => l.short).slice(0, 2); // A1: 1–2 Sharp lines
   return shorts.length ? shorts.join(" · ") : firstSentence(a.draft.persona);
 }
 

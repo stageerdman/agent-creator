@@ -140,7 +140,7 @@ const rexMap = [
   line("rex-ladder", "sharp", "The Ladder of Excuses: 7 rungs, step off one a day",
     [REX_PASSAGES.ladder, REX_PASSAGES.ladder2, REX_PASSAGES.ladder3, REX_PASSAGES.ladder4, REX_PASSAGES.ladder5], { short: "Ladder of Excuses" }),
   line("rex-breath", "sharp", "The 3-Breath Reset before a hard call",
-    [REX_PASSAGES.breath, REX_PASSAGES.breathBook, REX_PASSAGES.breathQa, REX_PASSAGES.breathGift], { short: "3-Breath Reset" }),
+    [REX_PASSAGES.breath, REX_PASSAGES.breathBook, REX_PASSAGES.breathQa, REX_PASSAGES.breathGift]),
   line("rex-onebreath", "sharp", "Say it in one breath: hard conversations at work",
     [REX_PASSAGES.oneBreath, REX_PASSAGES.oneBreathBook, REX_PASSAGES.oneBreathGift, REX_PASSAGES.oneBreathQa], { short: "hard conversations" }),
   line("rex-morning", "sharp", "The Morning Standard: before 8 am",
@@ -158,9 +158,10 @@ export const rexMoneyAfter = line("rex-money", "sharp",
   { was: "blank", quiz: "What's the first rule of money?" });
 
 const rexTitles = [
-  ["Landlord call", at(TODAY, "09:12")],
+  // The job offer is the latest talk: Home's `Last: The job offer · yesterday` (A1, UJ6).
   ["The job offer", at("2026-11-24", "18:40")],
   ["Saying no to Dad", at("2026-11-23", "21:05")],
+  ["Landlord call", at("2026-11-20", "09:12")],
   ["The 6 am thing", at("2026-11-18")],
   ["Team meeting on Monday", at("2026-11-14")],
   ["Why I stall on emails", at("2026-11-11")],
