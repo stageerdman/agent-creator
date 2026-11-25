@@ -2,16 +2,19 @@
 // a fresh browser. Screenshots land in .scratch/ (git-ignored).
 // Setup once (not saved to package.json):
 //   npm install --no-save playwright-core@1
-//   npx playwright-core install chromium-headless-shell
+//   npx playwright-core install webkit chromium-headless-shell
 // (The studio sandbox stops the system Google Chrome after ~20 s; the
 // headless shell is not affected.)
 // Run: PORT=3506 node src/server/main.mjs, then
-//   node scripts/walk-full-ux.mjs [url] [segment-prefix]
+//   [BROWSER=webkit] node scripts/walk-full-ux.mjs [url] [segment-prefix]
+// BROWSER=webkit walks the same engine the Mac app's window uses (WKWebView).
 import { mkdirSync } from "node:fs";
-import { chromium } from "playwright-core";
+import * as playwright from "playwright-core";
 
 mkdirSync(".scratch", { recursive: true });
 
+const engine = playwright[process.env.BROWSER ?? "chromium"];
+if (!engine?.launch) throw new Error(`walk-full-ux: unknown BROWSER "${process.env.BROWSER}" (use chromium or webkit)`);
 const url = process.argv[2] ?? "http://localhost:3506/";
 const only = process.argv[3];
 const results = [];
@@ -19,7 +22,7 @@ const errors = [];
 
 async function segment(name, body) {
   if (only && !name.startsWith(only)) return;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await engine.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
   page.on("pageerror", (e) => errors.push(`[${name}] pageerror: ${e.stack}`));
   page.on("console", (m) => { if (m.type() === "error" && !m.text().includes("favicon")) errors.push(`[${name}] console: ${m.text()}`); });

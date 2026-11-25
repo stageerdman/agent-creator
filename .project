@@ -21,7 +21,8 @@ secrets: none
 
 claude_md_generated: 2026-11-04
 
-# Start builds the newest macOS .app, installs it into /Applications and opens
+# Start builds the newest macOS .app (Tauri shell, native WebKit window, no
+# Chrome; Rust tests: npm run test:shell), installs it into /Applications and opens
 # it (scripts/start-mac-app.sh). The bare server, on PORT: npm start.
 run: npm run start:app
 test: npm test

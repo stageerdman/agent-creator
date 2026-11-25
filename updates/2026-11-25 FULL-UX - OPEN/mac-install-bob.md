@@ -1,5 +1,9 @@
 # Installing the macOS app (Uncle Bob, 2026-11-25)
 
+> Superseded the same day: the Chrome launcher below was replaced by a Tauri
+> shell (native WebKit window). See `updates/2026-11-25 NATIVE-SHELL - OPEN/`.
+> The install, Spotlight and Start parts still hold.
+
 ## How it works now
 - `npm run build:app` builds `dist/Agent Creator.app` **and** installs it into
   `/Applications` (falls back to `~/Applications`), then registers it with

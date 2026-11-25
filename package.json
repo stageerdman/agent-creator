@@ -9,8 +9,8 @@
   },
   "scripts": {
     "start": "node src/server/main.mjs",
-    "build:app": "npm install --silent --no-audit --no-fund && tauri build --bundles app && sh scripts/install-mac-app.sh",
-    "test:shell": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "build:app": "npm install --silent --no-audit --no-fund && CARGO_TARGET_DIR=target tauri build --bundles app && sh scripts/install-mac-app.sh",
+    "test:shell": "node scripts/stage-mac-app.mjs && CARGO_TARGET_DIR=src-tauri/target cargo test --manifest-path src-tauri/Cargo.toml",
     "start:app": "sh scripts/start-mac-app.sh",
     "test": "LOG_LEVEL=silent node --test \"src/**/*.test.mjs\"",
     "test:live": "CLAUDE_LIVE=1 LOG_LEVEL=warn node --test \"src/**/*.live.test.mjs\""

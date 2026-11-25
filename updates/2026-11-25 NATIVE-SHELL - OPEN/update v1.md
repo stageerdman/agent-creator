@@ -21,7 +21,7 @@ Chromium or Electron is bundled or started.
 
 ```
 Agent Creator.app
-  Contents/MacOS/agent-creator   Rust (Tauri): finds node, starts the server,
+  Contents/MacOS/Agent Creator   Rust (Tauri): finds node, starts the server,
                                  opens a native window on it, stops the
                                  server on quit
   Contents/Resources/app/        the existing Node app (src/, package.json),
@@ -73,3 +73,35 @@ Agent Creator.app
 ## Status
 
 - 2026-11-25: plan written (Uncle Bob). Phase 1 started.
+- 2026-11-25: phases 1–3 done (Uncle Bob).
+  - `npm run test:shell`: 6/6 Rust tests pass.
+  - `npm run build:app`: the bundle is **4.3 MB** and needs no browser (the
+    old one ran inside the system Google Chrome), installed at `/Applications/Agent Creator.app`.
+  - `node scripts/check-mac-install.mjs`: all checks pass. Spotlight finds it
+    by id and by name, the bundle has no Chrome, the page and the 6 demo
+    agents load, the native window is on screen (1202×862), and the only
+    child process is `node src/server/main.mjs`. After Quit, the server is
+    gone too.
+  - Walk: 33/33 in WebKit and 33/33 in Chromium, with no page errors.
+  - `npm test`: 85 pass, 1 skipped (live).
+
+## How to run
+
+- Build and install: `npm run build:app`. Start runs `npm run start:app`,
+  which builds, installs and opens the installed copy.
+- Rust tests: `npm run test:shell`. It needs Rust/cargo, so it is kept out of
+  `npm test`, which the studio runs.
+- Install check: `node scripts/check-mac-install.mjs [shot.png]`. The
+  screenshot needs screen-recording access and is skipped without it.
+
+## Lessons
+
+- **Own target dir.** The studio sets a cargo target dir shared by all
+  checkouts. There `tauri-build` failed with `File exists (os error 17)`,
+  because copying the `app/` resource ran into another project's `app`
+  binary. Both scripts set `CARGO_TARGET_DIR` to this checkout's own
+  `src-tauri/target`. `tauri build` runs cargo inside `src-tauri/`, so its
+  value there is `target`, while `cargo test --manifest-path` runs from the
+  root and needs `src-tauri/target`.
+- **Resources must exist before compiling.** `tauri-build` checks resource
+  paths even for `cargo test`, so `test:shell` stages the app first.
