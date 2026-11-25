@@ -7,14 +7,26 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/magic.css">
 </head>
-<body>
+<body data-screen="home">
   <header class="topbar">
-    <h1>Agent Creator</h1>
-    <div class="switcher">
+    <h1><button id="home-link" class="home-link" type="button">Agent Creator</button></h1>
+    <span class="crumb-sep in-agent" aria-hidden="true">›</span>
+    <span id="top-face" class="in-agent"></span>
+    <div class="switcher in-agent">
       <button id="switcher-btn" class="switcher-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="switcher-menu"><span id="switcher-name">New agent</span> <span aria-hidden="true">▾</span></button>
-      <div id="switcher-menu" class="menu" role="menu" aria-label="Agents" hidden></div>
+      <div id="switcher-menu" class="menu" role="menu" aria-label="Agent" hidden></div>
     </div>
+    <span class="grow"></span>
+    <span id="top-study"></span>
+    <div id="mode" class="mode in-agent" role="tablist" aria-label="Mode" hidden>
+      <button id="mode-talk" type="button" role="tab" aria-selected="false">Talk</button>
+      <button id="mode-sketcher" type="button" role="tab" aria-selected="true">Sketcher</button>
+    </div>
+    <span id="demo-host"></span>
   </header>
+
+  <main id="home" class="home" aria-label="Your agents"></main>
+  <main id="talk" class="talk" aria-label="Talk"></main>
 
   <div class="views" role="tablist" aria-label="View">
     <button id="view-chat" type="button" role="tab" aria-selected="true" aria-controls="chat-pane">Chat</button>
@@ -49,7 +61,7 @@
           <p id="howto" class="howto" hidden>Agent Creator uses Claude Code on this computer. Install it, run <code>claude</code> once in a terminal to sign in, then press the button again.</p>
         </div>
         <form id="composer" class="composer">
-          <div class="composer-lead" data-later="P3" hidden></div><!-- P3: add references -->
+          <div id="composer-lead" class="composer-lead" hidden></div>
           <label for="message" class="sr-only">Message</label>
           <textarea id="message" rows="1" placeholder="Type here…" autocomplete="off"></textarea>
           <button id="send" class="send" type="submit" aria-label="Send" disabled>
@@ -63,9 +75,14 @@
     <section id="sketch" class="sketch-pane" aria-labelledby="sketch-title" aria-busy="false">
       <header class="sketch-head">
         <h2 id="sketch-title">Sketch</h2>
+        <div id="right-switch" class="right-switch" role="tablist" aria-label="Right pane">
+          <button id="rs-sketch" type="button" role="tab" aria-selected="true">Sketch</button>
+          <button id="rs-knows" type="button" role="tab" aria-selected="false">What it knows</button>
+        </div>
         <button id="keep" class="keep-btn" type="button" disabled title="Give it a name first">Keep</button>
       </header>
-      <section class="references" data-later="P3" hidden></section><!-- P3: pinned references -->
+      <section id="study-host" class="references"></section>
+      <div id="knows" class="knows sketch-scroll" hidden></div>
       <div id="sketch-scroll" class="sketch-scroll">
         <div id="keep-card" class="keep-card" hidden>
           <p class="keep-name"></p>
@@ -75,6 +92,7 @@
         </div>
 
         <div class="draft-field" data-field="name" style="--magic-order: 0">
+          <span id="face-slot" class="face-slot"></span>
           <div class="label-row">
             <label for="f-name">Name<span class="tag"></span></label>
             <button type="button" class="retry link-btn" hidden>Try again</button>
@@ -105,6 +123,8 @@
     </section>
   </main>
 
+  <div id="sheet" class="sheet" hidden></div>
+  <div id="toast" class="toast-host" aria-live="polite"></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

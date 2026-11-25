@@ -49,7 +49,13 @@ els.message.focus();
 
 // ── Server ────────────────────────────────────────────────────────────────
 
+// FULL-UX: demo agents (blocks A–F) answer here from memory; real agents
+// still go to the server and the real CLI.
+const hooks = (window.ACHooks ??= {});
+
 async function api(path, { method = "GET", body } = {}) {
+  const local = hooks.mockApi?.(path, { method, body });
+  if (local !== undefined) return local;
   const response = await fetch(path, {
     method,
     headers: body ? { "content-type": "application/json" } : undefined,
@@ -102,6 +108,7 @@ function takeDraft(draft) {
   renderKeep();
   renderName();
   renderPlaceholder();
+  hooks.onDraft?.(draft);
 }
 
 // Plays the fresh-line bar (and glow) once: magic.css .draft-field.updated.
@@ -253,6 +260,7 @@ async function keep() {
     return;
   }
   takeDraft(draft);
+  hooks.afterKeep?.(state.agent);
   els.sketch.classList.remove("agent-born");
   void els.sketch.offsetWidth;
   els.sketch.classList.add("agent-born");
@@ -403,8 +411,17 @@ function voiceCard({ name, text }) {
   const avatar = el("span", "voice-avatar", name.charAt(0).toUpperCase());
   avatar.setAttribute("aria-hidden", "true");
   head.append(avatar, el("span", "", name));
-  card.append(head, runs(el("blockquote", "voice-text"), text), el("p", "voice-caption", "sample, from the current sketch"));
+  card.append(head, runs(el("blockquote", "voice-text"), text), ...(hooks.voiceCaption?.(state.agent) ?? [el("p", "voice-caption", "sample, from the current sketch")]));
   return card;
+}
+
+// FULL-UX: a change line with its own words and click (B2, B4, E2, E5).
+function addCustomLine(msg, { text, onClick }) {
+  const line = el("button", "change-line", text);
+  line.type = "button";
+  line.addEventListener("click", () => onClick?.());
+  msg.append(line);
+  return line;
 }
 
 function addChangeLine(msg, changed) {
@@ -467,6 +484,7 @@ async function sendFromComposer() {
   const saved = await flushAll(); // R5: a pending hand edit goes first; if it fails, nothing is sent
   state.sending = false;
   if (!saved || state.phase !== "idle") return;
+  if (await hooks.beforeSend?.(raw.trim())) return;
   const message = raw.trim();
   const pasteAt = state.pasteAt - (raw.length - raw.trimStart().length);
   state.pasteAt = -1;
@@ -497,12 +515,24 @@ async function runTurn(message, userEl) {
   for (const name of FIELDS) fields[name].wrap.classList.remove("updated");
   const reply = addSketcherMessage();
   const controller = new AbortController();
-  const turn = { controller, changed: [] };
+  const turn = { controller, changed: [], lines: [] };
   state.turn = turn;
   setPhase("sketching");
 
   let outcome = null;
+  const scripted = hooks.mockTurn?.(state.agent, message, controller.signal);
   try {
+    if (scripted) {
+      for await (const { event, data } of scripted) {
+        if (controller.signal.aborted) throw new Error("aborted");
+        if (event === "delta") onDelta(reply, data.text);
+        else if (event === "draft") onDraft(turn, data);
+        else if (event === "line") turn.lines.push(data);
+        else if (event === "done") outcome = { kind: "done", ...data };
+        else if (event === "error") outcome = data;
+      }
+      outcome ??= { kind: "network" };
+    } else {
     const response = await fetch(agentUrl("/chat"), {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -521,6 +551,7 @@ async function runTurn(message, userEl) {
       }
       outcome ??= { kind: "network" }; // the stream ended without done
     }
+    }
   } catch {
     outcome = { kind: controller.signal.aborted ? "cancelled" : "network" };
   }
@@ -531,8 +562,12 @@ async function runTurn(message, userEl) {
     stick(() => {
       reply.waiting.remove();
       renderReply(reply.say, outcome.say);
-      if (turn.changed.length) addChangeLine(reply.msg, turn.changed);
+      if (turn.changed.length && !outcome.noChangeLine) addChangeLine(reply.msg, turn.changed);
+      for (const line of turn.lines) addCustomLine(reply.msg, line);
     });
+    setPhase("idle");
+    outcome.after?.(reply);
+    return;
   } else {
     reply.msg.remove(); // partial text goes; the draft is untouched
     if (outcome.kind === "not-installed") {
@@ -626,6 +661,13 @@ function menuItem(onChoose, ...children) {
 }
 
 async function openMenu() {
+  const custom = hooks.menu?.();
+  if (custom) {
+    els.menu.replaceChildren(...custom.map((it) => (it === "-" ? el("hr") : menuItem(it.run, el("span", "row-name", it.label)))));
+    els.menu.hidden = false;
+    els.switcherBtn.setAttribute("aria-expanded", "true");
+    return menuItems()[0]?.focus();
+  }
   const list = await api("/api/agents").catch(() => []);
   const items = [menuItem(newAgent, el("span", "row-name", "+ New agent")), el("hr")];
   for (const row of switcherRows(list)) {
@@ -707,6 +749,7 @@ async function loadAgent(id) {
   renderBanner();
   renderPlaceholder();
   els.message.focus();
+  hooks.afterLoad?.(agent);
 }
 
 // ── Narrow screens: Chat | Sketch ─────────────────────────────────────────
@@ -729,16 +772,20 @@ els.viewSketch.addEventListener("click", () => setView("sketch"));
 
 // ── Open (S0) ─────────────────────────────────────────────────────────────
 
-const slow = setTimeout(() => {
-  els.note.textContent = "Opening…";
-  els.note.hidden = false;
-}, 1000);
+// FULL-UX: blocks A–F drive the screens; the P2 Sketcher is one of them.
+Object.assign(window.ACP2 ??= {}, {
+  state, els, fields, api, loadAgent, takeDraft, markUpdated, setPhase, renderKeep, renderBanner,
+  renderPlaceholder, renderSend, growComposer, addUserBubble, addSketcherMessage, renderReply,
+  addChangeLine, addCustomLine, stick, setView, isNarrow, flushAll, closeMenu, el,
+  async newAgent() {
+    if (!(await flushAll())) return;
+    const { id } = await api("/api/agents", { method: "POST" });
+    await loadAgent(id);
+    return id;
+  },
+});
 
-const [health, list] = await Promise.all([
-  api("/api/health").catch(() => ({ installed: false })),
-  api("/api/agents").catch(() => []),
-]);
+const health = await api("/api/health").catch(() => ({ installed: false }));
 state.installed = Boolean(health.installed);
-const recent = switcherRows(list)[0]?.id ?? (await api("/api/agents", { method: "POST" })).id;
-await loadAgent(recent);
-clearTimeout(slow);
+const { boot } = await import("/block-a.js");
+await boot();
