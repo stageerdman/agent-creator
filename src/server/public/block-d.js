@@ -632,7 +632,7 @@ function closeFix() {
   if (f.changed) {
     const msgs = cur.talk.messages;
     const i = msgs.indexOf(f.msg);
-    msgs.splice(i + 1, 0, { role: "divider", text: `${shortName(f.a)} was redrawn · instructions updated`, divider: { kind: "redrawn", patch: f.patch } });
+    msgs.splice(i + 1, 0, { role: "divider", text: `${shortName(f.a)} was redrawn · from what you said`, divider: { kind: "redrawn", patch: f.patch } });
     const t = $("talk-msg");
     t.value = f.question;
     grow(t);
