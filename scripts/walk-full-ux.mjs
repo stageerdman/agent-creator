@@ -147,7 +147,7 @@ await segment("5-ines", async ({ page, wait, shot, see, click, menu, step }) => 
     await menu("Delete"); await wait(150); await see("This can't be undone."); await shot("21-delete"); await page.locator(".btn.danger").click(); await wait(300);
   });
   await step("B3 Ines studying with first impressions", async () => {
-    await page.locator(".sketch-row", { hasText: "Ines" }).click(); await wait(700); await see("Studying ·"); await page.click("#rs-knows"); await wait(200); await see("first impressions"); await shot("22-ines-studying");
+    await page.locator(".sketch-row", { hasText: "Ines" }).click(); await wait(700); await see(/Studying ·|Picked up where it left off/); await page.click("#rs-knows"); await wait(200); await see("first impressions"); await shot("22-ines-studying");
   });
   await step("B4 Skip time → finished, voice, faces", async () => {
     await page.click(".demo-pill");
@@ -164,16 +164,16 @@ await segment("5-ines", async ({ page, wait, shot, see, click, menu, step }) => 
 
 await segment("6-fresh", async ({ page, wait, shot, see, click, demo, step }) => {
   await step("B1 Start UJ2 fresh → door → chip → laid out", async () => {
-    await demo("Start UJ2 fresh"); await wait(700); await click("Add references"); await page.locator(".picker-row").first().click(); await wait(1700);
+    await demo("Start UJ2 fresh"); await wait(700); await page.locator(".door").click(); await page.locator(".picker-row").first().click(); await wait(1700);
     await see("Set aside · 4"); await see("312 files · 38.4 GB"); await shot("26-laid-out");
   });
   await step("B2 one-sentence correction", async () => {
     await page.fill("#message", "Skip Bonus. Her voice from the Live Q&A only."); await page.keyboard.press("Enter"); await wait(3000);
     await see("Split: 18 recordings moved"); await see("Set aside · 14"); await shot("27-corrected");
   });
-  await step("B3 Start studying", async () => { await click("Start studying"); await wait(400); await see("Studying ·"); await shot("28-fresh-studying"); });
+  await step("B3 Start studying", async () => { await click("Start studying"); await wait(400); await see(/Studying ·|Picked up where it left off/); await shot("28-fresh-studying"); });
   await step("B1 path rule: unknown path", async () => { await page.fill("#message", "~/nowhere"); await page.keyboard.press("Enter"); await wait(600); await see("Can't find ~/nowhere. Check the path."); });
-  await step("A2 + New agent → empty state with the door", async () => { await page.click("#home-link"); await wait(200); await page.locator(".new-card").click(); await wait(900); await see("Who should this agent be?"); await see("a folder of their books"); await shot("29-new"); });
+  await step("A2 + New agent → empty state with the door", async () => { await page.click("#home-link"); await wait(200); await page.locator(".new-card").click(); await wait(900); await see("Who should this agent be?"); await see("Or bring their references"); await shot("29-new"); });
 });
 
 console.log(results.join("\n"));

@@ -297,4 +297,9 @@ Columbo checked these against the design: **the script is out of date and the ap
 
 `npm test`: 85 pass, 1 skip.
 
+## Integration (Columbo, captain, 25 Nov)
+- Script fixed: the door click is now `.door` (B1), A2 looks for `Or bring their references`, and both B3 steps accept `Studying ·` or `Picked up where it left off`. Nothing else changed.
+- Rebuilt `dist/Agent Creator.app` and ran the script against the server inside the bundle: **33 of 33 pass, no page errors**. `npm test`: 85 pass, 1 skip.
+- **Still open: the window launch.** My shell refuses `open` as well. Also, the studio's Start only picks up a built `.app` for Tauri or Swift/Xcode projects, so in this Node project Start runs `run: npm start`. That serves the same full UX in the browser, but it doesn't open the .app. Someone has to double-click `dist/Agent Creator.app` once (after `npm run build:app` in the main checkout, because `dist/` is git-ignored).
+
 **Signed: Eraser, 25 Nov 2026.** The flow is lean. There's one way to do each thing, and the four trust items hold (sources, the map, `Not [Name]`, no silent skips). Approved, with the gaps and deviations above. One gap is still open: someone has to double-click `dist/Agent Creator.app` once to confirm the window opens.
