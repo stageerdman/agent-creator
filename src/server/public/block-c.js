@@ -17,6 +17,8 @@ const revealed = new Set(); // agent ids whose DNA has played its reveal this se
 let showing = null; // agent id whose DNA is on screen
 let passage = null; // { a } while a passage replaces the layers
 let part = -1; // the instruction part the caret is in
+// MAGIC-PASS D1: paths just added carry a still "new" until DNA is next opened.
+let newFiles = { paths: new Set(), seen: false };
 
 // ── Who is on screen ──────────────────────────────────────────────────────
 
@@ -152,7 +154,9 @@ export function showDna(a) {
   const first = a && !revealed.has(a.id);
   for (const l of layers) l.classList.toggle("is-revealed", Boolean(first));
   if (a) revealed.add(a.id);
+  if (newFiles.seen) newFiles = { paths: new Set(), seen: false };
   renderDna(a);
+  if (newFiles.paths.size) newFiles.seen = true;
   $("dna").scrollTop = 0;
 }
 
@@ -204,6 +208,7 @@ function renderFiles(a) {
   layer.querySelector(".dna-sub").textContent = `· ${filesSub(files)}`;
   const rows = files.map((f) => el("div", { class: `dna-row dna-file${f.feeds?.length ? "" : " is-open"}`, "data-path": f.path },
     el("span", { class: "ref-name", title: f.path }, f.path),
+    newFiles.paths.has(f.path) ? el("span", "mark new", "new") : null,
     el("span", "ref-size", sizeLabel(f.size)),
     el("span", "dna-feed", feedLabel(f.feeds))));
   const hint = files.some((f) => !f.feeds?.length)
@@ -222,7 +227,13 @@ export async function addFiles(entries) {
   try {
     const { files, added } = await P2.api(`/api/agents/${agent.id}/files`, { method: "POST", body: { files: entries } });
     agent.files = files;
-    toast(added.length ? `${added.length} ${added.length === 1 ? "file" : "files"} added to DNA` : "Already in DNA");
+    newFiles = { paths: new Set(added), seen: false };
+    // MAGIC-PASS D1: one receipt, in the agent's name when it has one.
+    const name = P2.fields.name.input.value.trim();
+    const dna = name ? `${name}'s DNA` : "the DNA";
+    toast(added.length ? `${added.length} ${added.length === 1 ? "file" : "files"} added to ${dna}` : `Already in ${dna}`);
+    // D2: files but no words yet → the creator asks who this is.
+    if (!P2.els.log.childElementCount) P2.waitForWords?.(files.length);
   } catch (error) {
     toast(`Couldn't add the files: ${error.message}`);
   }

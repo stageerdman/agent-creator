@@ -297,8 +297,27 @@ function renderName() {
 function renderPlaceholder() {
   if (!state.agent) return;
   els.message.placeholder = isEmptyDraft(state.agent.draft) && !els.log.childElementCount
-    ? "Type here…"
+    ? (state.filesWaiting ? "Who is this? e.g. my old coach, from his seminar notes" : "Type here…")
     : state.hint ?? "Reply to the Sketcher…";
+}
+
+// MAGIC-PASS D2: files dropped before any words. The empty state asks for the
+// one line the files can't give; the chips hide (they'd ignore the files).
+const emptyQ = els.empty.querySelector(".empty-q");
+const emptyQText = emptyQ.textContent;
+function waitForWords(count) {
+  if (!isEmptyDraft(state.agent.draft) || !count) return;
+  state.filesWaiting = count;
+  emptyQ.textContent = `${count} ${count === 1 ? "file is" : "files are"} in the DNA. Now say who this is, in one line.`;
+  els.empty.querySelector(".chips").hidden = true;
+  els.empty.hidden = false;
+  els.note.hidden = true;
+  renderPlaceholder();
+}
+function clearWaitForWords() {
+  state.filesWaiting = 0;
+  emptyQ.textContent = emptyQText;
+  els.empty.querySelector(".chips").hidden = false;
 }
 
 function renderSend() {
@@ -829,6 +848,7 @@ async function loadAgent(id) {
   state.failedTurn = null;
   state.keepFailed = false;
   clearTimeout(state.keepFailTimer);
+  clearWaitForWords();
   for (const name of FIELDS) {
     const f = fields[name];
     clearTimeout(f.timer);
@@ -872,7 +892,7 @@ els.viewSketch.addEventListener("click", () => setView("sketch"));
 // FULL-UX: blocks A–F drive the screens; the P2 Sketcher is one of them.
 Object.assign(window.ACP2 ??= {}, {
   state, els, fields, api, loadAgent, takeDraft, markUpdated, setPhase, renderKeep, renderBanner,
-  renderPlaceholder, renderSend, growComposer, addUserBubble, addSketcherMessage, renderReply,
+  renderPlaceholder, waitForWords, renderSend, growComposer, addUserBubble, addSketcherMessage, renderReply,
   addChangeLine, addCustomLine, stick, setView, isNarrow, flushAll, closeMenu, el,
   async newAgent() {
     if (!(await flushAll())) return;
