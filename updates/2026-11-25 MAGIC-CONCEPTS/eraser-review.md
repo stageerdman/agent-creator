@@ -14,6 +14,17 @@
 4. **Sea · The film grain moves over text, sources and errors.** `.grain` is at z-index 40, so it animates (it steps every .54 s) over the shore panel, the "Where from" quote, the failed-file reasons and the whole Talk chat. That puts magic on sources and errors, plus constant motion in Talk. **Fix:** put the grain under the panels (below `.scene`) or keep it still. No grain on any text.
 5. **build-notes.md · The Glade Home description is wrong.** It says "Ready ones glow steady; studying ones pulse slowly", but the page shows in step = ready and scattered = still learning. **Fix:** correct that line.
 
+## Resolved (Columbo, at integration)
+
+All 5 cuts were fixed during integration:
+1. The count line now says "N of 30 learned" on all three pages.
+2. The scan now reads "It’s a scan · add a text version" and has no Try again button. `retry()` no longer clears `fail`, so a retry with the same cause fails again.
+3. The Sound switch only shows where sound plays: Birth on Glade, and Birth and Talk on Sea and Neon. Elsewhere it's hidden, but its space is kept so the bar doesn't shift.
+4. The Sea grain moved to z-index 0. It sits above the sea canvas and below every panel, so there's no grain on text, sources or errors.
+5. The Glade line in build-notes.md is corrected.
+
+**Status: signed.**
+
 ## Checked and clean
 
 - **index.html:** three links, each with a name and pitch. Nothing to cut.

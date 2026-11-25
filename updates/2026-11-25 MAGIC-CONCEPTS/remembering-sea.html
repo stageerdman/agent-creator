@@ -15,7 +15,7 @@
   html, body { margin: 0; height: 100%; }
   body { background: var(--deep); color: var(--foam); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
   canvas#sea { position: fixed; inset: 0; display: block; }
-  .grain { position: fixed; inset: -60px; pointer-events: none; z-index: 40; opacity: .055; animation: grain .54s steps(3) infinite; }
+  .grain { position: fixed; inset: -60px; pointer-events: none; z-index: 0; /* over the sea, under every panel: no grain on text */ opacity: .055; animation: grain .54s steps(3) infinite; }
   @keyframes grain { 0% { transform: translate(0, 0); } 33% { transform: translate(-23px, 17px); } 66% { transform: translate(19px, -31px); } 100% { transform: translate(0, 0); } }
   button { font: inherit; color: inherit; cursor: pointer; }
   :focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; border-radius: 6px; }
@@ -39,6 +39,7 @@
   .scenes button[aria-current="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(28,38,41,.18); }
   .sound { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
   .sound[aria-pressed="true"] { color: var(--ink); }
+  body:not([data-scene="birth"]):not([data-scene="talk"]) .sound { visibility: hidden; }   /* sound lives on Birth and Talk only */
 
   .scene { position: fixed; inset: 48px 0 0 0; }
   .scene[hidden] { display: none; }
@@ -219,7 +220,7 @@ function generic(n) { const a = []; for (let i = 0; i < n; i++) a.push(mkFile('f
 
 const MARCUS_OLD = ['Letters to a young manager.pdf', 'Talk — Leading through doubt.txt', 'Interview, radio (2018).txt', 'Notebook 1.md', 'Notebook 2.md', 'Notebook 3.md', 'Workshop day 1.txt', 'Workshop day 2.txt', 'Q&A transcripts.txt', 'Essays 2015–2019.pdf', 'Commencement speech.txt', 'Book draft, ch 1–4.docx', 'Book draft, ch 5–9.docx', 'Podcast ep 12.txt', 'Podcast ep 31.txt', 'Margin notes.md', 'Team memos.pdf', 'Reading list.md'];
 const MARCUS_NEW = [
-  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'Couldn’t read this PDF (it’s a scan)', true],
+  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'It’s a scan · add a text version', false],
   ['Mentoring calls (March).txt', 640e3, 6100], ['Podcast ep 57.txt', 190e3, 3900], ['Board letters 2020.pdf', 3.1e6, 8600],
   ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet', false], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
   ['Notebook 4.md', 80e3, 5200], ['Interview, 2022.txt', 260e3, 10600], ['Letters, part 2.pdf', 2.2e6, 11800]
@@ -268,7 +269,7 @@ function addRealFiles(list, x, y) {
   world.filesArrived(added, x == null ? null : { x, y });
   renderFiles();
 }
-function retry(f) { f.status = 'reading'; f.t0 = Date.now(); f.dur = 3000; f.fail = false; f.pct = 0; run.celebrated = false; world.fileRetry(f); renderFiles(); }
+function retry(f) { f.status = 'reading'; f.t0 = Date.now(); f.dur = 3000; f.pct = 0;   /* same cause, same result: a retry never fakes success */ run.celebrated = false; world.fileRetry(f); renderFiles(); }
 function tickRun() {
   const t = Date.now(); let changed = false;
   for (const f of MARCUS.files) {
@@ -286,7 +287,7 @@ setInterval(tickRun, 100);
 const pctText = f => `Reading · ${Math.floor(f.pct * 100)}%`;
 function renderFiles() {
   const c = counts(MARCUS);
-  $('#fCount').textContent = `${c.learned} of ${c.total} sunk in`;
+  $('#fCount').textContent = `${c.learned} of ${c.total} learned`;
   const bits = [];
   if (c.reading) bits.push(`${c.reading} reading`);
   if (c.waiting) bits.push(`${c.waiting} waiting`);
