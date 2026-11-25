@@ -4,7 +4,7 @@
 // edits, and drives the magic.css classes. Testable logic is in sketch.js.
 
 import {
-  FIELDS, readEvents, isEmptyDraft, applyDraftEvent, changeLine, firstSentence,
+  FIELDS, mergePersona, readEvents, isEmptyDraft, applyDraftEvent, changeLine, firstSentence,
   errorLine, splitPaste, wordCount, replyBlocks, inlineRuns, switcherRows,
 } from "/sketch.js";
 import { installTabFocus } from "/tab-focus.js";
@@ -103,7 +103,8 @@ function renderTag(name) {
 const renderTags = () => FIELDS.forEach(renderTag);
 
 // Takes a draft from the server without touching a field the user is still typing in.
-function takeDraft(draft) {
+function takeDraft(raw) {
+  const draft = mergePersona(raw); // SKETCH-REWORK: Persona lives inside Instructions
   state.agent.draft = draft;
   for (const name of FIELDS) {
     if (!fields[name].pending && !fields[name].failed) setFieldValue(name, draft[name]);
@@ -158,8 +159,12 @@ async function saveField(name) {
   let ok = true;
   f.inflight = (async () => {
     try {
-      const draft = await api(`/api/agents/${id}/draft`, { method: "PUT", body: { [name]: value } });
+      // The first Instructions save also empties the old Persona on the server,
+      // so the merged text is stored once.
+      const clear = name === "instructions" && state.agent.hadPersona ? { persona: "" } : {};
+      const draft = await api(`/api/agents/${id}/draft`, { method: "PUT", body: { [name]: value, ...clear } });
       if (state.agent.id !== id) return;
+      if (clear.persona === "") state.agent.hadPersona = false;
       f.failed = false;
       state.yours.add(name);
       state.fresh.delete(name);
@@ -228,9 +233,9 @@ function renderKeep() {
   btn.hidden = saved && !state.keepFailed; // X4: Keep happens once, then every change is live
   els.keepCard.hidden = !saved;
   if (saved) {
-    const { name, persona } = state.agent.draft;
+    const { name, instructions } = state.agent.draft;
     els.keepCard.querySelector(".keep-name").textContent = name;
-    els.keepCard.querySelector(".keep-line").textContent = firstSentence(persona);
+    els.keepCard.querySelector(".keep-line").textContent = firstSentence(instructions);
   } else {
     els.sketch.classList.remove("agent-born");
   }
@@ -598,10 +603,10 @@ function onDraft(turn, data) {
   const scrollTop = els.sketchScroll.scrollTop;
   state.fresh = result.fresh;
   state.yours = result.yours;
-  turn.changed = data.changed;
+  turn.changed = result.changed;
   takeDraft(result.draft);
   els.sketchScroll.scrollTop = scrollTop;
-  for (const name of data.changed) {
+  for (const name of result.changed) {
     if (result.firstSketch) {
       const { wrap } = fields[name];
       wrap.classList.add("filling");
@@ -611,7 +616,7 @@ function onDraft(turn, data) {
   }
   if (result.firstSketch) state.hint = `Ask how ${result.draft.name.trim() || "they"} would answer something real…`;
   if (isNarrow() && els.panes.dataset.view === "chat") {
-    state.replay = new Set(data.changed);
+    state.replay = new Set(result.changed);
     els.viewSketch.querySelector(".dot").hidden = false;
     els.viewSketch.setAttribute("aria-label", "Sketch, updated");
   }
@@ -724,7 +729,8 @@ async function chooseAgent(id) {
 
 // S1 or S9: a fresh chat with the agent's saved draft and no old marks.
 async function loadAgent(id) {
-  const agent = await api(`/api/agents/${id}`);
+  const loaded = await api(`/api/agents/${id}`);
+  const agent = { ...loaded, draft: mergePersona(loaded.draft), hadPersona: Boolean(loaded.draft?.persona?.trim()) };
   state.agent = agent;
   state.fresh = new Set();
   state.yours = new Set();

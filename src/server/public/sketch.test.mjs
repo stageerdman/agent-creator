@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   readEvents, parseEventBlock, applyDraftEvent, changeLine, firstSentence, errorLine,
-  splitPaste, replyBlocks, inlineRuns, switcherRows, timeAgo,
+  splitPaste, replyBlocks, inlineRuns, switcherRows, timeAgo, mergePersona,
 } from "./sketch.js";
 
 const streamOf = (...chunks) =>
@@ -35,27 +35,63 @@ test("parseEventBlock skips broken blocks", () => {
 });
 
 test("applyDraftEvent replaces the draft and moves marks from yours to fresh", () => {
-  const before = { name: "Tony", persona: "p", instructions: "i", status: "saved" };
-  const draft = { name: "T", persona: "p", instructions: "i", status: "draft" };
-  const result = applyDraftEvent({ draft: before, yours: new Set(["name", "persona"]) }, { draft, changed: ["name"] });
+  const before = { name: "Tony", instructions: "i", status: "saved" };
+  const draft = { name: "T", instructions: "i", status: "draft" };
+  const result = applyDraftEvent({ draft: before, yours: new Set(["name", "instructions"]) }, { draft, changed: ["name"] });
   assert.equal(result.draft, draft);
   assert.deepEqual([...result.fresh], ["name"]);
-  assert.deepEqual([...result.yours], ["persona"]);
+  assert.deepEqual([...result.yours], ["instructions"]);
   assert.equal(result.firstSketch, false);
   assert.equal(result.unkept, true);
 });
 
 test("applyDraftEvent spots the first sketch", () => {
-  const empty = { name: "", persona: "", instructions: "", status: "draft" };
-  const draft = { name: "Tony", persona: "p", instructions: "i", status: "draft" };
-  assert.equal(applyDraftEvent({ draft: empty, yours: new Set() }, { draft, changed: ["name", "persona", "instructions"] }).firstSketch, true);
+  const empty = { name: "", instructions: "", status: "draft" };
+  const draft = { name: "Tony", instructions: "i", status: "draft" };
+  assert.equal(applyDraftEvent({ draft: empty, yours: new Set() }, { draft, changed: ["name", "instructions"] }).firstSketch, true);
+});
+
+test("applyDraftEvent folds an old persona into instructions and never names it", () => {
+  const draft = { name: "Tony", persona: "You push.", instructions: "Coach.", status: "draft" };
+  const result = applyDraftEvent({ draft: { name: "", instructions: "" }, yours: new Set() }, { draft, changed: ["persona"] });
+  assert.equal(result.draft.instructions, "You push.\n\nCoach.");
+  assert.equal("persona" in result.draft, false);
+  assert.deepEqual(result.changed, ["instructions"]);
+  assert.deepEqual([...result.fresh], ["instructions"]);
 });
 
 test("changeLine is built from changed, in field order", () => {
   assert.equal(changeLine([]), "");
-  assert.equal(changeLine(["persona"]), "Sketch: persona updated");
-  assert.equal(changeLine(["persona", "name"]), "Sketch: name and persona updated");
-  assert.equal(changeLine(["instructions", "name", "persona"]), "Sketch: name, persona and instructions updated");
+  assert.equal(changeLine(["instructions"]), "Sketch: instructions updated");
+  assert.equal(changeLine(["instructions", "name"]), "Sketch: name and instructions updated");
+});
+
+test("changeLine never says persona", () => {
+  for (const changed of [["persona"], ["persona", "name"], ["instructions", "name", "persona"]]) {
+    assert.doesNotMatch(changeLine(changed), /persona/i);
+  }
+  assert.equal(changeLine(["persona", "instructions"]), "Sketch: instructions updated");
+});
+
+test("mergePersona keeps every word, Persona first", () => {
+  const draft = { name: "Ines", persona: "Calm and exact.\nNever rushes.", instructions: "Teach negotiation.", status: "saved" };
+  const merged = mergePersona(draft);
+  assert.equal(merged.instructions, "Calm and exact.\nNever rushes.\n\nTeach negotiation.");
+  assert.equal("persona" in merged, false);
+  assert.equal(merged.name, "Ines");
+  assert.equal(merged.status, "saved");
+  assert.equal(mergePersona({ persona: "Only a persona.", instructions: "" }).instructions, "Only a persona.");
+});
+
+test("mergePersona leaves a draft without persona unchanged and is safe twice", () => {
+  const plain = { name: "A", instructions: "Do X." };
+  assert.equal(mergePersona(plain), plain);
+  const old = { name: "A", persona: "P.", instructions: "I." };
+  const once = mergePersona(old);
+  assert.deepEqual(mergePersona(once), once);
+  // The server may still hold persona next to an already merged text.
+  assert.equal(mergePersona({ ...once, persona: "P." }).instructions, "P.\n\nI.");
+  assert.equal(mergePersona({ persona: "", instructions: "I." }).instructions, "I.");
 });
 
 test("firstSentence cuts at the first sentence and at 140 characters", () => {
