@@ -402,6 +402,144 @@ body.face-change .face img {
   to { opacity: 1; }
 }
 
+/* ── SKETCH-REWORK: Profile and DNA switches (merlin-magic.md) ────────────
+ *
+ * The contract, for sketch.js / components.js (Jony). Motion and marks
+ * only: the look of cards and chips lives in app.css.
+ *
+ * .dna-layer               One of the four DNA cards (Instructions, Made
+ *                          from, Looks up, Strong and thin). Always visible
+ *                          on its own. Set style="--dna-i: 0..3".
+ * .dna-layer.is-revealed   Add on the FIRST open of DNA per agent per app
+ *                          session. Cards fade in and rise 6 px, 70 ms
+ *                          apart by --dna-i (≈ 410 ms for all four). They are
+ *                          clickable from the first frame. Later opens: skip
+ *                          the class, the cards are simply there.
+ * .dna-thread              On each source-file row in "Made from" (or on a
+ *                          line element of your own). Draws a 2 px line on
+ *                          its left edge. At rest the line is hidden.
+ * .dna-thread.is-active    The row is behind the selected instruction part:
+ *                          the line draws top to bottom (220 ms) and stays.
+ *                          Pair it with the words "behind this line".
+ * .dna-quality-glow        On the summary line of "Strong and thin" when it
+ *                          renders new data. It goes faint → clear with one
+ *                          warm wash that fades (500 ms, once). Same for
+ *                          every score: no count-up, no colour for good/bad.
+ * .profile-skill-chip      One skill chip in Profile. No look of its own.
+ * .profile-skill-chip.is-picked
+ *                          The user moved this chip (hand edit wins). It
+ *                          settles once (180 ms) and keeps a quiet outline
+ *                          and a ✎ mark (hidden from screen readers: put
+ *                          "moved by you" in its label).
+ */
+
+.dna-layer.is-revealed {
+  animation: magic-dna-reveal 200ms ease-out calc(var(--dna-i, 0) * 70ms) both;
+}
+
+@keyframes magic-dna-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dna-thread {
+  position: relative;
+}
+
+.dna-thread::before {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--magic-accent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition:
+    opacity 120ms ease-out,
+    transform 0s linear 120ms;
+}
+
+.dna-thread.is-active::before {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 80ms ease-out,
+    transform 220ms ease-out;
+}
+
+.dna-quality-glow {
+  border-radius: 4px;
+  animation:
+    magic-quality-clear 150ms ease-out both,
+    magic-quality-wash 500ms ease-out both;
+}
+
+@keyframes magic-quality-clear {
+  from {
+    opacity: 0.5;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes magic-quality-wash {
+  0% {
+    background-color: transparent;
+  }
+
+  30% {
+    background-color: color-mix(in srgb, var(--magic-warm) 16%, transparent);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+.profile-skill-chip.is-picked {
+  animation: magic-chip-settle 180ms ease-out both;
+}
+
+.profile-skill-chip.is-picked:not(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, currentcolor 35%, transparent);
+  outline-offset: 1px;
+}
+
+.profile-skill-chip.is-picked::after {
+  margin-left: 0.3em;
+  content: "✎";
+  content: "✎" / "";
+  font-size: 0.85em;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes magic-chip-settle {
+  from {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ── Reduced motion: everything still, meaning kept ────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -424,8 +562,16 @@ body.face-change .face img {
   .palette-band.bloom,
   .face.fill-in,
   body.face-change .face img,
-  .fade-in {
+  .fade-in,
+  .dna-layer.is-revealed,
+  .dna-quality-glow,
+  .profile-skill-chip.is-picked {
     animation: none;
+  }
+
+  .dna-thread::before,
+  .dna-thread.is-active::before {
+    transition: none;
   }
 
   .seg {
