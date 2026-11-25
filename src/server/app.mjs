@@ -14,6 +14,9 @@ import { createLogger, newTraceId } from "../log/logger.mjs";
 
 const log = createLogger("server");
 const PUBLIC = new URL("./public/", import.meta.url);
+// Every script the page imports; a module missing here 404s and the page stays blank.
+const PAGE_MODULES = ["app", "sketch", "tab-focus", "components",
+  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f"];
 
 function staticFile(name, contentType) {
   return async (_req, res) => {
@@ -25,11 +28,9 @@ function staticFile(name, contentType) {
 export function createApp(engine, { store = createAgentStore() } = {}) {
   const routes = {
     "GET /": staticFile("index.html", "text/html; charset=utf-8"),
-    "GET /app.js": staticFile("app.js", "text/javascript; charset=utf-8"),
-    "GET /sketch.js": staticFile("sketch.js", "text/javascript; charset=utf-8"),
     "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
     "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
-    ...Object.fromEntries(["components", "block-a", "block-b", "block-c", "block-d", "block-e", "block-f"]
+    ...Object.fromEntries(PAGE_MODULES
       .map((name) => [`GET /${name}.js`, staticFile(`${name}.js`, "text/javascript; charset=utf-8")])),
     ...mockRoutes(),
     "GET /api/health": async (_req, res) => sendJson(res, 200, await engine.checkCli()),

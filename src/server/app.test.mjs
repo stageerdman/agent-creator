@@ -1,5 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
 import { askAgent, checkCli } from "../engine/index.mjs";
 import { fakeSpawn } from "../engine/testing/fakeSpawn.mjs";
 import { createApp } from "./app.mjs";
@@ -59,5 +60,18 @@ test("GET serves the screen's scripts and styles", async () => {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-type"), new RegExp(type), path);
+  }
+});
+
+// Regression: tab-focus.js was imported but not routed, so the page booted blank.
+test("GET serves every script the page imports", async () => {
+  const dir = new URL("./public/", import.meta.url);
+  const sources = await Promise.all((await readdir(dir))
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => readFile(new URL(f, dir), "utf8")));
+  const imported = new Set(sources.flatMap((src) => [...src.matchAll(/from\s+"(\/[\w-]+\.js)"/g)].map((m) => m[1])));
+  assert.ok(imported.size > 0);
+  for (const path of imported) {
+    assert.equal((await fetch(`${base}${path}`)).status, 200, path);
   }
 });
