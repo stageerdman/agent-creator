@@ -105,7 +105,8 @@ export function openTalk(a, { talkId } = {}) {
   talk ??= blankTalk(a);
   cur = { a, talk };
   setTalkView("chat");
-  $("talk-msg").placeholder = `Talk to ${shortName(a)}…`;
+  // MAGIC-PASS beat 5: before the first message, the composer invites a hello.
+  $("talk-msg").placeholder = talk.messages.length ? `Talk to ${shortName(a)}…` : `Say hello to ${shortName(a)}…`;
   $("talk-msg").value = prefill ?? "";
   prefill = null;
   grow($("talk-msg"));
@@ -113,7 +114,6 @@ export function openTalk(a, { talkId } = {}) {
   scrollEnd();
   $("talk-msg").focus();
   if (!talkId && needsFirstWords(a)) firstWords(a);
-  else if (a.real && !talk.messages.length) firstWords(a);
 }
 
 export function leaveTalk() {
@@ -162,33 +162,26 @@ export function onOnline(online) {
   if (online && needsFirstWords(cur.a) && store.screen === "talk") firstWords(cur.a);
 }
 
-// The top bar face stays an outline until First words arrive (C5, X23).
-export const outlineFace = (a) => Boolean(a && cur?.a === a && needsFirstWords(a));
+// MAGIC-PASS: the face is inked at Keep, so Talk never shows an outline.
 const needsFirstWords = (a) => !a.real && a.firstWords && a.firstWords.at === null && Boolean(a.firstWords.line);
 
 // ── D2 First words ────────────────────────────────────────────────────────
 
 async function firstWords(a) {
-  if (!store.online) { renderBanner(); return; } // no fake: the face stays an outline
-  if (a.real) {
-    const talk = cur.talk;
-    talk.messages.push({ role: "agent", text: "(Demo) First words would be here.", mock: true });
-    realTalks.set(a.id, talk);
-    renderAll();
-    return;
-  }
+  if (!store.online) { renderBanner(); return; } // no fake: the words wait
   const talk = cur.talk;
   talk.title = "First words";
   talk.saved = true;
   talk.updatedAt = nowIso();
   if (!a.talks.includes(talk)) a.talks.push(talk);
   a.firstWords.at = nowIso();
-  talk.messages.push({ role: "divider", text: `First words · ${dayMonth()}`, divider: { kind: "firstWords" } });
+  talk.messages.push(firstWordsMark());
   renderAll();
-  $("top-face").querySelector(".face")?.classList.add("fill-in"); // outline → filled, with the words
-  $("talk-log").lastElementChild?.querySelector(".face")?.classList.add("fill-in");
   await streamAgent(a, { role: "agent", text: a.firstWords.line }, { firstWords: true });
 }
+
+const firstWordsMark = () => ({ role: "divider", text: `First words · ${dayMonth()}`, divider: { kind: "firstWords" }, fresh: true });
+const spokeBefore = (a) => { try { return Boolean(localStorage.getItem(`ac-first-words-${a.id}`)); } catch { return true; } };
 
 // ── Sending and answers ───────────────────────────────────────────────────
 
@@ -206,11 +199,19 @@ async function send(text) {
   const { a, talk } = cur;
   talk.messages.push({ role: "user", text });
   talk.updatedAt = nowIso();
+  $("talk-msg").placeholder = `Talk to ${shortName(a)}…`;
   if (!talk.saved && !a.real) { talk.saved = true; a.talks.push(talk); }
   if (a.real) realTalks.set(a.id, talk);
   renderAll();
   scrollEnd();
   const reply = answerFor(a, talk, text);
+  // MAGIC-PASS beat 5: a real agent's first real answer is its First words,
+  // marked once. Never on a demo line (W2: no ceremony on a placeholder).
+  if (a.real && !reply.mock && !spokeBefore(a)) {
+    talk.messages.push(firstWordsMark());
+    try { localStorage.setItem(`ac-first-words-${a.id}`, nowIso()); } catch {}
+    renderAll();
+  }
   const ok = await streamAgent(a, reply);
   if (ok && !talk.title) talk.title = reply.title ?? titleFrom(text);
   renderSide();
@@ -369,7 +370,11 @@ function whereFrom(a, m) {
 }
 
 function divider(a, m) {
-  if (m.divider?.kind !== "redrawn") return el("div", { class: "divider", role: "separator", "aria-label": m.text }, m.text);
+  if (m.divider?.kind !== "redrawn") {
+    const fresh = m.fresh;
+    delete m.fresh; // the fade plays once, on the render that adds the mark
+    return el("div", { class: fresh ? "divider first-words" : "divider", role: "separator", "aria-label": m.text }, m.text);
+  }
   const box = el("div", "divider-box");
   const more = el("div", { class: "divider-more", hidden: !m.open },
     el("p", "patch", `+${m.divider.patch}`),

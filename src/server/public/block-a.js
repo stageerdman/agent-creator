@@ -101,7 +101,7 @@ async function newAgentFlow() {
 function renderTop() {
   const a = store.screen === "home" ? null : nav.current();
   const kept = Boolean(a && (a.keptAt || a.draft?.status === "saved"));
-  $("top-face").replaceChildren(a ? face(a, 24, { outline: store.screen === "talk" && D.outlineFace(a) }) : "");
+  $("top-face").replaceChildren(a ? face(a, 24) : "");
   if (a && store.screen === "talk") $("switcher-name").textContent = nameOf(a) || "New agent";
   $("mode").hidden = !kept;
   // MAGIC-PASS beat 4: the underline stays until Talk is opened once for this agent.

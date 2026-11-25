@@ -546,7 +546,7 @@ body.face-change .face img {
  * #switcher-name.name-arrive Beat 3. The name settles in: fade + rise 3 px.
  * #mode-talk.beckon          Beat 4. A 2 px underline draws, then stays still
  *                            until Talk is opened. Not a button of its own.
- * .talk-divider.first-words  Beat 5. Fades in above the first answer.
+ * .divider.first-words       Beat 5. Fades in above the first answer.
  * .switch-dot                C1. A still dot: the change is in the other switch.
  * .card.just-kept            Home, once: the new card settles in.
  * .mark.ready.is-new         Home, once per study: a soft warm wash.
@@ -615,7 +615,7 @@ body.face-change .face img {
   }
 }
 
-.talk-divider.first-words {
+.divider.first-words {
   animation: magic-fade 250ms ease-out both;
 }
 
@@ -692,7 +692,7 @@ body.face-change .face img {
   .draft-field.first-sketch,
   #switcher-name.name-arrive,
   #mode-talk.beckon::after,
-  .talk-divider.first-words,
+  .divider.first-words,
   .card.just-kept,
   .mark.ready.is-new,
   #empty.is-leaving {
