@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glade · Agent Creator</title>
+<style>
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --text: #E6EEE8; --quiet: #8C9A90; --ember: #E89A4A;
+    --panel: #101A15; --line: #1E2B24;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas#field { position: fixed; inset: 0; display: block; }
+  .wash { position: fixed; inset: 0; background: var(--fly); opacity: 0; pointer-events: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Top bar: the demo's own way around. Plain words only. */
+  .bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 10;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+    transition: opacity .6s ease-in-out;
+  }
+  body.birthing .bar { opacity: .18; }
+  body.birthing .bar:hover, body.birthing .bar:focus-within { opacity: 1; }
+  .back { color: var(--quiet); text-decoration: none; font-size: 13px; justify-self: start; padding: 6px 4px; }
+  .back:hover { color: var(--text); }
+  .scenes { display: flex; gap: 2px; background: var(--shadow); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+  .scenes button {
+    border: 0; background: transparent; color: var(--quiet); font-size: 13px;
+    padding: 5px 14px; border-radius: 7px; min-height: 30px;
+  }
+  .scenes button:hover { color: var(--text); }
+  .scenes button[aria-current="true"] { background: var(--panel); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .sound { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
+  .sound[aria-pressed="true"] { color: var(--text); }
+
+  .scene { position: fixed; inset: 48px 0 0 0; }
+  .scene[hidden] { display: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .primary {
+    background: var(--text); color: var(--panel); border: 0; border-radius: 10px;
+    padding: 10px 18px; font-weight: 600; min-height: 44px;
+  }
+  .primary:disabled { opacity: .4; cursor: default; }
+  .quiet-btn { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 4px 10px; font-size: 13px; min-height: 32px; }
+
+  /* 1 · Home */
+  .agent {
+    position: absolute; width: 220px; height: 236px; border: 0; background: transparent;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 8px;
+    border-radius: 18px;
+  }
+  .agent .name { font-size: 20px; font-weight: 500; letter-spacing: .01em; }
+  .agent .state { font-size: 13px; color: var(--quiet); }
+
+  /* 2 · Birth */
+  #birth { z-index: 5; }
+  .birth-name {
+    position: absolute; left: 0; right: 0; top: calc(36% + 96px); text-align: center;
+    font-size: 34px; font-weight: 500; letter-spacing: .02em; opacity: 0; transition: opacity .4s ease-out;
+  }
+  .birth-name.on { opacity: 1; }
+  .birth-words {
+    position: absolute; left: 50%; top: calc(36% + 158px); transform: translateX(-50%);
+    width: min(560px, calc(100% - 32px)); padding: 16px 20px; opacity: 0; transition: opacity .3s ease-out;
+  }
+  .birth-words.on { opacity: 1; }
+  .birth-words p { margin: 0; min-height: 3em; }
+  .birth-words .mark { display: block; font-size: 13px; color: var(--quiet); margin-bottom: 4px; }
+  .birth-go { position: absolute; left: 50%; transform: translateX(-50%); top: calc(36% + 290px); opacity: 0; transition: opacity .3s; }
+  .birth-go.on { opacity: 1; }
+  .skip {
+    position: absolute; right: 20px; bottom: 20px; background: var(--panel); border: 1px solid var(--line);
+    color: var(--quiet); border-radius: 10px; padding: 8px 16px; min-height: 40px; font-size: 13px;
+  }
+  .skip:hover { color: var(--text); }
+
+  /* 3 · Files */
+  .files-panel {
+    position: absolute; top: 16px; right: 16px; bottom: 16px; width: 360px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .files-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+  .files-head h1 { font-size: 20px; font-weight: 500; margin: 0; }
+  .count { font-size: 15px; margin-top: 2px; }
+  .sub { font-size: 13px; color: var(--quiet); }
+  .rows { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+  .rows li { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 7px 20px; font-size: 13px; }
+  .rows .fname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .rows .fsize { color: var(--quiet); text-align: right; }
+  .rows .fstate { color: var(--quiet); grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; }
+  .rows li.reading .fstate { color: var(--text); }
+  .rows li.failed .fstate { color: var(--ember); }
+  .drop-hint { padding: 12px 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--quiet); margin: 0; }
+  .dropping { position: fixed; inset: 48px 0 0 0; z-index: 20; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .dropping span { background: var(--panel); border: 1px solid var(--line); padding: 10px 18px; border-radius: 10px; }
+  body.drag .dropping { display: flex; }
+
+  /* 4 · Talk */
+  .chat {
+    position: absolute; top: 16px; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: min(640px, calc(100% - 32px)); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .chat-head { padding: 16px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
+  .chat-head h1 { font-size: 20px; font-weight: 500; margin: 0; }
+  .chat-head span { font-size: 13px; color: var(--quiet); }
+  .msgs { list-style: none; margin: 0; padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .msgs .me { align-self: flex-end; max-width: 80%; background: var(--shadow); border: 1px solid var(--line); padding: 8px 14px; border-radius: 12px; }
+  .msgs .them { max-width: 92%; }
+  .msgs .who { display: block; font-size: 13px; color: var(--quiet); }
+  .msgs .text { margin: 0; }
+  .where { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+  .where .label { color: var(--quiet); display: block; }
+  .where blockquote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--line); color: var(--text); }
+  .note { margin: 8px 0 0; font-size: 13px; color: var(--quiet); }
+  .composer { display: flex; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); align-items: flex-end; }
+  .composer textarea {
+    flex: 1; resize: none; background: var(--shadow); color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; font: inherit; min-height: 44px; max-height: 140px;
+  }
+  .composer textarea::placeholder { color: var(--quiet); }
+
+  @media (max-width: 760px) {
+    .files-panel { top: auto; left: 16px; width: auto; height: 46%; }
+    .scenes button { padding: 5px 9px; }
+    .back { font-size: 0; } .back::before { content: "←"; font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<div class="wash" id="wash" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="back" href="index.html">← All concepts</a>
+  <nav class="scenes" aria-label="Moments">
+    <button data-go="home">Home</button>
+    <button data-go="birth">Birth</button>
+    <button data-go="files">Files</button>
+    <button data-go="talk">Talk</button>
+  </nav>
+  <button class="sound" id="sound" aria-pressed="false">Sound off</button>
+</header>
+
+<main>
+  <section id="home" class="scene" aria-label="Home"></section>
+
+  <section id="birth" class="scene" aria-label="Birth" hidden>
+    <div class="birth-name" id="bName" aria-live="polite"></div>
+    <div class="birth-words panel" id="bWordsBox"><span class="mark" id="bMark"></span><p id="bWords"></p></div>
+    <button class="primary birth-go" id="bTalk" hidden>Talk to Maya</button>
+    <button class="skip" id="skip">Skip</button>
+  </section>
+
+  <section id="files" class="scene" aria-label="Files" hidden>
+    <aside class="files-panel panel">
+      <div class="files-head">
+        <h1 id="fName">Marcus</h1>
+        <div class="count" id="fCount" aria-live="polite"></div>
+        <div class="sub" id="fSub"></div>
+      </div>
+      <ul class="rows" id="fRows"></ul>
+      <p class="drop-hint">Drop files anywhere to add them · they stay on this Mac</p>
+    </aside>
+  </section>
+
+  <section id="talk" class="scene" aria-label="Talk" hidden>
+    <div class="chat panel">
+      <div class="chat-head"><h1 id="tName"></h1><span id="tState"></span></div>
+      <ol class="msgs" id="msgs"></ol>
+      <form class="composer" id="composer">
+        <label class="sr" for="q">Message</label>
+        <textarea id="q" rows="1"></textarea>
+        <button class="primary" id="send">Send</button>
+      </form>
+    </div>
+  </section>
+</main>
+<div class="dropping" aria-hidden="true"><span id="dropText">adds to Marcus</span></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Shared demo model: agents, files, the study run, talk, sound.
+   (Each concept page carries its own copy, so it opens alone.)
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+function fmtSize(b) { return b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+
+function mkFile(name, size, extra) { return Object.assign({ name, size, status: 'learned', t0: 0, dur: 0, pct: 1 }, extra || {}); }
+function generic(n) { const a = []; for (let i = 0; i < n; i++) a.push(mkFile('file ' + (i + 1), 1e5)); return a; }
+
+const MARCUS_OLD = ['Letters to a young manager.pdf', 'Talk — Leading through doubt.txt', 'Interview, radio (2018).txt', 'Notebook 1.md', 'Notebook 2.md', 'Notebook 3.md', 'Workshop day 1.txt', 'Workshop day 2.txt', 'Q&A transcripts.txt', 'Essays 2015–2019.pdf', 'Commencement speech.txt', 'Book draft, ch 1–4.docx', 'Book draft, ch 5–9.docx', 'Podcast ep 12.txt', 'Podcast ep 31.txt', 'Margin notes.md', 'Team memos.pdf', 'Reading list.md'];
+const MARCUS_NEW = [
+  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'Couldn’t read this PDF (it’s a scan)', true],
+  ['Mentoring calls (March).txt', 640e3, 6100], ['Podcast ep 57.txt', 190e3, 3900], ['Board letters 2020.pdf', 3.1e6, 8600],
+  ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet', false], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
+  ['Notebook 4.md', 80e3, 5200], ['Interview, 2022.txt', 260e3, 10600], ['Letters, part 2.pdf', 2.2e6, 11800]
+];
+const AGENTS = [
+  { id: 'tony', name: 'Tony', files: generic(30) },
+  { id: 'marcus', name: 'Marcus', files: MARCUS_OLD.map((n, i) => mkFile(n, 4e4 + (hash(n) % 3000) * 1000)).concat(
+      MARCUS_NEW.map(([n, s, d, reason, retry]) => mkFile(n, s, { status: 'waiting', pct: 0, dur: d, fail: !!reason, reason: reason || '', retry: !!retry }))) },
+  { id: 'ada', name: 'Ada', files: generic(22) },
+];
+const MAYA = { id: 'maya', name: 'Maya', files: generic(24), born: false };
+const byId = id => AGENTS.concat([MAYA]).find(a => a.id === id);
+const MARCUS = byId('marcus');
+function homeAgents() { return MAYA.born ? AGENTS.concat([MAYA]) : AGENTS; }
+function counts(a) {
+  const c = { total: a.files.length, learned: 0, reading: 0, failed: 0, waiting: 0 };
+  a.files.forEach(f => c[f.status]++); return c;
+}
+function stateText(a) { const c = counts(a); return (c.reading || c.waiting) ? `Studying · ${c.learned} of ${c.total}` : 'Ready'; }
+
+/* ---------- The study run: honest, runs whether you watch or not ---------- */
+const run = { started: false, celebrated: true };
+const BASE_TITLE = document.title;
+function startRun() {
+  if (run.started) return; run.started = true;
+  const t = Date.now();
+  const arriving = MARCUS.files.filter(f => f.status === 'waiting');
+  arriving.forEach(f => { f.status = 'reading'; f.t0 = t; });
+  run.celebrated = false;
+  world.filesArrived(arriving, null);
+  renderFiles();
+}
+function addRealFiles(list, x, y) {
+  const t = Date.now(), added = [];
+  for (const file of list) {
+    const tooBig = file.size > 200e6;
+    const f = mkFile(file.name, file.size, { status: 'reading', t0: t, pct: 0, dur: 2500 + Math.random() * 4000,
+      fail: tooBig || file.size === 0, reason: tooBig ? 'Too large to read (over 200 MB)' : 'This file is empty' });
+    MARCUS.files.unshift(f); added.push(f);
+  }
+  run.started = true; run.celebrated = false;
+  world.filesArrived(added, x == null ? null : { x, y });
+  renderFiles();
+}
+function retry(f) { f.status = 'reading'; f.t0 = Date.now(); f.dur = 3000; f.fail = false; f.pct = 0; run.celebrated = false; world.fileRetry(f); renderFiles(); }
+function tickRun() {
+  const t = Date.now(); let changed = false;
+  for (const f of MARCUS.files) {
+    if (f.status !== 'reading') continue;
+    f.pct = clamp((t - f.t0) / f.dur, 0, 1);
+    if (f.pct >= 1) { f.status = f.fail ? 'failed' : 'learned'; changed = true; f.status === 'learned' ? world.fileLearned(f) : world.fileFailed(f); }
+  }
+  const c = counts(MARCUS);
+  document.title = c.reading ? `${c.learned}/${c.total} · ${BASE_TITLE}` : BASE_TITLE;
+  if (!c.reading && !run.celebrated) { run.celebrated = true; world.allDone(); }
+  if (changed) { renderFiles(); renderHome(); }
+}
+setInterval(tickRun, 100);
+
+function renderFiles() {
+  const c = counts(MARCUS);
+  $('#fCount').textContent = `${c.learned} of ${c.total} in step`;
+  const bits = [];
+  if (c.reading) bits.push(`${c.reading} reading`);
+  if (c.waiting) bits.push(`${c.waiting} waiting`);
+  if (c.failed) bits.push(`${c.failed} couldn’t read`);
+  $('#fSub').textContent = c.reading ? bits.join(' · ') + ' · you can leave, it keeps going'
+                                     : (c.waiting ? 'Studying · ' : 'Ready') + (bits.length ? ' · ' + bits.join(' · ') : '');
+  const ul = $('#fRows'); ul.textContent = '';
+  for (const f of MARCUS.files) {
+    const li = document.createElement('li'); li.className = f.status;
+    const st = f.status === 'learned' ? 'Learned' : f.status === 'reading' ? 'Reading' : f.status === 'waiting' ? 'Waiting' : f.reason;
+    li.innerHTML = `<span class="fname"></span><span class="fsize">${fmtSize(f.size)}</span><span class="fstate"><span></span></span>`;
+    li.querySelector('.fname').textContent = f.name; li.querySelector('.fname').title = f.name;
+    li.querySelector('.fstate span').textContent = st;
+    if (f.status === 'failed' && f.retry) {
+      const b = document.createElement('button'); b.className = 'quiet-btn'; b.textContent = 'Try again';
+      b.onclick = () => retry(f); li.querySelector('.fstate').appendChild(b);
+    }
+    ul.appendChild(li);
+  }
+}
+
+/* ---------- Talk: first words never wait; sources stay plain ---------- */
+const BANK = {
+  tony: { q: 'A client says we’re too expensive. What do I say?', keys: ['expensive', 'price', 'client', 'sell', 'sale', 'deal', 'objection', 'cost'],
+    a: 'Don’t defend the price. Ask what they’re comparing it to. Nine times out of ten “too expensive” means “I don’t see the value yet”, so go back to the outcome they told you they wanted, and price that, not the hours.',
+    src: { ref: 'Workshop 3 · transcript, 14:22', quote: 'Price is only an issue when the value isn’t clear yet.' } },
+  marcus: { q: 'I made a mistake in front of the whole team. How do I face them tomorrow?', keys: ['mistake', 'team', 'fail', 'wrong', 'face', 'sorry', 'lead'],
+    a: 'Say it first, and say it plainly. What you did is done; what you do next is yours. People forget the mistake long before they forget how you carried it.',
+    src: { ref: 'Letters to a young manager.pdf · letter 4', quote: 'The error is the event. The account you give of it is the choice.' } },
+  ada: { q: 'Should we rewrite the old billing system?', keys: ['rewrite', 'system', 'code', 'legacy', 'billing', 'refactor', 'bug'],
+    a: 'Not yet. Write down the three things that hurt most and fix them in place. If you still want a rewrite after that, at least you’ll know what the new one has to do better.',
+    src: { ref: 'Engineering notes 2021 · p. 12', quote: 'Rewrites fail when nobody can say what the old system does.' } },
+  maya: { q: 'How do I know when a layout is finished?', keys: ['layout', 'design', 'finished', 'done', 'type', 'grid', 'page'],
+    a: 'When you can’t take anything away without it falling apart. Take one thing out. If nobody misses it, it was never needed.',
+    src: { ref: 'Studio lectures · week 6', quote: 'Finished is when taking away starts to hurt.' } },
+};
+const UNKNOWN_Q = 'What do you think about the new tax rules?';
+const convo = {}; let talkAgent = byId('tony'); let streaming = null;
+function answerFor(a, q) {
+  const b = BANK[a.id], s = q.toLowerCase();
+  if (b.keys.some(k => s.includes(k))) return { text: b.a, src: b.src };
+  return { text: 'That isn’t in anything you gave me, so I’d only be guessing. I’d rather not.', unknown: true };
+}
+function nextPrompt(a) { const log = convo[a.id] || []; const asked = log.filter(m => m.who === 'me').length; return asked === 0 ? BANK[a.id].q : asked === 1 ? UNKNOWN_Q : ''; }
+function openTalk(a) { talkAgent = a; go('talk'); }
+function renderTalk() {
+  const a = talkAgent; $('#tName').textContent = a.name; $('#tState').textContent = stateText(a);
+  const ol = $('#msgs'); ol.textContent = '';
+  (convo[a.id] || []).forEach(m => ol.appendChild(msgEl(m, a)));
+  const q = $('#q'); q.value = nextPrompt(a); q.placeholder = `Ask ${a.name} anything`; autoGrow();
+  ol.scrollTop = ol.scrollHeight;
+}
+function msgEl(m, a) {
+  const li = document.createElement('li'); li.className = m.who;
+  if (m.who === 'me') { li.textContent = m.text; return li; }
+  li.innerHTML = '<span class="who"></span><p class="text"></p>';
+  li.querySelector('.who').textContent = m.mark || a.name;
+  li.querySelector('.text').textContent = m.shown != null ? m.shown : m.text;
+  if (m.done !== false) addTail(li, m, a);
+  return li;
+}
+function addTail(li, m, a) {
+  if (m.src) {
+    const d = document.createElement('div'); d.className = 'where';
+    d.innerHTML = '<span class="label">Where from</span><span class="ref"></span><blockquote></blockquote>';
+    d.querySelector('.ref').textContent = m.src.ref; d.querySelector('blockquote').textContent = '“' + m.src.quote + '”';
+    li.appendChild(d);
+  } else if (m.unknown) {
+    const p = document.createElement('p'); p.className = 'note'; p.textContent = `Not in ${a.name}’s references`; li.appendChild(p);
+  }
+}
+function send(q) {
+  if (!q.trim() || streaming) return;
+  const a = talkAgent; const log = convo[a.id] = convo[a.id] || [];
+  log.push({ who: 'me', text: q.trim() });
+  const ans = answerFor(a, q);
+  const m = { who: 'them', text: ans.text, src: ans.src, unknown: ans.unknown, done: false };
+  const words = ans.text.split(' ');
+  m.shown = words.slice(0, 4).join(' ');            // first words land in this very frame
+  log.push(m);
+  const ol = $('#msgs'); ol.appendChild(msgEl(log[log.length - 2], a)); const li = msgEl(m, a); ol.appendChild(li);
+  ol.scrollTop = ol.scrollHeight;
+  world.firstWords(a, !!ans.unknown);               // presence answers the words, never precedes them
+  $('#q').value = nextPrompt(a); autoGrow(); $('#send').disabled = true;
+  let i = 4; const p = li.querySelector('.text');
+  streaming = { m, li, a, timer: 0, finish() {
+    clearTimeout(this.timer); m.shown = m.text; m.done = true; p.textContent = m.text; addTail(li, m, a);
+    streaming = null; $('#send').disabled = false; world.answerEnd(a); ol.scrollTop = ol.scrollHeight; } };
+  const step = () => {
+    if (i >= words.length) return streaming.finish();
+    m.shown += ' ' + words[i++]; p.textContent = m.shown; ol.scrollTop = ol.scrollHeight;
+    streaming.timer = setTimeout(step, 34);
+  };
+  streaming.timer = setTimeout(step, 34);
+}
+function autoGrow() { const q = $('#q'); q.style.height = 'auto'; q.style.height = Math.min(140, q.scrollHeight + 2) + 'px'; }
+$('#composer').addEventListener('submit', e => { e.preventDefault(); send($('#q').value); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($('#q').value); } });
+$('#q').addEventListener('input', autoGrow);
+
+/* ---------- Sound: off by default, one switch, quiet ---------- */
+const sound = { on: false, ctx: null, out: null };
+function audio() {
+  if (!sound.on) return null;
+  if (!sound.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    sound.ctx = new AC(); sound.out = sound.ctx.createGain(); sound.out.gain.value = 0.063; sound.out.connect(sound.ctx.destination); }
+  if (sound.ctx.state === 'suspended') sound.ctx.resume();
+  return sound.ctx;
+}
+function noise(c, sec) { const b = c.createBuffer(1, c.sampleRate * sec, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+function env(c, g, t, a, peak, r) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + r); }
+$('#sound').addEventListener('click', () => {
+  sound.on = !sound.on; $('#sound').setAttribute('aria-pressed', sound.on); $('#sound').textContent = sound.on ? 'Sound on' : 'Sound off';
+  if (sound.on) audio(); else if (sound.ctx) sound.ctx.suspend();
+});
+function playHush(sec) { const c = audio(); if (!c) return; const s = c.createBufferSource(); s.buffer = noise(c, sec); const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; const g = c.createGain(); const t = c.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 1.2); g.gain.setValueAtTime(0.5, t + sec - 1.5); g.gain.exponentialRampToValueAtTime(0.0001, t + sec); s.connect(f).connect(g).connect(sound.out); s.start(t); s.stop(t + sec); return s; }
+function playThum() { const c = audio(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime; o.frequency.setValueAtTime(92, t); o.frequency.exponentialRampToValueAtTime(46, t + .7); env(c, g, t, .03, 1, 1.3); o.connect(g).connect(sound.out); o.start(t); o.stop(t + 1.5); }
+
+/* ---------- Scenes ---------- */
+let scene = null;
+const SCENES = ['home', 'birth', 'files', 'talk'];
+function go(name) {
+  if (name === scene) return;
+  if (scene === 'birth') stopBirth();
+  if (scene === 'talk' && streaming) streaming.finish();
+  scene = name; document.body.dataset.scene = name;
+  SCENES.forEach(s => { $('#' + s).hidden = s !== name; });
+  document.querySelectorAll('[data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === name));
+  history.replaceState(null, '', '#' + name);
+  world.enter(name);
+  if (name === 'home') renderHome();
+  if (name === 'files') { startRun(); renderFiles(); }
+  if (name === 'birth') startBirth();
+  if (name === 'talk') { renderTalk(); $('#q').focus({ preventScroll: true }); }
+}
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+
+function renderHome() {
+  if (scene !== 'home') return;
+  const home = $('#home'); home.textContent = '';
+  for (const a of homeAgents()) {
+    const b = document.createElement('button'); b.className = 'agent'; b.dataset.id = a.id;
+    b.innerHTML = '<span class="name"></span><span class="state"></span>';
+    b.querySelector('.name').textContent = a.name; b.querySelector('.state').textContent = stateText(a);
+    b.setAttribute('aria-label', `Talk to ${a.name} · ${stateText(a)}`);
+    b.addEventListener('click', () => openTalk(a));
+    b.addEventListener('pointerenter', () => world.notice(a));
+    b.addEventListener('focus', () => world.notice(a));
+    home.appendChild(b);
+  }
+  world.placeHomeButtons();
+}
+
+/* Dropping real files: always lands in Files, always adds to Marcus */
+let dragDepth = 0;
+addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag');
+  const list = e.dataTransfer && e.dataTransfer.files; if (!list || !list.length) return;
+  go('files'); addRealFiles(Array.from(list), e.clientX, e.clientY);
+});
+
+/* ============================================================
+   Glade world: every file is a firefly. In step = learned.
+   ============================================================ */
+const cv = $('#field'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function sprite(rgb, core) {
+  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, core); gr.addColorStop(.12, `rgba(${rgb},.85)`); gr.addColorStop(.32, `rgba(${rgb},.25)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
+}
+const FLY = sprite('216,242,106', 'rgba(246,255,214,1)');
+const EMBER = sprite('232,154,74', 'rgba(255,214,170,1)');
+const WARM = sprite('196,232,96', 'rgba(236,250,190,1)');  // a softer, warmer green so it never reads as a terminal
+
+/* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
+function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+const wrap = d => d - Math.round(d);   // phase difference in (-.5, .5]
+
+const clusters = new Map();
+function cluster(a) {
+  let c = clusters.get(a.id); if (c) return c;
+  const r = rng(hash(a.name));
+  c = { a, cx: 0, cy: 0, scale: 1, alpha: 1, period: 2.4 + r(), master: r(), still: false, bigT: -1e9, lastFlash: -1e9, seed: r() * 6.28, pts: [] };
+  clusters.set(a.id, c); syncPoints(c); return c;
+}
+function slot(i, n, R, seed) { const r = R * Math.sqrt((i + .5) / n), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r * .86]; }
+function radius(n) { return 22 + 8 * Math.sqrt(n); }
+function syncPoints(c) {
+  const files = c.a.files.slice(0, 60); const have = new Map(c.pts.map(p => [p.f, p]));
+  const R = radius(files.length);
+  c.pts = files.map((f, i) => {
+    let p = have.get(f);
+    if (!p) { const r = rng(hash(f.name) + i); p = { f, ox: 0, oy: 0, phase: r(), period: 1.6 + r() * 2.2, flashT: -1e9, joined: f.status === 'learned', fly: null, rate: 6, glow: .15 + r() * .25, seedA: r() * 6.28, seedB: r() * 6.28, col: -1 }; }
+    const [sx, sy] = slot(i, files.length, R, c.seed); p.sx = sx; p.sy = sy;
+    if (!have.has(f)) { p.ox = sx; p.oy = sy; }
+    return p;
+  });
+  c.R = R;
+}
+const world = {
+  enter(name) { layout(true); },
+  filesArrived(list, from) {
+    const c = cluster(MARCUS); syncPoints(c); let k = 0;
+    const loose = c.pts.filter(p => !p.joined && p.f.status !== 'learned');
+    loose.forEach((p, i) => { p.col = i; });
+    for (const p of c.pts) if (list.includes(p.f)) {
+      const sx = from ? from.x : -30, sy = from ? from.y : H * (.2 + .6 * ((k++ * .37) % 1));
+      p.fly = { x: sx - c.cx, y: sy - c.cy, t0: clock() + (from ? 0 : k * 70) };
+    }
+  },
+  fileLearned(f) { const p = findPt(f); if (p) { p.joining = true; p.rate = 1.6; } },
+  fileFailed(f) { },
+  fileRetry(f) { const p = findPt(f); if (p) p.joined = false; },
+  allDone() { const c = clusters.get('marcus'); if (c) big(c, clock()); },
+  notice(a) { const c = cluster(a), t = clock(); if (reduced || t - c.lastFlash < 700) return; c.pts.forEach(p => { if (p.f.status !== 'failed') p.flashT = t; }); c.lastFlash = t; },
+  firstWords(a, unknown) { const c = cluster(a); c.still = unknown; if (!unknown && !reduced) { const t = clock(); c.pts.forEach(p => p.flashT = t); c.master = 0; c.lastFlash = t; } },
+  answerEnd(a) { },
+  placeHomeButtons() { layout(false); },
+};
+function findPt(f) { const c = clusters.get('marcus'); return c && c.pts.find(p => p.f === f); }
+function big(c, t) { if (reduced) return; c.bigT = t; c.master = 0; c.pts.forEach(p => { if (p.f.status === 'learned') p.flashT = t; }); }
+
+function visible() {
+  if (scene === 'home') return homeAgents().map(cluster);
+  if (scene === 'files') return [cluster(MARCUS)];
+  if (scene === 'talk') return [cluster(talkAgent)];
+  return [];
+}
+function layout(snap) {
+  if (scene === 'home') {
+    const list = homeAgents(), n = list.length, cols = Math.max(1, Math.min(n, Math.floor(W / 230))), rows = Math.ceil(n / cols);
+    const cellH = Math.min(300, (H - 48) / rows);
+    list.forEach((a, i) => {
+      const c = cluster(a), col = i % cols, row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols);
+      c.cx = W / 2 + (col - (inRow - 1) / 2) * Math.min(260, W / cols); c.cy = 48 + (H - 48) / 2 + (row - (rows - 1) / 2) * cellH - 30;
+      c.scale = 1; c.alpha = 1; c.still = false;
+      const b = document.querySelector(`.agent[data-id="${a.id}"]`);
+      if (b) { b.style.left = (c.cx - 110) + 'px'; b.style.top = (c.cy - 48 - 100) + 'px'; }
+    });
+  } else if (scene === 'files') {
+    const c = cluster(MARCUS), pr = $('.files-panel').getBoundingClientRect();
+    if (W > 760) { c.cx = pr.left / 2; c.cy = 48 + (H - 48) / 2; } else { c.cx = W / 2; c.cy = 48 + (pr.top - 48) / 2; }
+    c.scale = W > 760 ? 1.25 : .9; c.alpha = 1; c.still = false;
+  } else if (scene === 'talk') {
+    const c = cluster(talkAgent); c.cx = W - 74; c.cy = 48 + 70; c.scale = .55; c.alpha = .3;
+  }
+}
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  layout(true);
+}
+addEventListener('resize', resize);
+
+function target(c, p) {
+  const inFiles = scene === 'files' && c.a === MARCUS;
+  if (!inFiles || p.joined || p.joining) return [p.sx, p.sy];
+  // loose files wait in two quiet columns beside the cluster, names readable
+  const side = p.col % 2 ? 1 : -1, row = Math.floor(p.col / 2);
+  const narrow = W <= 760;
+  const x = side * (c.R * c.scale + (narrow ? 40 : 70));
+  const y = (row - 2.5) * (narrow ? 20 : 28);
+  return [x / c.scale, y / c.scale];
+}
+
+let last = clock();
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const c of visible()) drawCluster(c, t, dt);
+  if (scene === 'birth') drawBirth(t, dt);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  requestAnimationFrame(frame);
+}
+
+function drawCluster(c, t, dt) {
+  if (c.pts.length !== Math.min(60, c.a.files.length)) syncPoints(c);
+  c.master += dt / c.period;
+  let beat = false; if (c.master >= 1) { c.master -= 1; beat = true; c.lastFlash = t; }
+  const bigB = flash(t - c.bigT), labels = scene === 'files' && c.a === MARCUS;
+  for (const p of c.pts) {
+    const f = p.f, failed = f.status === 'failed';
+    // timing
+    if (!reduced && !c.still && !failed) {
+      if (p.joined) { if (beat) p.flashT = t + (p.seedA * 4); }               // up to ~25 ms apart, like the real thing
+      else {
+        p.phase += dt / p.period;
+        if (p.joining) { const d = wrap(c.master - p.phase); p.phase += d * Math.min(1, dt * 1.4); p.period += (c.period - p.period) * Math.min(1, dt); }
+        if (p.phase >= 1) { p.phase -= 1; p.flashT = t; }
+      }
+    }
+    // place
+    let [tx, ty] = target(c, p);
+    if (!reduced) { tx += Math.sin(t / 8000 * 6.283 + p.seedA) * 1.5; ty += Math.cos(t / 8000 * 6.283 + p.seedB) * 1.5; }
+    if (p.fly) {
+      const k = (t - p.fly.t0) / 700;
+      if (k < 0) continue;
+      if (k >= 1 || reduced) { p.fly = null; p.ox = tx; p.oy = ty; }
+      else { const e = easeOut(k), mx = (p.fly.x + tx) / 2, my = Math.min(p.fly.y, ty) - 120;   // soft curve
+        p.ox = (1 - e) * (1 - e) * p.fly.x + 2 * (1 - e) * e * mx + e * e * tx; p.oy = (1 - e) * (1 - e) * p.fly.y + 2 * (1 - e) * e * my + e * e * ty; }
+    } else if (reduced) { p.ox = tx; p.oy = ty; }
+    else { const k = Math.min(1, dt * p.rate); p.ox += (tx - p.ox) * k; p.oy += (ty - p.oy) * k; }
+    if (p.joining && Math.abs(wrap(c.master - p.phase)) < .02 && Math.hypot(tx - p.ox, ty - p.oy) < 3) { p.joining = false; p.joined = true; p.rate = 6; }
+    // light
+    let b, alpha, size, img = FLY;
+    if (failed) { img = EMBER; alpha = .5; size = 16; b = 0; }
+    else if (reduced) { b = 0; alpha = p.joined ? .85 : p.glow; size = p.joined ? 24 : 18; }
+    else if (c.still) { b = 0; alpha = .22; size = 18; }
+    else { b = flash(t - p.flashT); alpha = (p.joined ? .1 : .14) + .8 * b; size = 18 + 12 * b; if (!p.joined) img = WARM; }
+    if (bigB) { alpha = Math.max(alpha, .25 + .7 * bigB); size *= 1 + .5 * bigB; }
+    const x = c.cx + p.ox * c.scale, y = c.cy + p.oy * c.scale, s = size * (c.scale < 1 ? .8 : c.scale);
+    ctx.globalAlpha = alpha * c.alpha; ctx.drawImage(img, x - s / 2, y - s / 2, s, s);
+    if (labels && !p.joined && !p.joining && !p.fly) {
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = .9;
+      ctx.font = '12px ' + getComputedStyle(document.body).fontFamily;
+      const side = p.col % 2 ? 1 : -1, txt = short(f.name) + (failed ? ' · couldn’t read' : '');
+      ctx.fillStyle = failed ? '#E89A4A' : '#8C9A90'; ctx.textAlign = side > 0 ? 'left' : 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, x + side * 12, y);
+      ctx.globalCompositeOperation = 'lighter';
+    }
+  }
+}
+function short(s) { return s.length > 24 ? s.slice(0, 22) + '…' : s; }
+
+/* ---------- Birth: points arrive, find each other, flash as one ---------- */
+const birth = { t0: 0, pts: [], flashed: false, timers: [], active: false, master: 0 };
+function startBirth() {
+  birth.active = true; birth.flashed = false; birth.t0 = clock(); birth.master = 0; birth.timers.forEach(clearTimeout); birth.timers = [];
+  document.body.classList.add('birthing');
+  $('#bName').classList.remove('on'); $('#bName').textContent = '';
+  $('#bWordsBox').classList.remove('on'); $('#bWords').textContent = ''; $('#bMark').textContent = '';
+  $('#bTalk').hidden = true; $('#bTalk').classList.remove('on'); $('#skip').hidden = false;
+  const r = rng(7), n = 24, R = radius(n) * 1.5;
+  birth.pts = [];
+  for (let i = 0; i < n; i++) {
+    const edge = Math.floor(r() * 4), u = r();
+    const sx = edge === 0 ? -20 : edge === 1 ? W + 20 : u * W, sy = edge === 2 ? 28 : edge === 3 ? H + 20 : u * H;
+    const [ox, oy] = slot(i, n, R, 1.3);
+    birth.pts.push({ spawn: 600 + (i / n) * 2200 + r() * 250, x: sx, y: sy, fx: W / 2 + (r() - .5) * Math.min(W, 900) * .8, fy: H * .38 + (r() - .5) * H * .5,
+      ox, oy, phase: r(), period: 2.1 + r() * 1.1, flashT: -1e9, seedA: r() * 6.28 });
+  }
+  if (reduced) { birth.pts.forEach(p => { p.spawn = 0; }); doFlash(clock(), true); return; }
+  playHush(9);
+}
+function stopBirth() { birth.active = false; birth.timers.forEach(clearTimeout); birth.timers = []; document.body.classList.remove('birthing'); }
+function skipBirth() {
+  if (!birth.active || birth.flashed || clock() - birth.t0 < 200) return;
+  const t = clock(); birth.t0 = t - 8000;
+  birth.pts.forEach(p => { p.spawn = 0; const cx = W / 2, cy = H * .36; p.x = cx + p.ox + (Math.random() - .5) * 30; p.y = cy + p.oy + (Math.random() - .5) * 30; });
+  doFlash(t, false);
+}
+function doFlash(t, still) {
+  birth.flashed = true; MAYA.born = true; birth.master = 0;
+  if (!still) {
+    birth.pts.forEach(p => { p.flashT = t; p.phase = 0; });
+    $('#wash').animate([{ opacity: 0 }, { opacity: .08, offset: .118 }, { opacity: 0 }], { duration: 1360, easing: 'ease-out' });
+    playThum();
+  }
+  $('#skip').hidden = true;
+  const later = (ms, fn) => birth.timers.push(setTimeout(fn, still ? 0 : ms));
+  later(500, () => { $('#bName').textContent = 'Maya'; $('#bName').classList.add('on'); });
+  later(900, () => typeWords());
+}
+const FIRST_WORDS = 'You gave me six years of lectures, two notebooks and every crit you ever wrote down. Ask me what you’d have asked me in the studio.';
+function typeWords() {
+  const box = $('#bWordsBox'), p = $('#bWords'); box.classList.add('on'); $('#bMark').textContent = 'First words · 25 Nov';
+  const done = () => {
+    p.textContent = FIRST_WORDS; $('#bTalk').hidden = false; requestAnimationFrame(() => $('#bTalk').classList.add('on'));
+    if (!convo.maya) convo.maya = [{ who: 'them', text: FIRST_WORDS, mark: 'First words · 25 Nov' }];
+  };
+  if (reduced) return done();
+  let i = 0; const step = () => { i += 2; p.textContent = FIRST_WORDS.slice(0, i); if (i >= FIRST_WORDS.length) return done(); birth.timers.push(setTimeout(step, 30)); };
+  step();
+}
+$('#skip').addEventListener('click', e => { e.stopPropagation(); skipBirth(); });
+$('#birth').addEventListener('click', e => { if (e.target.closest('button')) return; skipBirth(); });
+addEventListener('keydown', e => { if (scene === 'birth' && !['Tab', 'Shift', 'Meta', 'Alt', 'Control'].includes(e.key) && !e.target.closest('.bar')) skipBirth(); });
+$('#bTalk').addEventListener('click', () => openTalk(MAYA));
+
+function drawBirth(t, dt) {
+  const tt = t - birth.t0, cx = W / 2, cy = H * .36;
+  if (!birth.flashed && tt >= 8000) doFlash(t, false);
+  const K = birth.flashed ? 0 : clamp((tt - 3000) / 5000, 0, 1);
+  const reach = 50 + K * K * Math.max(W, H);
+  const live = birth.pts.filter(p => tt >= p.spawn);
+  if (birth.flashed) { birth.master += dt / 2.8; if (birth.master >= 1) { birth.master -= 1; if (!reduced) live.forEach(p => p.flashT = t + p.seedA * 4); } }
+  for (const p of live) {
+    if (birth.flashed || reduced) { p.x += ((cx + p.ox) - p.x) * Math.min(1, reduced ? 1 : dt * 3); p.y += ((cy + p.oy) - p.y) * Math.min(1, reduced ? 1 : dt * 3); }
+    else {
+      const pull = clamp((tt - 4800) / 3000, 0, 1), tx = p.fx + (cx + p.ox - p.fx) * easeInOut(pull), ty = p.fy + (cy + p.oy - p.fy) * easeInOut(pull);
+      p.x += (tx - p.x) * Math.min(1, dt * (.9 + pull * 2)); p.y += (ty - p.y) * Math.min(1, dt * (.9 + pull * 2));
+      // phase coupling: each light nudges its timing toward its neighbours
+      if (K > 0) {
+        let sx = 0, sy = 0;
+        for (const q of live) { if (q === p) continue; const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < reach) { const w = 1 - d / reach; sx += Math.cos(q.phase * 6.283) * w; sy += Math.sin(q.phase * 6.283) * w; } }
+        if (sx || sy) { const psi = Math.atan2(sy, sx) / 6.283; p.phase += wrap(psi - p.phase) * Math.min(1, dt * 3.2 * K); }
+        p.period += (2.6 - p.period) * Math.min(1, dt * K);
+      }
+      p.phase += dt / p.period; if (p.phase >= 1) { p.phase -= 1; p.flashT = t; }
+    }
+    const b = reduced ? 0 : flash(t - p.flashT);
+    const alpha = reduced ? .85 : (birth.flashed ? .12 : .16) + .8 * b, s = (20 + 14 * b) * 1.2;
+    ctx.globalAlpha = alpha; ctx.drawImage(birth.flashed || reduced ? FLY : WARM, p.x - s / 2, p.y - s / 2, s, s);
+  }
+}
+
+/* ---------- Start ---------- */
+resize();
+go(SCENES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+requestAnimationFrame(t => { last = t; frame(t); });
+</script>
+</body>
+</html>
