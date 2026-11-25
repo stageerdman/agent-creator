@@ -8,6 +8,7 @@ import { BadRequest, sendJson } from "./http.mjs";
 import { matchRoute } from "./router.mjs";
 import { agentRoutes } from "./routes/agents.mjs";
 import { askRoute } from "./routes/ask.mjs";
+import { mockRoutes } from "./routes/mock.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
 import { createLogger, newTraceId } from "../log/logger.mjs";
 
@@ -28,6 +29,9 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
     "GET /sketch.js": staticFile("sketch.js", "text/javascript; charset=utf-8"),
     "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
     "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
+    ...Object.fromEntries(["components", "block-a", "block-b", "block-c", "block-d", "block-e", "block-f"]
+      .map((name) => [`GET /${name}.js`, staticFile(`${name}.js`, "text/javascript; charset=utf-8")])),
+    ...mockRoutes(),
     "GET /api/health": async (_req, res) => sendJson(res, 200, await engine.checkCli()),
     "POST /api/ask": askRoute(engine),
     ...agentRoutes(createAgents({ store, engine })),
