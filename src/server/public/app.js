@@ -471,7 +471,7 @@ function addChangeLine(msg, changed, isFirst = false) {
     const first = isFirst ? "instructions" : FIELDS.find((name) => changed.includes(name));
     // Name lives in Profile, Instructions in DNA: open the switch that holds it.
     if (fields[first].wrap.closest("[hidden]")) $(fields[first].wrap.closest("#dna") ? "rs-dna" : "rs-profile")?.click();
-    fields[first].wrap.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    fields[first].wrap.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
     for (const name of changed) markUpdated(name);
   });
   msg.append(line);
@@ -680,15 +680,20 @@ function firstSketch(draft, still) {
   if (!draft.name.trim()) return;
   const id = state.agent.id;
   els.switcherName.textContent = "New agent";
-  const arrive = () => {
+  const arrive = (now = still) => {
     if (state.agent.id !== id) return;
     renderName();
-    if (still) return;
+    if (now) return;
     els.switcherName.classList.add("name-arrive");
     setTimeout(() => els.switcherName.classList.remove("name-arrive"), 300);
   };
-  if (still) arrive();
-  else setTimeout(arrive, 550); // the fill takes 400 ms; the name lands ~150 ms later
+  if (still) return arrive();
+  // X5 click wins: any click or key during the wash lands the name at once, still.
+  const skip = () => { clearTimeout(timer); stop(); wrap.classList.remove("first-sketch"); arrive(true); };
+  const stop = () => { removeEventListener("pointerdown", skip, true); removeEventListener("keydown", skip, true); };
+  const timer = setTimeout(() => { stop(); arrive(); }, 550); // the fill takes 400 ms; the name lands ~150 ms later
+  addEventListener("pointerdown", skip, { capture: true, once: true });
+  addEventListener("keydown", skip, { capture: true, once: true });
 }
 
 // ── C1: a still dot on the switch that holds a change you can't see ───────
