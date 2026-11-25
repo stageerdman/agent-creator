@@ -11,7 +11,7 @@ How each line was checked:
 
 ## 0. Before you start
 - ✓ `npm run build:app` finishes; `dist/Agent Creator.app` exists.
-- ✓ (partly) The rebuilt bundle's own server (`Contents/Resources/app`) starts and serves the app, and the Home walk passes with no page errors. **Not checked:** the Chrome `--app` window itself. My shell refuses `open`, so someone with Start or Finder should double-click it once.
+- **Gap (open, not ticked)**: the window launch. The rebuilt bundle's own server (`Contents/Resources/app`) starts and serves the app, and the Home walk passes with no page errors. **Not checked:** the Chrome `--app` window itself. My shell refuses `open`, so someone with Start or Finder should double-click it once.
 - ✓ The top bar shows `Agent Creator` as plain text on Home, with the `Demo` pill on the far right (live).
 - ✓ `Show mock values` outlines the mock-fed elements and removes the outlines when turned off (live).
 - ✓ No "Settings", "Library", "Insight" or "Know" tab, mode or menu item (live).
@@ -293,6 +293,8 @@ How each line was checked:
 - B2 and B3 `Start studying` fail as a result of B1.
 - A2 expects `a folder of their books`. The door words changed (see UJ1).
 
+Columbo checked these against the design: **the script is out of date and the app matches the spec**. The door words are in design-jony-block-A.md:144–145, and `Picked up where it left off` is B3.5 (design-jony-block-B.md:270–271). The script fix should change only the door click: `Add references` stays the right label for the ＋, B7 and C3. The script still needs an owner.
+
 `npm test`: 85 pass, 1 skip.
 
-**Signed: Eraser, 25 Nov 2026.** The flow is lean. There's one way to do each thing, and the four trust items hold (sources, the map, `Not [Name]`, no silent skips). Approved, with the gaps and deviations above.
+**Signed: Eraser, 25 Nov 2026.** The flow is lean. There's one way to do each thing, and the four trust items hold (sources, the map, `Not [Name]`, no silent skips). Approved, with the gaps and deviations above. One gap is still open: someone has to double-click `dist/Agent Creator.app` once to confirm the window opens.
