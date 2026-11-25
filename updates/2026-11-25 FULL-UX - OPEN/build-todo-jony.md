@@ -15,6 +15,8 @@
 
 ## F: openExport(a), importFile(name). See build-notes lines 107-115.
 
+## STATUS: block-e.js and block-f.js are written and committed (b99dd89). E exports also finishTopUp, closePalette, escape, paletteOpen; Palette view is a #palette div E inserts after #knows. Talk layout (block D init): #talk > section.talk-main (#talk-scroll.chat-scroll > .chat-col > #talk-log.log, .composer-wrap) + aside#talk-side.talk-side. Agent msg: .msg.agent(.latest)(.fixing) > .who (face 24 + name), .say, .talk-chips, .prov (Where from links .src-link), .blank-strip, button.not-btn (latest always 60% opacity, older on hover).
+## New classes in E/F: msg note-line, change-line plain, face-options, face-option(.on) 96px round imgs, face-links, face-drop, palette-view, palette-head, palette-mix (band 48px), palette-names, traits, trait-row, trait-label, trait-steps, step (label w/ radio input + span.dot, 44px cell), trait-line, facts (dl dt/dd grid), export-who, sheet-h, stays, export-file, export-where, sheet-note(.warn), details (pre mono 13px), face-change on body (300ms crossfade of .face img).
 ## CSS: nothing exists yet for the new classes (see the class names in components.js and blocks a-d). body[data-screen=home|sketcher|talk] shows #home | #panes | #talk.
 
 ## Packaging: build-plan-jony.md (port 3517, node path recorded at build time, Chrome --app, else open the URL, data in ~/.agent-creator).
