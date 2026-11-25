@@ -273,7 +273,7 @@ addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (sheetOpen()) { e.preventDefault(); closeSheet(); return; }
     if (store.screen === "talk" && D.escape()) { e.preventDefault(); return; }
-    if (store.screen === "sketcher" && C.escape()) { e.preventDefault(); return; }
+    if (store.screen === "sketcher" && (E.escape() || C.escape())) { e.preventDefault(); return; }
     return;
   }
   if (!cmd) return;

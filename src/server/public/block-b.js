@@ -58,6 +58,7 @@ export function afterLoad(agent) {
   const shown = a ?? { id: agent.id, draft: agent.draft };
   const name = shortName(shown);
   $("rs-knows").textContent = nameOf(shown) ? `What ${name} knows` : "What it knows";
+  E.closePalette();
   C.showSketch();
   renderFaceSlot(shown, a);
   renderStudy(a);
@@ -99,7 +100,7 @@ export function renderStudy(a) {
     const parts = [studyBlock(a, {
       onStop: () => stopStudy(a), onResume: () => resumeStudy(a), onCheck: () => checkAgain(a),
     })];
-    if (a.palette?.length && s.state !== "finished") {
+    if (a.palette?.length && s.state !== "finished" && !a.topUp) {
       const filled = new Set((a.run?.paletteAt ?? []).filter((p) => s.done >= p.at).map((p) => p.id));
       parts.push(el("div", "stand-in", paletteStrip(a.palette, { filled, small: true }), el("span", "muted small", "stand-in look")));
     }
@@ -329,6 +330,11 @@ function tick(a) {
 
 function setDone(a, done) {
   const s = a.study;
+  if (a.topUp) { // a one-pile top-up (block E)
+    s.done = Math.min(done, s.total);
+    if (s.done >= s.total) return E.finishTopUp(a);
+    return renderStudy(a);
+  }
   const before = s.done;
   s.done = Math.min(done, s.total);
   s.stage = STAGE(s.done);

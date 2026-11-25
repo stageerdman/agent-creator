@@ -101,7 +101,9 @@ export function renderKnows(a) {
   const studyingFirst = s && s.state !== "finished" && !(a.map ?? []).length;
   if (studyingFirst) {
     const fi = s.firstImpressions;
-    if (fi?.map?.length && s.done >= 20) {
+    if (a.topUp) {
+      parts.push(el("p", "knows-quiet", "The map comes when studying is done."));
+    } else if (fi?.map?.length && s.done >= 20) {
       parts.push(el("h3", "knows-h", `What ${name} knows · first impressions · from 20 of ${s.total}`));
       parts.push(el("div", { class: "map", role: "list" }, ...fi.map.map((l) => mapLine(l, a, { faded: true }))));
       parts.push(el("p", "knows-quiet", "Likeness comes when studying is done."));
@@ -206,7 +208,7 @@ function renderReferences(a) {
   const section = el("section", "refs-section");
   if (a.removal) {
     const undo = btn("Undo", () => E.undoRemove(a), "link-btn");
-    section.append(el("p", { class: "removal", "aria-live": "polite" }, `Removed. ${shortName(a)} no longer uses "${a.removal.label}". · `, undo));
+    section.append(el("p", { class: "removal", "aria-live": "polite" }, `Removed. ${shortName(a)} no longer uses ${a.removal.what ?? `"${a.removal.label}"`}. · `, undo));
     queueMicrotask(() => { if (a.removal?.focus) { undo.focus(); a.removal.focus = false; } });
   }
   const label = () => `References · ${total}${hard.length ? ` · ${hard.length} hard to study` : ""} ${state.refsOpen ? "▾" : "▸"}`;
