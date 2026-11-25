@@ -15,7 +15,7 @@ let scenario = "creator-patch";
 const prompts = [];
 const engine = {
   askAgent: (input, options) => {
-    prompts.push(input.systemPrompt);
+    prompts.push(input.message);
     return askAgent(input, { ...options, spawn: fakeSpawn(scenario) });
   },
   checkCli: () => checkCli({ binary: "claude", spawn: fakeSpawn("version") }),

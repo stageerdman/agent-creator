@@ -88,6 +88,8 @@ test("creatorTurn streams without the block, trusts the final result, resumes th
   assert.deepEqual(turn, { say: "Hello!", patch: { name: "Tina" }, sessionId: "sess-1" });
   assert.equal(engine.calls[0].resumeSessionId, "old");
   assert.match(engine.calls[0].systemPrompt, /You are the Sketcher/);
+  // A resumed session ignores a new system prompt, so the live draft rides in the message.
+  assert.match(engine.calls[0].message, /^<turn_context>[^]*<current_draft[^]*The user says:\na coach$/);
 });
 
 test("creatorTurn lets engine errors out with their kind", async () => {
@@ -122,9 +124,11 @@ test("agents: hand edits reach the prompt and only a patch to that field clears 
   const { id } = await agents.create();
   await agents.edit(id, { persona: "You are calm.", bogus: "x" });
   await agents.chat(id, "add a job");
-  assert.match(engine.calls[0].systemPrompt, /"persona": "You are calm\."/);
-  assert.match(engine.calls[0].systemPrompt, /changed them: persona\./);
-  assert.match(engine.calls[0].systemPrompt, /typed these lines themselves[^]*- persona: You are calm\./);
+  assert.match(engine.calls[0].message, /"persona": "You are calm\."/);
+  assert.match(engine.calls[0].message, /changed them: persona\./);
+  assert.match(engine.calls[0].message, /typed these lines themselves[^]*- persona: You are calm\./);
+  assert.match(engine.calls[0].message, /The user says:\nadd a job$/);
+  assert.doesNotMatch(engine.calls[0].systemPrompt, /You are calm/);
   const record = await store.loadAgent(id);
   assert.equal(record.draft.persona, "You are calm.");
   assert.deepEqual(record.handEdited, ["persona"]);

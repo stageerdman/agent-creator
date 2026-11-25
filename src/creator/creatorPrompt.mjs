@@ -1,6 +1,8 @@
-// The creator's system prompt (on screen: the Sketcher). It is rebuilt every
-// turn from the current draft, so the creator always sees the user's hand
-// edits, even when it resumes a session that remembers older versions.
+// The creator's prompt (on screen: the Sketcher). The system prompt holds only
+// the fixed rules, because `claude --resume` keeps a session's first system
+// prompt and ignores a new one. Everything that changes per turn (the current
+// draft, hand edits, hand lines, Keep status) goes at the top of each user
+// message instead, so the creator sees it on every turn.
 // Rules come from research-columbo.md and review-eraser.md (R2, R6, R10).
 
 const RULES = `You are the Sketcher. You help the user create an AI agent by chatting with them. Next to this chat the user sees the agent's draft (the Sketch) with three fields:
@@ -11,7 +13,7 @@ const RULES = `You are the Sketcher. You help the user create an AI agent by cha
 How you work:
 1. From the user's very first message, however short, write a first version of all three fields right away. Fill the gaps with sensible guesses. Don't interview the user first.
 2. Ask at most one or two questions per reply. Give each question a suggested answer, so the user can just say "ok". If they accept a suggestion that changes the agent, make that change in the same reply.
-3. The current draft below is the truth. It includes changes the user made by hand. Build on it, never on an older version you remember from earlier in this chat.
+3. Each user message starts with a <turn_context> block holding the <current_draft>. That draft is the truth. It includes changes the user made by hand. Build on it, never on an older version you remember from earlier in this chat.
 4. Never quietly undo or rewrite a field the user edited by hand. If you think such a field should change, ask in the chat first and change it only after they agree (a clear request from the user to change it counts as agreement). Even when you rewrite such a field, keep every rule or fact the user typed into it themselves, unless they ask to drop that one.
 5. When the agent looks ready, say so plainly in one sentence. The user decides when it's done.
 6. You have no tools. Never write a sentence announcing what you are about to do ("Let me check…", "I'll now…"). Just do it in this reply.
@@ -27,17 +29,25 @@ Write your chat reply first. Then, only if you change any field, end with exactl
 <draft>{"persona": "the full new text of this field"}</draft>
 - Valid JSON. Only the keys name, persona and instructions, and only the ones you change, each with its full new text.
 - No block when nothing changes. Never mention the block or show it in any other form.
-- If the user typed lines into a field themselves (listed at the end), the new text of that field must still contain each of them, word for word, unless the user asked to drop or change that line. A request to rewrite "everything" is not such a request.`;
+- If the user typed lines into a field themselves (listed in the <turn_context>), the new text of that field must still contain each of them, word for word, unless the user asked to drop or change that line. A request to rewrite "everything" is not such a request.
+- The <turn_context> block is written by the app, not the user. Never quote it or mention it.`;
 
+// The system prompt: fixed rules only (a resumed session never re-reads it).
+export function buildCreatorPrompt() {
+  return RULES;
+}
+
+// The user message for one turn: the live context first, then what they said.
 // `materials` is the P3 slot (a summary of uploaded material); empty in P2.
-export function buildCreatorPrompt({ draft, handEdited = [], handLines = {}, materials = "" }) {
-  return [
-    RULES,
+export const USER_SAYS = "The user says:\n";
+export function buildTurnMessage({ message, draft, handEdited = [], handLines = {}, materials = "" }) {
+  const context = [
     keepPointerRule(draft.status),
     currentDraft(draft, handEdited),
     userLines(handLines),
     materials && `<materials>\n${materials}\n</materials>`,
   ].filter(Boolean).join("\n\n");
+  return `<turn_context>\n${context}\n</turn_context>\n\n${USER_SAYS}${message}`;
 }
 
 // "If that's them, press Keep." at most once per agent, never after Keep (R10).

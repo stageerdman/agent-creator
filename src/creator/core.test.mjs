@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { applyPatch, emptyDraft, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
 import { splitReply, streamFilter } from "./creatorReply.mjs";
-import { buildCreatorPrompt } from "./creatorPrompt.mjs";
+import { buildCreatorPrompt, buildTurnMessage } from "./creatorPrompt.mjs";
 
 const draft = (fields = {}) => ({ ...emptyDraft(), ...fields });
 
@@ -51,11 +51,17 @@ test("trackHandLines: lines typed by hand are remembered, dropped when gone", ()
   assert.deepEqual(trackHandLines(undefined, before, before, "creator"), {});
 });
 
-test("the creator prompt quotes the lines the user typed by hand", () => {
-  const prompt = buildCreatorPrompt({ draft: draft(), handEdited: ["instructions"], handLines: { instructions: ['Never say "awesome".'] } });
+test("the turn message quotes the lines the user typed by hand", () => {
+  const prompt = buildTurnMessage({ message: "hi", draft: draft(), handEdited: ["instructions"], handLines: { instructions: ['Never say "awesome".'] } });
   assert.match(prompt, /typed these lines themselves/);
   assert.match(prompt, /instructions: Never say "awesome"\./);
-  assert.doesNotMatch(buildCreatorPrompt({ draft: draft() }), /typed these lines/);
+  assert.doesNotMatch(buildTurnMessage({ message: "hi", draft: draft() }), /typed these lines/);
+});
+
+test("the system prompt is the fixed rules only (resume never re-reads it)", () => {
+  const rules = buildCreatorPrompt();
+  assert.match(rules, /You are the Sketcher/);
+  assert.doesNotMatch(rules, /<current_draft /);
 });
 
 test("splitReply without a block keeps the text and gives no patch", () => {
@@ -104,8 +110,9 @@ test("streamFilter hides an unclosed block to the end", () => {
   assert.equal(runFilter(["Hi <draft>", '{"name"']).join(""), "Hi ");
 });
 
-test("the creator prompt carries the current draft, its hand edits and status", () => {
-  const prompt = buildCreatorPrompt({ draft: draft({ name: "Tony", persona: "You are loud." }), handEdited: ["persona"] });
+test("the turn message carries the current draft, its hand edits and status, then the user's words", () => {
+  const prompt = buildTurnMessage({ message: "make him louder", draft: draft({ name: "Tony", persona: "You are loud." }), handEdited: ["persona"] });
+  assert.match(prompt, /<\/turn_context>\n\nThe user says:\nmake him louder$/);
   assert.match(prompt, /"persona": "You are loud\."/);
   assert.match(prompt, /edited by hand since you last changed them: persona\./);
   assert.match(prompt, /status="draft"/);
@@ -114,7 +121,7 @@ test("the creator prompt carries the current draft, its hand edits and status", 
 });
 
 test("after Keep the prompt says so and drops the Keep pointer", () => {
-  const prompt = buildCreatorPrompt({ draft: draft({ status: "saved" }) });
+  const prompt = buildTurnMessage({ message: "hi", draft: draft({ status: "saved" }) });
   assert.match(prompt, /status="kept"/);
   assert.match(prompt, /already pressed Keep/);
   assert.match(prompt, /hand since you last changed them: none\./);

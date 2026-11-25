@@ -4,7 +4,8 @@
 // the args arrived intact.
 
 const [scenario, ...args] = process.argv.slice(2);
-const message = args.at(-1);
+// The creator puts live context before "The user says:\n"; keep only the user's part.
+const message = args.at(-1).split("The user says:\n").at(-1);
 const out = (event) => process.stdout.write(JSON.stringify(event) + "\n");
 const delta = (text) => ({ type: "stream_event", event: { type: "content_block_delta", delta: { type: "text_delta", text } } });
 const result = (text, extra = {}) => ({

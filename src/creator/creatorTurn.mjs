@@ -2,7 +2,7 @@
 // chat text without the draft block, plus the patch the creator proposed.
 // Applying the patch is the caller's job, so it lands on the freshest draft.
 
-import { buildCreatorPrompt } from "./creatorPrompt.mjs";
+import { buildCreatorPrompt, buildTurnMessage } from "./creatorPrompt.mjs";
 import { splitReply, streamFilter } from "./creatorReply.mjs";
 
 // Resolves to { say, patch | null, sessionId }. Engine errors pass through
@@ -10,7 +10,7 @@ import { splitReply, streamFilter } from "./creatorReply.mjs";
 export async function creatorTurn({ message, draft, handEdited, handLines, sessionId }, { engine, onSay = () => {}, signal, traceId }) {
   const filter = streamFilter();
   const reply = await engine.askAgent(
-    { message, systemPrompt: buildCreatorPrompt({ draft, handEdited, handLines }), resumeSessionId: sessionId ?? undefined },
+    { message: buildTurnMessage({ message, draft, handEdited, handLines }), systemPrompt: buildCreatorPrompt(), resumeSessionId: sessionId ?? undefined },
     { onDelta: (text) => emit(onSay, filter.push(text)), signal, traceId },
   );
   emit(onSay, filter.flush());
