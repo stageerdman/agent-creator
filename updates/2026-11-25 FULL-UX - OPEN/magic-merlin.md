@@ -230,12 +230,12 @@ skipping after the first time.
   - **Finished studying:** a clear end state, never a bar that stops at
     100%:
     ```
-    Finished studying · Rex
-    297 references studied · 14 set aside · 1 couldn't be read
-    [ See what Rex knows ]   [ Talk to Rex ]
+    Finished studying · 296 references studied · 15 set aside ▸
     ```
-    "Set aside" and "couldn't be read" open the list with a reason for each
-    file. If the app was closed or in the background, a macOS notification
+    No buttons (cut review X10, X11, X14): the summary sits inside
+    `What [Name] knows`, and the map arrives on its own the first time that
+    view is visible. "Set aside" opens the one list with a reason for each
+    file, damaged files included. If the app was closed or in the background, a macOS notification
     says the same in one line: `Rex finished studying. 297 references.`
     The library card switches from "Studying" to "Ready".
   - **Sound:** only the system notification sound, which the user already
@@ -257,8 +257,9 @@ skipping after the first time.
   - First impressions: a rough sketch and 3–4 rough map lines, tagged
     early.
   - Palette stand-in: 4–6 colour groups, each tied to a reference group.
-  - Finished summary: 297 studied, 14 set aside (with reasons: "Bonus
-    folder, you said skip", "duplicate"), 1 failed video with its reason.
+  - Finished summary: 296 studied, 15 set aside in one list (with
+    reasons: "Bonus folder, you said skip", "duplicate", and the damaged
+    video with its reason).
   - A "resumed after closing" state for the demo clone in progress.
 - **Weight:** medium (the heaviest moment, still no new backend). **Built
   by:** Jony (Studying screen and card states, Finished card), frontend,
@@ -599,7 +600,7 @@ pronouns.
 | Draft panel (P2) | **Sketch** | marks "new", "yours" | Draft |
 | Finish (P2) | **Keep** / **Kept** | "Yours. You can keep changing it." | — |
 | Uploaded material (P3) | **References** | "Drop · your files stay on this Mac · Claude reads them to study" | Material |
-| Skipped files (P3) | **Set aside** | "14 set aside · why" | Skipped |
+| Skipped files (P3) | **Set aside** | "15 set aside · why" (one list, damaged files included) | Skipped |
 | Knowledge pile (P3/P4) | **What [Name] knows** | — | Knowledge |
 | Persona pile (P3/P5) | **How [Name] sounds** | — | Voice |
 | Learning run (P3/P4/P5) | **Studying** | "you can close the app, it keeps going" | Learning |
@@ -620,13 +621,20 @@ pronouns.
 | Import (P6) | **Import** | "new here" | — |
 
 **Added by the FULL-UX design** (`blocks-jony.md` §9), all plain labels:
-`Start studying` · `Couldn't be read` · `Picked up where it left off` ·
-`Studying paused` · `New talk` · `Search past talks` · `Change face…` ·
+`Start studying` · `Picked up where it left off` · `Studying paused` ·
+`Stop` · `Stopped` · `Study the rest` · `New talk` · `Search past talks` ·
 `Draw three more` · `Use a photo…` · `Delete [Name]…` · `Keep both` ·
-`Replace [Name]` · `New agent` · `Export [Name]…` · `Import…` · `Packed` ·
-`Show in Finder` · `Remove` · `[Name]'s own view · no reference` ·
-`Ask [Name] about it` · `Imported from [file]`. No on-screen word for the
-home screen (it's just "Agent Creator"); never "Library".
+`Replace [Name]` · `New agent` · `Export [Name]…` · `Export` · `Change…` ·
+`Import…` · `Packed` · `Show in Finder` · `Remove` · `Undo` ·
+`[Name]'s own view · no reference` · `Ask [Name] about it` · divider
+`From your talk · "[question]"` · drop-overlay lines `for a new agent` /
+`adds to [Name]`. The mode switch reads `[ Talk | Sketcher ]` (the mode is
+**Sketcher**, the pane is **Sketch**). No on-screen word for the home
+screen (it's just "Agent Creator"); never "Library".
+
+**Removed by the cut review** (`cuts-eraser.md`), never to be shown:
+`Couldn't be read` (now part of **Set aside**) · `Imported from [file]` ·
+`Change face…` · `See what [Name] knows` · `Add more on this`.
 
 ## 7. All ideas I considered, and the cuts
 

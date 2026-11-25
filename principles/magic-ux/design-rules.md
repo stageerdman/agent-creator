@@ -9,6 +9,12 @@
 - Hand edits win. The AI never quietly overwrites what the user typed.
 - Nothing blocks without a visible reason. An action that needs a save
   first does the save itself.
+- Keep happens once. After that every change is live, and its change line
+  says so. (FULL-UX cut review, X4)
+- Undo over "are you sure?". Reversible acts get an `Undo` line, not a
+  confirm sheet; only real loss gets one plain confirm. (X12, X25)
+- No button opens the view you're already in, or only plays an animation.
+  (X10)
 - Every screen and moment points to a journey step (`UJ# · step` in
   `updates/2026-11-25 FULL-UX - OPEN/journeys-columbo.md`). No journey
   step, no screen.
