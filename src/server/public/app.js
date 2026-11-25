@@ -439,6 +439,8 @@ function addChangeLine(msg, changed) {
   line.addEventListener("click", () => {
     if (isNarrow()) setView("sketch");
     const first = FIELDS.find((name) => changed.includes(name));
+    // Name lives in Profile, Instructions in DNA: open the switch that holds it.
+    if (fields[first].wrap.closest("[hidden]")) $(fields[first].wrap.closest("#dna") ? "rs-dna" : "rs-profile")?.click();
     fields[first].wrap.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     for (const name of changed) markUpdated(name);
   });

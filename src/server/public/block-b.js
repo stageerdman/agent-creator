@@ -57,8 +57,6 @@ export function replayNotes(a) {
 export function afterLoad(agent) {
   const a = mockAgent(agent.id);
   const shown = a ?? { id: agent.id, draft: agent.draft };
-  const name = shortName(shown);
-  $("rs-knows").textContent = nameOf(shown) ? `What ${name} knows` : "What it knows";
   E.closePalette();
   C.showSketch();
   renderFaceSlot(shown, a);
@@ -111,7 +109,7 @@ export function renderStudy(a) {
     }
     host.replaceChildren(...parts);
   }
-  if (a && C.showingKnows(a)) C.renderKnows(a);
+  if (a) C.renderKnows(a); // Profile skills and DNA both read the study
   nav.renderTop();
   bus.emit("changed");
 }
@@ -312,7 +310,7 @@ function startStudy(a) {
   a.study = { state: "studying", stage: "reading", current: currentFile(a, 0), done: 0, total: 298, etaMin: eta(0), resumed: false, impressionsAt: 20, corrected: a.layout?.corrected };
   P2.state.hint = null;
   P2.renderPlaceholder();
-  C.showSketch();
+  C.showDna(a); // the study's progress lives in DNA · Looks up
   runTimer(a);
   renderStudy(a);
 }
@@ -372,7 +370,6 @@ function firstImpressions(a) {
 }
 
 function afterLoadLight(a) {
-  $("rs-knows").textContent = `What ${shortName(a)} knows`;
   renderFaceSlot(a, a);
 }
 
@@ -467,7 +464,6 @@ export function afterKeep(agent) {
   C.showSketch(); // the Keep card lives in the Sketch; Talk is the mode switch at the top
   renderKeepExtras(a);
   renderFaceSlot(a, a);
-  $("rs-knows").textContent = `What ${shortName(a)} knows`;
   bus.emit("changed");
 }
 

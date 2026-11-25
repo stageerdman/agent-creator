@@ -256,6 +256,41 @@ p { margin: 0; }
 @keyframes fill-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .draft-field.filling .field { animation: none; } }
 
+/* ── Profile (SKETCH-REWORK P2) ────────────────────────── */
+
+.profile-field, .profile-skills { margin-top: 24px; }
+.profile-h { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
+.profile-row + .profile-row { margin-top: 16px; }
+.profile-row-h { font-size: 13px; font-weight: 600; margin: 0 0 6px; }
+.profile-hint { font-weight: 400; opacity: var(--muted); }
+.profile-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.profile-skill-chip {
+  min-height: 44px; padding: 0 14px; border-radius: 22px; text-align: left;
+  border: 1px solid color-mix(in srgb, currentcolor 18%, transparent); background: var(--canvas);
+}
+.profile-skill-chip:hover { border-color: color-mix(in srgb, currentcolor 35%, transparent); }
+.profile-skill-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.profile-quiet { font-size: 13px; opacity: var(--muted); margin: 0; }
+.profile-quiet.small, .dna-quiet.small { font-size: 12px; }
+
+/* ── DNA (SKETCH-REWORK P3) ────────────────────────────── */
+
+.dna-layer {
+  padding: 16px; border-radius: 12px; background: var(--canvas);
+  border: 1px solid color-mix(in srgb, currentcolor 12%, transparent);
+}
+.dna-layer + .dna-layer { margin-top: 16px; }
+.dna-h { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.dna-sub { font-weight: 400; opacity: var(--muted); }
+.dna-own { min-height: 1.5em; margin: 6px 0 0; font-size: 13px; color: var(--warm-text); }
+.dna-row { display: flex; align-items: center; gap: 8px; min-height: 44px; padding-left: 10px; }
+.dna-row .ref-name, .dna-q-text { flex: 1; min-width: 0; }
+.dna-look.is-off .ref-name { opacity: var(--muted); text-decoration: line-through; }
+.dna-q-kind { flex: none; width: 72px; font-size: 13px; opacity: var(--muted); }
+.dna-quality-summary { margin: 0 0 8px; padding: 4px 8px; font-weight: 600; }
+.dna-quiet { font-size: 13px; opacity: var(--muted); margin: 8px 0 0; }
+.dna .removal { margin: 0 0 8px; font-size: 13px; }
+
 /* ── Narrow (< 860 px): one pane at a time ─────────────── */
 
 @media (width < 860px) {

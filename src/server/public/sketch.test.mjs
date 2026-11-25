@@ -267,3 +267,41 @@ test("P1: no Persona field, no Talk to section, no top-bar study line", () => {
     assert.doesNotMatch(src, /markUpdated\("persona"\)|fields\.persona|persona updated/, `${f} still points at Persona`);
   }
 });
+
+// ── SKETCH-REWORK phases 2 and 3: the page carries Profile and DNA ────────
+const count = (text, re) => (text.match(re) ?? []).length;
+
+test("P2: Profile tab holds one name, a description and the skill rows", () => {
+  const html = read("index.html");
+  assert.match(html, /id="rs-profile"[^>]*>Profile</);
+  assert.equal(count(html, /id="f-name"/g), 1, "exactly one Name input");
+  assert.equal(count(html, /id="f-desc"/g), 1);
+  assert.match(html, /id="profile-skills"/);
+  assert.doesNotMatch(html, /rs-sketch|rs-knows|capability-map|What it knows/);
+  assert.doesNotMatch(read("block-c.js"), /Sharp|Rough|Blank|Persona/, "Profile and DNA speak plain words");
+  assert.match(read("block-c.js"), /profile-skill-chip/);
+});
+
+test("P3: DNA tab has the four layers in order, with the one Instructions box", () => {
+  const html = read("index.html");
+  assert.match(html, /id="rs-dna"[^>]*>DNA</);
+  const dna = html.slice(html.indexOf('id="dna"'), html.indexOf('id="dna-passage"'));
+  const layers = [...dna.matchAll(/class="dna-layer" data-layer="(\w+)" style="--dna-i: (\d)"/g)].map((m) => `${m[2]}:${m[1]}`);
+  assert.deepEqual(layers, ["0:instructions", "1:made", "2:looks", "3:quality"]);
+  assert.equal(count(html, /id="f-instructions"/g), 1, "exactly one Instructions box");
+  assert.ok(dna.includes('id="f-instructions"'), "Instructions live in DNA");
+  for (const id of ["dna-own", "dna-made", "study-host", "knows", "dna-quality"]) assert.ok(dna.includes(`id="${id}"`), id);
+  const c = read("block-c.js");
+  for (const cls of ["is-revealed", "dna-thread", "is-active", "dna-quality-glow"]) assert.ok(c.includes(cls), cls);
+});
+
+test("P2/P3: every id the blocks ask for is on the page", () => {
+  const html = read("index.html");
+  const ids = new Set([...html.matchAll(/id="([\w-]+)"/g)].map((m) => m[1]));
+  for (const f of ["block-b.js", "block-c.js", "block-e.js"]) {
+    for (const [, id] of read(f).matchAll(/\$\("([\w-]+)"\)/g)) {
+      if (id === "palette") continue; // made on demand by block E
+      assert.ok(ids.has(id), `${f} asks for #${id}, not in index.html`);
+    }
+  }
+});

@@ -294,7 +294,7 @@ function paletteHost() {
   let host = $("palette");
   if (!host) {
     host = el("div", { id: "palette", class: "knows sketch-scroll palette-view", hidden: true });
-    $("knows").after(host);
+    $("dna-passage").after(host);
   }
   return host;
 }
@@ -305,7 +305,8 @@ export async function openPalette(a) {
   if (!inSketcher(a)) await nav.open(a.id, "sketcher");
   paletteOf = a.id;
   $("right-switch").hidden = true;
-  $("knows").hidden = true;
+  $("dna").hidden = true;
+  $("dna-passage").hidden = true;
   $("sketch-scroll").hidden = true;
   paletteHost().hidden = false;
   if (P2.isNarrow?.()) P2.setView("sketch");
