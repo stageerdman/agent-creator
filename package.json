@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node src/server/main.mjs",
-    "build:app": "sh scripts/build-mac-app.sh",
+    "build:app": "sh scripts/build-mac-app.sh && sh scripts/install-mac-app.sh",
+    "start:app": "sh scripts/start-mac-app.sh",
     "test": "LOG_LEVEL=silent node --test \"src/**/*.test.mjs\"",
     "test:live": "CLAUDE_LIVE=1 LOG_LEVEL=warn node --test \"src/**/*.live.test.mjs\""
   }

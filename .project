@@ -21,6 +21,7 @@ secrets: none
 
 claude_md_generated: 2026-11-04
 
-# Local app (P1 AI engine): a zero-dependency Node server, reads PORT.
-run: npm start
+# Start builds the newest macOS .app, installs it into /Applications and opens
+# it (scripts/start-mac-app.sh). The bare server, on PORT: npm start.
+run: npm run start:app
 test: npm test
