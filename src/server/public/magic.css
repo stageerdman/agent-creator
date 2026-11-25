@@ -359,16 +359,6 @@
   to { opacity: 1; }
 }
 
-/* E5: the Palette mix blooms from the centre, 800 ms, first open only. */
-.palette-band.bloom {
-  animation: magic-bloom 800ms ease-out both;
-}
-
-@keyframes magic-bloom {
-  from { clip-path: inset(0 50% 0 50%); opacity: 0.4; }
-  to { clip-path: inset(0 0 0 0); opacity: 1; }
-}
-
 /* D2 First words: the outline face fills in while the line streams. */
 .face.fill-in {
   border-color: transparent;
@@ -663,6 +653,23 @@ body.face-change .face img {
   animation: magic-fade 180ms ease-out reverse both;
 }
 
+/* A toast arrives: rise 4 px and fade, 200 ms. It never moves again. */
+.toast {
+  animation: magic-toast-rise 200ms ease-out both;
+}
+
+@keyframes magic-toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ── Reduced motion: everything still, meaning kept ────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -682,7 +689,6 @@ body.face-change .face img {
   .voice-card.first-voice,
   .map.arrive .map-line,
   .map-line.redraw,
-  .palette-band.bloom,
   .face.fill-in,
   body.face-change .face img,
   .fade-in,
@@ -695,7 +701,8 @@ body.face-change .face img {
   .divider.first-words,
   .card.just-kept,
   .mark.ready.is-new,
-  #empty.is-leaving {
+  #empty.is-leaving,
+  .toast {
     animation: none;
   }
 

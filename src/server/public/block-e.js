@@ -285,7 +285,6 @@ function useFace(a) {
 // ── E5 Palette ────────────────────────────────────────────────────────────
 
 const TRAIT_COLOURS = ["#A8B48E", "#B5A0C4", "#C49A8A", "#8FB0B5", "#C4B48A"];
-const bloomed = new Set();
 let paletteOf = null;
 let busy = false;
 
@@ -336,8 +335,6 @@ function renderPalette(a) {
   const refs = a.references?.total ?? 0;
   const traits = a.traits ?? [];
   const head = [refs ? `${refs} references` : null, `${traits.length} traits`].filter(Boolean).join(", ");
-  const bloom = !bloomed.has(a.id);
-  bloomed.add(a.id);
   const segments = mix(a);
   const rows = traits.map((t) => {
     const sentence = el("span", "trait-line", t.sketchLine[t.value]);
@@ -352,7 +349,7 @@ function renderPalette(a) {
   host.replaceChildren(
     el("div", "palette-head", el("h3", "knows-h", `Palette · what ${name} is mixed from · ${head}`, busy ? el("span", "muted", " · Sketching…") : null),
       closeBtn(closePalette, "Close Palette")),
-    el("div", "palette-mix", paletteStrip(segments, { bloom }), el("span", "muted small", "stand-in look")),
+    el("div", "palette-mix", paletteStrip(segments), el("span", "muted small", "stand-in look")),
     el("p", "palette-names muted small", segments.map((s) => s.label).join(" · ")),
     el("ul", "sr-only", ...segments.map((s) => el("li", "", `${s.label} · ${s.detail}`))),
     el("div", "traits", ...rows));

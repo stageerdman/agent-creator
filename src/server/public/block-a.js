@@ -133,9 +133,16 @@ hooks.menu = () => {
 const latestTalk = (a) => [...(a.talks ?? [])].sort((x, y) => y.updatedAt.localeCompare(x.updatedAt))[0];
 const studyLine = (s) => (s.state === "paused" ? "Studying paused" : s.state === "stopped" ? `Stopped · ${s.done} of ${s.total} studied` : `Studying · ${s.done} of ${s.total}`);
 
+// MAGIC-PASS: what Home has already shown. The first render records all, still;
+// a card or a Ready mark that appears later settles in once (magic.css).
+let homeShown = null;
+let shownCards = new Set();
+let shownReady = new Set();
+const firstTime = (seen, id) => homeShown !== null && !seen.has(id);
+
 function mark(a) {
   if (a.importedFrom && !a.openedAt) return el("span", "mark new", "new here");
-  if (a.study?.state === "finished" && a.ready) return el("span", "mark ready", "Ready");
+  if (a.study?.state === "finished" && a.ready) return el("span", `mark ready${firstTime(shownReady, a.id) ? " is-new" : ""}`, "Ready");
   if (a.study && a.study.state !== "finished") return el("span", "mark", studyLine(a.study));
   return null;
 }
@@ -148,7 +155,7 @@ function summary(a) {
 function card(a) {
   const last = latestTalk(a);
   const open = () => openAgent(a.id, "talk");
-  const c = el("article", { class: "card" },
+  const c = el("article", { class: `card${firstTime(shownCards, a.id) ? " just-kept" : ""}` },
     el("button", { class: "card-main", onclick: open, "aria-label": `Talk to ${nameOf(a)}` },
       face(a, 72), el("span", "card-name", nameOf(a)), el("span", "card-line", summary(a))),
     el("div", "card-foot",
@@ -177,6 +184,9 @@ function renderHome() {
     col.append(el("div", "sketches", ...sketches.map(sketchRow)));
   }
   $("home").replaceChildren(col);
+  shownCards = new Set(kept.map((a) => a.id));
+  shownReady = new Set(kept.filter((a) => a.study?.state === "finished" && a.ready).map((a) => a.id));
+  homeShown = true;
 }
 
 // ── A3 Delete ─────────────────────────────────────────────────────────────

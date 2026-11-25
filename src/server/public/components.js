@@ -261,9 +261,9 @@ export function refRow(file, a, { onRemove } = {}) {
 }
 
 // ── C13 Palette strip ─────────────────────────────────────────────────────
-export function paletteStrip(palette, { filled, small = false, titles = false, bloom = false } = {}) {
+export function paletteStrip(palette, { filled, small = false, titles = false } = {}) {
   const total = palette.reduce((n, p) => n + p.share, 0) || 1;
-  const band = el("div", `palette-band${small ? " small" : ""}${bloom ? " bloom" : ""}`);
+  const band = el("div", `palette-band${small ? " small" : ""}`);
   palette.forEach((p, i) => {
     const on = !filled || filled.has(p.id);
     band.append(el("span", { class: `seg${on ? "" : " off"}`, style: `flex:${p.share / total};background:${p.colour};--i:${i}`, title: `${p.label} · ${p.detail}` }));
