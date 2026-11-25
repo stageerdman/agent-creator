@@ -5,6 +5,10 @@
 node_modules/
 package-lock.json
 
+# Live walkthrough scratch (agent home it creates, local probes)
+.walkthrough-home/
+.scratch/
+
 # OS / editor
 .DS_Store
 

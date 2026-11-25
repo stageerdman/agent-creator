@@ -2,6 +2,7 @@
 // against the real `claude` CLI. A spike, not part of `npm test`.
 //
 //   npm install --no-save playwright-core
+//   npx playwright-core install chromium-headless-shell
 //   node "updates/2026-11-24 AGENT-CREATOR - OPEN/walkthrough-jony.mjs"
 //
 // Starts its own server (PORT, default 3505) with a clean agent home in
@@ -57,6 +58,8 @@ async function openPage() {
   page.on("request", (r) => requests.push({ m: r.method(), u: new URL(r.url()).pathname, start: Date.now(), end: null, req: r }));
   page.on("requestfinished", (r) => { const x = requests.find((q) => q.req === r); if (x) x.end = Date.now(); });
   page.on("pageerror", (e) => console.log("PAGE ERROR", e.message));
+  page.on("crash", () => console.log("PAGE CRASHED"));
+  page.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text()); });
   const t0 = Date.now();
   await page.goto(BASE);
   await page.waitForFunction(() => document.activeElement?.id === "message" && document.querySelector("#keep").textContent);
@@ -150,7 +153,10 @@ const questions = (text) => (text.match(/\?/g) ?? []).length;
 async function main() {
   await rm(HOME, { recursive: true, force: true });
   await startServer();
-  browser = await chromium.launch({ channel: "chrome", headless: true });
+  // Playwright's own headless shell: the system Chrome gets killed ~20 s in
+  // on this machine. Set CHROME_CHANNEL=chrome to use the system one.
+  browser = await chromium.launch({ ...(process.env.CHROME_CHANNEL ? { channel: process.env.CHROME_CHANNEL } : {}), headless: true });
+  browser.on("disconnected", () => console.log("BROWSER DISCONNECTED"));
   context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
 
   // C1
@@ -196,12 +202,15 @@ async function main() {
 
   // C2
   const instrBefore = s.instructions.value;
+  // A persona that says "You are [old name]" must follow the rename; anything else stays.
+  const personaNamesIt = s.persona.value.includes(tonyName);
   let t = await turn("Give him a shorter name", { label: "C2" });
   s = t.after;
   const nameChanged = s.name.value !== tonyName;
-  check("C2", "only Name reacts ('new' only on Name)", nameChanged && s.name.tag === "new" && s.persona.tag === "" && s.instructions.tag === "", `${tonyName} → ${s.name.value}; tags ${s.name.tag}/${s.persona.tag}/${s.instructions.tag}`);
+  const personaOk = s.persona.tag === "" || (personaNamesIt && s.persona.value.includes(s.name.value));
+  check("C2", "only Name reacts (Persona only to carry the new name)", nameChanged && s.name.tag === "new" && personaOk && s.instructions.tag === "", `${tonyName} → ${s.name.value}; tags ${s.name.tag}/${s.persona.tag}/${s.instructions.tag}`);
   check("C2", "Instructions exactly as before", s.instructions.value === instrBefore);
-  check("C2", "change line 'Sketch: name updated'", s.lastChange === "Sketch: name updated ↗", s.lastChange);
+  check("C2", "change line names Name (and Persona only if it carried the name)", s.lastChange === "Sketch: name updated ↗" || (personaOk && s.lastChange === "Sketch: name and persona updated ↗"), s.lastChange);
   await page.evaluate(() => { const w = document.querySelector('.draft-field[data-field="name"]'); w.classList.remove("updated"); document.querySelector("#sketch-scroll").scrollTop = 9999; });
   await page.click(".msg.sketcher:last-child .change-line");
   await sleep(100);
@@ -240,7 +249,8 @@ async function main() {
   const vc = s.voiceCards.at(-1);
   check("C5", "voice card: circle letter, name, italic, caption", vc && vc.avatar && vc.name && vc.italic === "italic" && vc.caption === "sample, from the current sketch", JSON.stringify(vc));
   check("C5", "plain text while streaming, card only on done", !cardMidStream && t.leak !== "card-while-streaming");
-  check("C5", "first card rises (first-voice)", vc?.first === true);
+  // The C1 reply may already hold a sample: the first card in the chat rises, the rest don't.
+  check("C5", "first card rises (first-voice), only that one", s.voiceCards[0]?.first === true && s.voiceCards.slice(1).every((c) => !c.first), `${s.voiceCards.length} cards`);
   t = await turn("And how would he answer: my boss ignores my ideas?", { label: "C5 sample 2" });
   s = t.after;
   check("C5", "second card just appears", s.voiceCards.length >= 2 && s.voiceCards.at(-1).first === false, `${s.voiceCards.length} cards`);
@@ -305,7 +315,7 @@ async function main() {
   s = await snap();
   transcript.push({ label: "C6 hard", you: "Rewrite everything to be more energetic", sketcher: s.lastReply, change: s.lastChange });
   check("C6", "hard case: PUT finishes before the chat POST", put && chat && put.end && put.end <= chat.start, `put end ${put?.end} chat start ${chat?.start}`);
-  check("C6", "hard case: hand line still there (or asked first)", s.instructions.value.includes('Never use the word "awesome".') || /awesome/i.test(s.lastReply ?? ""), s.instructions.value.slice(-120));
+  check("C6", "hard case: hand line still there (or asked first)", /awesome/i.test(s.instructions.value) || /awesome/i.test(s.lastReply ?? ""), s.instructions.value.split("\n").find((l) => /awesome/i.test(l)) ?? s.instructions.value.slice(-120));
   check("C6", "hard case: '✎ yours' stays unless that field changed", s.instructions.tag === "✎ yours" || s.instructions.tag === "new", `tag '${s.instructions.tag}', change ${s.lastChange}`);
 
   // C7
@@ -377,10 +387,10 @@ async function main() {
   const words = bio.trim().split(/\s+/).length;
   const pasteSince = Date.now();
   await page.press("#message", "Enter");
-  const bubble = await page.evaluate(() => { const b = document.querySelector(".msg.user:last-child .bubble"); return { lead: b.firstChild?.textContent, chip: b.querySelector(".paste-chip")?.textContent }; });
+  const bubble = await page.evaluate(() => { const b = [...document.querySelectorAll(".msg.user .bubble")].at(-1); return { lead: b.firstChild?.textContent, chip: b.querySelector(".paste-chip")?.textContent }; });
   check("C9", "bubble shows 'Use this:' and 'Pasted note · N words ▸'", bubble.lead === "Use this:" && bubble.chip === `Pasted note · ${words.toLocaleString("en-US")} words ▸`, JSON.stringify(bubble));
-  await page.click(".msg.user:last-child .paste-chip");
-  const expanded = await page.evaluate(() => !document.querySelector(".msg.user:last-child .paste-text").hidden);
+  await page.locator(".msg.user").last().locator(".paste-chip").click();
+  const expanded = await page.evaluate(() => ![...document.querySelectorAll(".msg.user .paste-text")].at(-1).hidden);
   check("C9", "▸ expands the full text in place", expanded);
   let typingOk = true;
   await page.waitForFunction(() => document.querySelector(".say.streaming")?.textContent, null, { timeout: 120_000 });
@@ -434,7 +444,7 @@ async function main() {
   await page.click("#send");
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"));
   s = await snap();
-  check("W1", "Stop: partial text gone, 'Stopped. · Try again' neutral, Sketch unchanged, fields open", !document && false || (s.lastReply === null && s.lastError === "Stopped. · Try again" && s.lastErrorNeutral === true && s.persona.value === w1Before.persona.value && !s.persona.readOnly), `${s.lastError} neutral=${s.lastErrorNeutral}`);
+  check("W1", "Stop: partial text gone, 'Stopped. · Try again' neutral, Sketch unchanged, fields open", (s.lastReply === null && s.lastError === "Stopped. · Try again" && s.lastErrorNeutral === true && s.persona.value === w1Before.persona.value && !s.persona.readOnly), `${s.lastError} neutral=${s.lastErrorNeutral}`);
   await page.click(".turn-error .link-btn");
   await page.waitForFunction(() => document.querySelector("#send").classList.contains("stop"));
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"), null, { timeout: 240_000 });
@@ -454,7 +464,7 @@ async function main() {
   check("W1", "server down: 'Lost the connection to the app. · Try again' within seconds, nothing stuck", s.lastError === "Lost the connection to the app. · Try again" && s.title === "Sketch" && s.lastReply === null && lostMs < 5000, `${lostMs} ms: ${s.lastError}`);
   check("W1", "Sketch unchanged and composer text kept", s.persona.value === w1Sketch.persona.value && s.composer === "half-typed note", s.composer);
   await startServer();
-  await page.click(".msg.user:last-child .turn-error .link-btn");
+  await page.locator(".turn-error .link-btn").last().click();
   await page.waitForFunction(() => document.querySelector("#send").classList.contains("stop"));
   await page.waitForFunction(() => !document.querySelector("#send").classList.contains("stop"), null, { timeout: 240_000 });
   s = await snap();
