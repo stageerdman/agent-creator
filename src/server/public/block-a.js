@@ -104,6 +104,9 @@ function renderTop() {
   $("top-face").replaceChildren(a ? face(a, 24, { outline: store.screen === "talk" && D.outlineFace(a) }) : "");
   if (a && store.screen === "talk") $("switcher-name").textContent = nameOf(a) || "New agent";
   $("mode").hidden = !kept;
+  // MAGIC-PASS beat 4: the underline stays until Talk is opened once for this agent.
+  if (store.screen === "talk" && P2.state.beckon === a?.id) P2.state.beckon = null;
+  $("mode-talk").classList.toggle("beckon", Boolean(kept && P2.state.beckon === a?.id));
   $("mode-talk").setAttribute("aria-selected", String(store.screen === "talk"));
   $("mode-sketcher").setAttribute("aria-selected", String(store.screen === "sketcher"));
   // SKETCH-REWORK: no study line in the top bar. Progress lives on the Home card and in DNA.
@@ -224,7 +227,12 @@ hooks.afterLoad = (agent) => {
   B.afterLoad(agent);
   renderTop();
 };
-hooks.afterKeep = (agent) => { B.afterKeep(agent); refreshReal(); renderTop(); };
+hooks.afterKeep = async (agent) => {
+  B.afterKeep(agent);
+  await refreshReal().catch(() => {});
+  renderTop();
+};
+hooks.renderTop = () => renderTop();
 hooks.onDraft = (draft) => {
   const a = mockAgent(P2.state.agent?.id);
   if (a) Object.assign(a.draft, draft);

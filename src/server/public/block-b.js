@@ -56,9 +56,11 @@ export function replayNotes(a) {
 
 export function afterLoad(agent) {
   const a = mockAgent(agent.id);
-  const shown = a ?? { id: agent.id, draft: agent.draft };
+  const shown = a ?? realShown(agent);
   E.closePalette();
-  C.showSketch();
+  // MAGIC-PASS Q1: until Keep the Sketch opens on DNA (the portrait forms there); after, on Profile.
+  if (agent.draft?.status === "saved") C.showProfile();
+  else C.showDna(shown);
   renderFaceSlot(shown, a);
   renderStudy(a);
   renderDoor(a);
@@ -456,9 +458,12 @@ function renderKeepExtras(a) {
   slot.replaceChildren();
 }
 
+// A real agent's face is pencil (outline) until Keep, ink after.
+const realShown = (agent) => ({ id: agent.id, draft: agent.draft, keptAt: agent.draft?.status === "saved" ? agent.draft.updatedAt ?? true : null });
+
 export function afterKeep(agent) {
   const a = mockAgent(agent.id);
-  if (!a) return;
+  if (!a) { renderFaceSlot(realShown(agent), null); return; }
   a.keptAt ??= nowIso();
   a.ready = false;
   a.faceNew = false;

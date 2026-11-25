@@ -269,11 +269,21 @@ async function keep() {
     return;
   }
   takeDraft(draft);
-  hooks.afterKeep?.(state.agent);
+  await hooks.afterKeep?.(state.agent);
+  // MAGIC-PASS beat 4, for every agent: Profile first, so the ring plays where they look.
+  $("rs-profile")?.click();
   els.sketch.classList.remove("agent-born");
   void els.sketch.offsetWidth;
   els.sketch.classList.add("agent-born");
   setTimeout(() => els.sketch.classList.remove("agent-born"), 1000);
+  // Same frame: pencil → ink.
+  for (const face of document.querySelectorAll("#top-face .face, #face-slot .face")) {
+    face.classList.remove("outline");
+    face.classList.add("fill-in");
+  }
+  // +300 ms: the Talk tab beckons, and stays still until Talk is opened.
+  state.beckon = id;
+  setTimeout(() => hooks.renderTop?.(), reducedMotion() ? 0 : 300);
 }
 
 els.keep.addEventListener("click", keep);
@@ -433,12 +443,13 @@ function addCustomLine(msg, { text, onClick }) {
   return line;
 }
 
-function addChangeLine(msg, changed) {
-  const line = el("button", "change-line", `${changeLine(changed)} ↗`);
+function addChangeLine(msg, changed, isFirst = false) {
+  // MAGIC-PASS beat 2: the first draft is named for where the portrait forms.
+  const line = el("button", "change-line", `${isFirst ? "First sketch · Instructions" : changeLine(changed)} ↗`);
   line.type = "button";
   line.addEventListener("click", () => {
     if (isNarrow()) setView("sketch");
-    const first = FIELDS.find((name) => changed.includes(name));
+    const first = isFirst ? "instructions" : FIELDS.find((name) => changed.includes(name));
     // Name lives in Profile, Instructions in DNA: open the switch that holds it.
     if (fields[first].wrap.closest("[hidden]")) $(fields[first].wrap.closest("#dna") ? "rs-dna" : "rs-profile")?.click();
     fields[first].wrap.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -516,11 +527,21 @@ function stop() {
   state.turn?.controller.abort();
 }
 
+// Beat 1: the question steps aside (180 ms) as their line lands.
+function leaveEmpty() {
+  if (els.empty.hidden || reducedMotion()) { els.empty.hidden = true; return; }
+  els.empty.classList.add("is-leaving");
+  setTimeout(() => {
+    els.empty.hidden = true;
+    els.empty.classList.remove("is-leaving");
+  }, 180);
+}
+
 async function runTurn(message, userEl) {
   userEl.querySelector(".turn-error")?.remove();
   state.failedTurn = null;
   renderBanner();
-  els.empty.hidden = true; // the chips are gone for good
+  leaveEmpty(); // the chips are gone for good
   state.fresh.clear();
   state.hint = null;
   for (const name of FIELDS) fields[name].wrap.classList.remove("updated");
@@ -574,7 +595,7 @@ async function runTurn(message, userEl) {
     stick(() => {
       reply.waiting.remove();
       renderReply(reply.say, outcome.say);
-      if (turn.changed.length && !outcome.noChangeLine) addChangeLine(reply.msg, turn.changed);
+      if (turn.changed.length && !outcome.noChangeLine) addChangeLine(reply.msg, turn.changed, turn.firstSketch);
       for (const line of turn.lines) addCustomLine(reply.msg, line);
     });
     setPhase("idle");
@@ -607,22 +628,88 @@ function onDraft(turn, data) {
   state.fresh = result.fresh;
   state.yours = result.yours;
   turn.changed = result.changed;
+  turn.firstSketch ||= result.firstSketch;
   takeDraft(result.draft);
   els.sketchScroll.scrollTop = scrollTop;
+  const still = reducedMotion();
   for (const name of result.changed) {
     if (result.firstSketch) {
       const { wrap } = fields[name];
       wrap.classList.add("filling");
       setTimeout(() => wrap.classList.remove("filling"), 400);
+    } else if (inHiddenSwitch(name)) {
+      dotSwitch(name); // C1: point to the other switch; the glow plays when it opens
+    } else {
+      markUpdated(name); // MAGIC-PASS §6: no nudge glow on the first draft
     }
-    markUpdated(name);
   }
+  if (result.firstSketch) firstSketch(result.draft, still);
   if (result.firstSketch) state.hint = `Ask how ${result.draft.name.trim() || "they"} would answer something real…`;
-  if (isNarrow() && els.panes.dataset.view === "chat") {
-    state.replay = new Set(result.changed);
-    els.viewSketch.querySelector(".dot").hidden = false;
-    els.viewSketch.setAttribute("aria-label", "Sketch, updated");
+}
+
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ── MAGIC-PASS: the first sketch (beats 2 and 3), once per agent ──────────
+
+// Beat 2: one warm wash on Instructions. Beat 3: the name settles in after the fill.
+function firstSketch(draft, still) {
+  const { wrap } = fields.instructions;
+  wrap.classList.remove("first-sketch");
+  void wrap.offsetWidth;
+  wrap.classList.add("first-sketch");
+  setTimeout(() => wrap.classList.remove("first-sketch"), still ? 2000 : 500);
+  if (!draft.name.trim()) return;
+  const id = state.agent.id;
+  els.switcherName.textContent = "New agent";
+  const arrive = () => {
+    if (state.agent.id !== id) return;
+    renderName();
+    if (still) return;
+    els.switcherName.classList.add("name-arrive");
+    setTimeout(() => els.switcherName.classList.remove("name-arrive"), 300);
+  };
+  if (still) arrive();
+  else setTimeout(arrive, 550); // the fill takes 400 ms; the name lands ~150 ms later
+}
+
+// ── C1: a still dot on the switch that holds a change you can't see ───────
+
+const paneOf = (name) => (fields[name].wrap.closest("#dna") ? "dna" : "profile");
+const switchesFor = (pane) => (pane === "dna" ? ["rs-dna", "view-knows"] : ["rs-profile", "view-sketch"]).map($);
+const DOT_WORDS = { dna: "DNA changed", profile: "Profile changed" };
+
+function inHiddenSwitch(name) {
+  if (isNarrow() && els.panes.dataset.view === "chat") return true;
+  return Boolean(fields[name].wrap.closest("[hidden]"));
+}
+
+function dotSwitch(name) {
+  const pane = paneOf(name);
+  state.replay.add(name);
+  for (const button of switchesFor(pane)) {
+    if (!button || button.querySelector(".switch-dot")) continue;
+    const dot = el("span", "switch-dot");
+    dot.append(el("span", "sr-only", DOT_WORDS[pane]));
+    button.append(dot);
   }
+}
+
+// Opening a switch clears its dot and plays the glow there (seen, not missed).
+function openedSwitch(pane) {
+  if (isNarrow() && els.panes.dataset.view === "chat") return;
+  for (const button of switchesFor(pane)) button?.querySelector(".switch-dot")?.remove();
+  const names = [...state.replay].filter((name) => paneOf(name) === pane);
+  for (const name of names) state.replay.delete(name);
+  requestAnimationFrame(() => names.forEach(markUpdated));
+}
+
+function clearDots() {
+  state.replay.clear();
+  for (const dot of document.querySelectorAll(".switch-dot")) dot.remove();
+}
+
+for (const [id, pane] of [["rs-profile", "profile"], ["view-sketch", "profile"], ["rs-dna", "dna"], ["view-knows", "dna"]]) {
+  $(id)?.addEventListener("click", () => setTimeout(() => openedSwitch(pane)));
 }
 
 // ── Offline banner (S10) ──────────────────────────────────────────────────
@@ -751,6 +838,8 @@ async function loadAgent(id) {
     setFieldValue(name, agent.draft[name]);
   }
   els.sketch.classList.remove("agent-born");
+  els.switcherName.classList.remove("name-arrive");
+  clearDots();
   els.log.replaceChildren();
   const empty = isEmptyDraft(agent.draft);
   els.empty.hidden = !empty;
@@ -773,11 +862,6 @@ function setView(view) {
   els.panes.dataset.view = view;
   els.viewChat.setAttribute("aria-selected", String(view === "chat"));
   els.viewSketch.setAttribute("aria-selected", String(view === "sketch"));
-  if (view !== "sketch") return;
-  els.viewSketch.querySelector(".dot").hidden = true;
-  els.viewSketch.setAttribute("aria-label", "Sketch");
-  for (const name of state.replay) markUpdated(name); // seen, not missed
-  state.replay.clear();
 }
 
 els.viewChat.addEventListener("click", () => setView("chat"));

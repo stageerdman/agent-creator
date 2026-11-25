@@ -220,7 +220,7 @@
 }
 
 /* First-sketch shimmer: only on empty fields while the Sketch is busy. */
-[aria-busy="true"] .draft-field:has(:is(input, textarea):placeholder-shown)::after {
+[aria-busy="true"] .draft-field[data-field="instructions"]:has(:is(input, textarea):placeholder-shown)::after {
   background-color: transparent;
   background-image: linear-gradient(
     100deg,
@@ -372,7 +372,7 @@
 /* D2 First words: the outline face fills in while the line streams. */
 .face.fill-in {
   border-color: transparent;
-  animation: magic-face-fill 600ms ease-out both;
+  animation: magic-face-fill 300ms ease-out both; /* MAGIC-PASS: pencil → ink at Keep */
 }
 
 .face.fill-in img { display: block; }
@@ -540,6 +540,129 @@ body.face-change .face img {
   }
 }
 
+/* ── MAGIC-PASS: the creation arc, once per agent ───────────────────────
+ * .draft-field.first-sketch  Beat 2. On the Instructions wrapper, once, when
+ *                            the first draft lands. One warm wash, 500 ms.
+ * #switcher-name.name-arrive Beat 3. The name settles in: fade + rise 3 px.
+ * #mode-talk.beckon          Beat 4. A 2 px underline draws, then stays still
+ *                            until Talk is opened. Not a button of its own.
+ * .talk-divider.first-words  Beat 5. Fades in above the first answer.
+ * .switch-dot                C1. A still dot: the change is in the other switch.
+ * .card.just-kept            Home, once: the new card settles in.
+ * .mark.ready.is-new         Home, once per study: a soft warm wash.
+ */
+
+.draft-field.first-sketch {
+  border-radius: 6px;
+  animation: magic-first-sketch 500ms ease-out both;
+}
+
+@keyframes magic-first-sketch {
+  from {
+    background-color: color-mix(in srgb, var(--magic-accent) 12%, transparent);
+  }
+
+  to {
+    background-color: transparent;
+  }
+}
+
+#switcher-name.name-arrive {
+  animation: magic-name-arrive 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes magic-name-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+#switcher-name {
+  display: inline-block;
+}
+
+#mode-talk {
+  position: relative;
+}
+
+#mode-talk.beckon::after {
+  position: absolute;
+  right: 0.5em;
+  bottom: 1px;
+  left: 0.5em;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--magic-accent);
+  content: "";
+  pointer-events: none;
+  transform-origin: left;
+  animation: magic-beckon 400ms ease-out both;
+}
+
+@keyframes magic-beckon {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+.talk-divider.first-words {
+  animation: magic-fade 250ms ease-out both;
+}
+
+@keyframes magic-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.switch-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.35em;
+  border-radius: 50%;
+  background-color: var(--magic-accent);
+  vertical-align: middle;
+}
+
+.card.just-kept {
+  animation: magic-card-settle 250ms ease-out both;
+}
+
+@keyframes magic-card-settle {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mark.ready.is-new {
+  animation: magic-quality-wash 400ms ease-out both;
+}
+
+#empty.is-leaving {
+  animation: magic-fade 180ms ease-out reverse both;
+}
+
 /* ── Reduced motion: everything still, meaning kept ────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -551,7 +674,7 @@ body.face-change .face img {
   .streaming:empty::after,
   .draft-field::after,
   .draft-field.updated::after,
-  [aria-busy="true"] .draft-field:has(:is(input, textarea):placeholder-shown)::after,
+  [aria-busy="true"] .draft-field[data-field="instructions"]:has(:is(input, textarea):placeholder-shown)::after,
   .keep-btn.saving,
   .keep-btn.saved,
   .agent-born,
@@ -565,8 +688,20 @@ body.face-change .face img {
   .fade-in,
   .dna-layer.is-revealed,
   .dna-quality-glow,
-  .profile-skill-chip.is-picked {
+  .profile-skill-chip.is-picked,
+  .draft-field.first-sketch,
+  #switcher-name.name-arrive,
+  #mode-talk.beckon::after,
+  .talk-divider.first-words,
+  .card.just-kept,
+  .mark.ready.is-new,
+  #empty.is-leaving {
     animation: none;
+  }
+
+  /* Beat 2, still form: a 2 px accent bar on the left for 2 s (JS removes it). */
+  .draft-field.first-sketch {
+    box-shadow: inset 2px 0 0 var(--magic-accent);
   }
 
   .dna-thread::before,
@@ -590,7 +725,7 @@ body.face-change .face img {
     transition: none;
   }
 
-  [aria-busy="true"] .draft-field:has(:is(input, textarea):placeholder-shown)::after {
+  [aria-busy="true"] .draft-field[data-field="instructions"]:has(:is(input, textarea):placeholder-shown)::after {
     opacity: 0;
   }
 
