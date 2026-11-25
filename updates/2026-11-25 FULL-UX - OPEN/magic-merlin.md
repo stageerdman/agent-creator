@@ -356,7 +356,9 @@ skipping after the first time.
 - **After:** in control. "Yes, 3 books, 41 videos, 120 transcripts. Skip
   Bonus. Done."
 - **The magic:**
-  - **On drop:** the window says `Drop · it stays on this Mac`. The drop
+  - **On drop:** the window says `Drop · your files stay on this Mac ·
+    Claude reads them to study` (corrected in FULL-UX design, flag F1:
+    Claude does read the text, so "it stays" alone was not true). The drop
     motion settles *down* onto the table, never up or away, so it never
     suggests a cloud.
   - **Laid out in seconds:** the folder appears as stacks by kind, in the
@@ -596,7 +598,7 @@ pronouns.
 | Creator AI (P2) | **Sketcher** | "Sketching…" | Maker |
 | Draft panel (P2) | **Sketch** | marks "new", "yours" | Draft |
 | Finish (P2) | **Keep** / **Kept** | "Yours. You can keep changing it." | — |
-| Uploaded material (P3) | **References** | "Drop · it stays on this Mac" | Material |
+| Uploaded material (P3) | **References** | "Drop · your files stay on this Mac · Claude reads them to study" | Material |
 | Skipped files (P3) | **Set aside** | "14 set aside · why" | Skipped |
 | Knowledge pile (P3/P4) | **What [Name] knows** | — | Knowledge |
 | Persona pile (P3/P5) | **How [Name] sounds** | — | Voice |
@@ -616,6 +618,15 @@ pronouns.
 | First hello | (no label) | mark "First words · [date]" | — |
 | Export (P6) | **Export** | "Stays here: What [Name] knows" | Pack |
 | Import (P6) | **Import** | "new here" | — |
+
+**Added by the FULL-UX design** (`blocks-jony.md` §9), all plain labels:
+`Start studying` · `Couldn't be read` · `Picked up where it left off` ·
+`Studying paused` · `New talk` · `Search past talks` · `Change face…` ·
+`Draw three more` · `Use a photo…` · `Delete [Name]…` · `Keep both` ·
+`Replace [Name]` · `New agent` · `Export [Name]…` · `Import…` · `Packed` ·
+`Show in Finder` · `Remove` · `[Name]'s own view · no reference` ·
+`Ask [Name] about it` · `Imported from [file]`. No on-screen word for the
+home screen (it's just "Agent Creator"); never "Library".
 
 ## 7. All ideas I considered, and the cuts
 

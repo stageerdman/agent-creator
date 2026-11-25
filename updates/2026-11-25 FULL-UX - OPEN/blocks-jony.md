@@ -348,7 +348,7 @@ The per-block files list the exact mock content each screen needs. The
 | **OQ5** | Several agents in one talk | Not designed, no reserved spot (no dead UI). One agent per talk. | Orchestrator: propose or decline. |
 | **OQ6** | Where the app opens | Home when 2+ agents; straight into the only agent otherwise (§4.4). The home card's `Last:` line makes continuing one click. | Phase 7: time open → first word typed. |
 | **OQ7** | Real photos in exports | The face travels in the export by default; the export sheet lists it. No option. Real-person clones stay an orchestrator question. | Orchestrator. |
-| **F1** | Privacy promise | Merlin's drop line `it stays on this Mac` is **not fully true**: Claude reads the text to study it. I use `Drop · your files stay on this Mac · Claude reads them to study`. Needs Merlin/Columbo to update §6. | Merlin. |
+| **F1** | Privacy promise | Merlin's drop line `it stays on this Mac` is **not fully true**: Claude reads the text to study it. I use `Drop · your files stay on this Mac · Claude reads them to study`. **Applied** by Columbo in `magic-merlin.md` §4 (moment 6) and §6. | Done. |
 | **F2** | Talk for new real agents | Talk is mock. An agent made for real in P2 has no talk fixtures, so UJ3 → UJ5 would dead-end. Assumption: Talk for non-fixture agents answers with one marked demo line (`data-mock`). **Recommend** wiring P8 minimally for real (persona as system prompt, no RAG); needs the orchestrator because it adds a route. | Orchestrator / Columbo. |
 | **F3** | P2 switcher | Home now does the switcher's job (picking among 3–10 agents, behavior #2). The P2 switcher *button* stays in place as the agent button; its *menu* becomes the agent's menu. `+ New agent` moves to Home. This is a deliberate change to the P2 top bar. | Eraser. |
 | **F4** | Starting the study | `Start studying` is a button, and the Sketcher never starts it from chat (like Keep, P2 R2). Exception: a batch that lands in one pile with nothing set aside starts at once. | Phase 7. |
@@ -359,7 +359,8 @@ The per-block files list the exact mock content each screen needs. The
 
 ## 9. New on-screen words (to add to Merlin's §6 table)
 
-Merlin's table stays the single list. These are new, all plain:
+Merlin's table stays the single list; these are now added under it
+(`magic-merlin.md` §6). New, all plain:
 `Start studying` · `Couldn't be read` · `Picked up where it left off` ·
 `Studying paused` · `New talk` · `Search past talks` · `Change face…` ·
 `Draw three more` · `Use a photo…` · `Delete [Name]…` · `Keep both` ·
