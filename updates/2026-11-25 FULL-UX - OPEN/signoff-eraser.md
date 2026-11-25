@@ -11,7 +11,7 @@ How each line was checked:
 
 ## 0. Before you start
 - ✓ `npm run build:app` finishes; `dist/Agent Creator.app` exists.
-- **Gap (open, not ticked)**: the window launch. The rebuilt bundle's own server (`Contents/Resources/app`) starts and serves the app, and the Home walk passes with no page errors. **Not checked:** the Chrome `--app` window itself. My shell refuses `open`, so someone with Start or Finder should double-click it once.
+- **Gap (open, waiting on user check, Pixel asked)**: the window launch. The rebuilt bundle's own server (`Contents/Resources/app`) starts and serves the app, and the Home walk passes with no page errors. **Not checked:** the Chrome `--app` window itself. My shell refuses `open`, so someone with Start or Finder should double-click it once.
 - ✓ The top bar shows `Agent Creator` as plain text on Home, with the `Demo` pill on the far right (live).
 - ✓ `Show mock values` outlines the mock-fed elements and removes the outlines when turned off (live).
 - ✓ No "Settings", "Library", "Insight" or "Know" tab, mode or menu item (live).
