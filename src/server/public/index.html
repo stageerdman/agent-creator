@@ -29,8 +29,8 @@
 
   <div class="views" role="tablist" aria-label="View">
     <button id="view-chat" type="button" role="tab" aria-selected="true" aria-controls="chat-pane">Chat</button>
-    <button id="view-sketch" type="button" role="tab" aria-selected="false" aria-controls="sketch" aria-label="Sketch">Sketch<span class="dot" aria-hidden="true" hidden>•</span></button>
-    <button id="view-knows" type="button" role="tab" aria-selected="false" aria-controls="knows">What it knows</button>
+    <button id="view-sketch" type="button" role="tab" aria-selected="false" aria-controls="sketch" aria-label="Profile">Profile<span class="dot" aria-hidden="true" hidden>•</span></button>
+    <button id="view-knows" type="button" role="tab" aria-selected="false" aria-controls="dna">DNA</button>
   </div>
 
   <main id="panes" class="panes" data-view="chat">
@@ -76,14 +76,12 @@
       <header class="sketch-head">
         <h2 id="sketch-title">Sketch</h2>
         <div id="right-switch" class="right-switch" role="tablist" aria-label="Right pane">
-          <button id="rs-sketch" type="button" role="tab" aria-selected="true">Sketch</button>
-          <button id="rs-knows" type="button" role="tab" aria-selected="false">What it knows</button>
+          <button id="rs-profile" type="button" role="tab" aria-selected="true" aria-controls="sketch-scroll">Profile</button>
+          <button id="rs-dna" type="button" role="tab" aria-selected="false" aria-controls="dna">DNA</button>
         </div>
         <button id="keep" class="keep-btn" type="button" disabled title="Give it a name first">Keep</button>
       </header>
-      <section id="study-host" class="references"></section>
-      <div id="knows" class="knows sketch-scroll" hidden></div>
-      <div id="sketch-scroll" class="sketch-scroll">
+      <div id="sketch-scroll" class="sketch-scroll" role="tabpanel" aria-labelledby="rs-profile">
         <div id="keep-card" class="keep-card" hidden>
           <p class="keep-name"></p>
           <p class="keep-line"></p>
@@ -100,17 +98,45 @@
           <input id="f-name" class="field" type="text" placeholder="A name" autocomplete="off">
         </div>
 
-        <div class="draft-field" data-field="instructions" style="--magic-order: 1">
+        <div class="profile-field" style="--magic-order: 1">
           <div class="label-row">
-            <label for="f-instructions">Instructions<span class="tag"></span></label>
-            <button type="button" class="retry link-btn" hidden>Try again</button>
+            <label for="f-desc">Description</label>
           </div>
-          <p id="h-instructions" class="hint">Who they are and what they do: voice, job, rules, limits</p>
-          <textarea id="f-instructions" class="field" rows="2" placeholder="Appears after your first message" aria-describedby="h-instructions"></textarea>
+          <p id="h-desc" class="hint" hidden>From the instructions until you write your own</p>
+          <textarea id="f-desc" class="field" rows="2" placeholder="One line about who this is" aria-describedby="h-desc"></textarea>
         </div>
 
-        <section class="capability-map" data-later="P12" hidden></section><!-- P12: What it knows · only you see this -->
+        <section id="profile-skills" class="profile-skills" aria-label="Skills"></section>
       </div>
+
+      <div id="dna" class="sketch-scroll dna" role="tabpanel" aria-labelledby="rs-dna" hidden>
+        <section class="dna-layer" data-layer="instructions" style="--dna-i: 0" aria-labelledby="dna-h-instructions">
+          <h3 id="dna-h-instructions" class="dna-h">Instructions <span class="dna-sub"></span></h3>
+          <div class="draft-field" data-field="instructions">
+            <div class="label-row">
+              <label for="f-instructions" class="sr-only">Instructions</label><span class="tag"></span>
+              <button type="button" class="retry link-btn" hidden>Try again</button>
+            </div>
+            <p id="h-instructions" class="hint">Who they are and what they do: voice, job, rules, limits</p>
+            <textarea id="f-instructions" class="field" rows="4" placeholder="Appears after your first message" aria-describedby="h-instructions"></textarea>
+          </div>
+          <p id="dna-own" class="dna-own" aria-live="polite"></p>
+        </section>
+        <section class="dna-layer" data-layer="made" style="--dna-i: 1" aria-labelledby="dna-h-made">
+          <h3 id="dna-h-made" class="dna-h">Made from <span class="dna-sub"></span></h3>
+          <div id="dna-made"></div>
+        </section>
+        <section class="dna-layer" data-layer="looks" style="--dna-i: 2" aria-labelledby="dna-h-looks">
+          <h3 id="dna-h-looks" class="dna-h">Looks up <span class="dna-sub"></span></h3>
+          <section id="study-host" class="references"></section>
+          <div id="knows" class="knows"></div>
+        </section>
+        <section class="dna-layer" data-layer="quality" style="--dna-i: 3" aria-labelledby="dna-h-quality">
+          <h3 id="dna-h-quality" class="dna-h">Strong and thin <span class="dna-sub"></span></h3>
+          <div id="dna-quality"></div>
+        </section>
+      </div>
+      <div id="dna-passage" class="sketch-scroll" hidden></div>
     </section>
   </main>
 
