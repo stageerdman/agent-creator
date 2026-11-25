@@ -240,7 +240,8 @@ export function refRow(file, a, { onRemove } = {}) {
   const row = el("div", `ref-row${file.ease === "hard" ? " hard" : ""}`);
   row.append(el("span", "ref-name", file.name), el("span", "ref-size", file.size ?? ""));
   if (onRemove) row.append(btn("Remove", () => onRemove(file), "link-btn quiet", { title: `${shortName(a)} stops using it. The file stays on your Mac.` }));
-  if (file.ease === "hard") row.append(el("p", "ref-why", file.easeReason));
+  if (file.ease === "hard") row.append(el("p", "ref-why", `Hard to study · ${file.easeReason}`));
+  else if (file.ease === "easy") row.append(el("p", "ref-why", "Easy to study"));
   return row;
 }
 
