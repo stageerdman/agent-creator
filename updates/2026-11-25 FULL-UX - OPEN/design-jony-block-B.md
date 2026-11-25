@@ -14,7 +14,8 @@ references, Studying and the map around it.*
 **One primary action per state:**
 - Laid out (B2): **Start studying**.
 - Studying (B3): none. Leave, or keep shaping in the Sketcher.
-- Finished (B4): **See what [Name] knows**.
+- Finished (B4): none. The map arrives on its own the first time the view
+  is visible (X10); the next step is reading it.
 - Shaping (B5): the composer (P2).
 - End: **Keep** (P2).
 
@@ -23,15 +24,21 @@ references, Studying and the map around it.*
 | Removed | Why |
 |---|---|
 | A rules form ("what goes where") | Rules are a correction of a proposal, said in the Sketcher chat (insight 5). |
-| A separate intake screen or wizard | References arrive in the same Sketch mode as the one-line make. One place to make. |
+| A separate intake screen or wizard | References arrive in the same Sketcher mode as the one-line make. One place to make. |
 | A progress bar / percentage | Merlin cut; the file name, count and honest time say more. |
 | A file-by-file preview of contents | Privacy (no-magic list): names only, never contents. |
 | A modal "Studying…" that blocks the app | The user can leave at once (D8). Studying shrinks to one line. |
 | `Start studying` for one-pile batches | Nothing to correct, so nothing to confirm (F4). |
 | A "Talk to [Name]" button on Finished before Keep | It would bypass Keep (F5). Talk comes after Keep. |
 | Choosing an icon before Keep | The first icon is a smart default; the other two are one click away on the face. |
+| `See what [Name] knows` on the Finished card | X10: it opened the view the user was already in, only to start the map arrival. The arrival now plays on its own, once per batch. |
+| `Talk to [Name]` on a top-up Finished card | X11: the mode switch is one click away, and the quiz invitation (E2) is the better door. |
+| The "Stop studying?" sheet | X12: stopping loses nothing; the `Study the rest` line is the undo. |
+| The stages line (`✓ reading · ● listening · ○ studying`) | X13: a second counter beside the Studying line. The slow stage goes into the time line. |
+| A separate `Couldn't be read` list | X14: one `Set aside` list; each row's reason says what happened. |
+| Keep after the first Keep | X4: once kept, every change is live and saved. |
 
-## The right pane in Sketch mode
+## The right pane in Sketcher mode
 
 P2's Sketch header gains a two-part switch, P2's own segmented control:
 
@@ -40,7 +47,10 @@ P2's Sketch header gains a two-part switch, P2's own segmented control:
 ```
 - Before a name exists: `[ Sketch | What it knows ]` (P2's reserved label).
 - During a Sketcher turn the first part reads `Sketching…` (P2 R7).
-- **Keep** stays on the right in both views (P2 S8, unchanged rules).
+- **Keep** stays on the right in both views (P2 S8 rules) **until the first
+  Keep**. Once `keptAt` is set, Keep is gone for good (X4, flag F8): every
+  later change is live and saved, and its change line says so. The header
+  of a kept agent is just the switch.
 - `What [Name] knows` is Block C's view (C1). It holds the map, Likeness,
   and **References** (laid-out piles, Studying, files). This block only
   adds its references and Studying states.
@@ -56,19 +66,22 @@ P2's Sketch header gains a two-part switch, P2's own segmented control:
 Ways in, all ending in the same place (the Sketcher chat + the laid-out
 references):
 1. Drop a folder, files, or both, anywhere on the window (A2 door, A1 Home,
-   any agent in Sketch mode). In Talk mode the overlay reads `Drop · add to
-   Rex Hart's references` and switches to Sketch mode on drop.
-2. ＋ in the Sketcher composer (C3), or click the A2 door → macOS open panel.
+   any agent in either mode). A drop in Talk switches to Sketcher mode on
+   drop (the user just acted).
+2. ＋ in the Sketcher composer (C3), or click the A2 door → macOS open panel
+   (on first run only the door is shown, X7).
 3. A message that is only a path.
 
-**Drop overlay** (whole window, 6% accent tint, 2 px dashed accent inset 16
-px from the edges, text centred):
+**Drop overlay** (C15, the one reference text everywhere, X5):
 ```
             Drop · your files stay on this Mac
                Claude reads them to study  (13 px)
+                     adds to Rex Hart      (13 px, 60%)
 ```
-The overlay settles **down** on drop (8 px, 200 ms), never up or away
-(Merlin 6). Reduced motion: it just goes.
+The context line is `adds to [Name]` inside any named agent (Talk or
+Sketcher), `for a new agent` on Home, and absent on A2 First run. The
+privacy lines are always there. The overlay settles **down** on drop (8 px,
+200 ms), never up or away (Merlin 6). Reduced motion: it just goes.
 
 **In the chat** (user side), a **references chip** (C4), P2 pasted-note
 style:
@@ -183,15 +196,16 @@ Ines knows · Bonus set aside  ↗
 
 ## B3 · Studying (UJ2 · 4–5, Merlin ★3)
 
-After **Start studying**, the References section becomes the Studying
-block, at the top of `What Ines knows`:
+After **Start studying**, the References section becomes the **Study
+block** (C9; the same component carries B4), at the top of `What Ines
+knows`:
 
 ```
 │ Only you see this. Ines doesn't.                                       │
 │                                                                       │
 │ Studying · Day 3 – Session 2.mp4 (listening) · 251 of 297              │
-│ about 25 min left · you can close the app, it keeps going              │
-│   ✓ reading 239 · ● listening 12 of 58 · ○ studying                     │
+│ about 25 min left · listening is the slow part · you can close the     │
+│ app, it keeps going                                             Stop  │
 │                                                                       │
 │ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ (Palette strip, C13)       stand-in look        │
 │ Books · Transcripts · Notes                                           │
@@ -212,8 +226,10 @@ block, at the top of `What Ines knows`:
   going`. Rounded (`about 2 min`, `about 25 min`, `about 3 h`). It never
   goes **up** without a reason; if it must, it says why: `about 30 min left
   · the videos are longer than expected`.
-- **Stages** in plain words: `✓ reading 239 · ● listening 12 of 58 · ○
-  studying` (13 px). Words carry the state; the glyphs only help.
+- **No stages line** (X13). The stage word is already in the Studying line
+  (`(listening)`). When one stage dominates the wait, the time line says so
+  in a few words: `about 25 min left · listening is the slow part`. Two
+  lines to read, not three, and one counter.
 - **First impressions** (after ~20 files, within the first minute of the
   mock run):
   - in this view: 3–4 map lines, **all Rough**, row text at 60%, under the
@@ -233,7 +249,9 @@ block, at the top of `What Ines knows`:
   reference group is done (Books, Transcripts, Notes, Course videos, Live
   Q&A). Under it, the names of the groups so far (13 px).
 - **References** below: collapsed to one row; ▸ shows the piles (B2) with
-  per-file state (`studied`, `studying`, `waiting`, `couldn't be read`).
+  per-file state (`studied`, `studying`, `waiting`). A file that fails
+  during studying moves to **Set aside** with its reason (X14); the
+  `Set aside · n` count grows by one. One list, one word.
 - **Leaving:** the user can switch to the Sketch view, talk to the Sketcher,
   go Home, open another agent or quit. Studying shrinks to the **top bar
   line** `Studying · about 25 min left` (C1, a button back here) and the
@@ -260,48 +278,52 @@ block, at the top of `What Ines knows`:
   the folder is back (checked every 30 s and on window focus).
 - **B3.8 Paused · Mac out of space:** `Studying paused · this Mac is out of
   space. Free 2 GB to go on.`
-- **B3.9 Stop studying:** in the Studying block, a quiet text button `Stop`
-  (13 px, right of the time line). Sheet: `Stop studying? Ines keeps what's
-  studied so far (251 of 297). You can start again later.` [Cancel] [Stop].
-  After: `Stopped · 251 of 297 studied · Study the rest` (one button).
+- **B3.9 Stop studying:** in the Study block, a quiet text button `Stop`
+  (13 px, right of the time line, 44 px target). **No sheet** (X12):
+  stopping loses nothing. It stops at once and the block reads `Stopped ·
+  251 of 297 studied · Study the rest` (one button). That line is the undo.
+  Everything studied so far is kept.
 - **B3.10 Prototype skip:** C14 `Skip time ▸` jumps: start → First
   impressions → (each Palette group) → Finished.
 
 ## B4 · Finished studying (UJ2 · 6, ★3)
 
-The Studying block becomes the **Finished card**, on the same surface:
+The Study block (C9) turns into its **finished** state: a summary, with
+**no button** (X10). It already sits inside `What Ines knows`, so there is
+nothing to open:
 
 ```
-│ Finished studying · Ines                                              │
-│ 297 references studied · 14 set aside · 1 couldn't be read            │
-│                                                                       │
-│                                          [ See what Ines knows ]      │
+│ Finished studying · 296 references studied · 15 set aside ▸           │
 ```
-- `14 set aside` and `1 couldn't be read` are buttons → the list with a
-  reason per file: `Course – The Quiet Deal/Day 2 – Part 4.mp4 · the file
-  is damaged: no sound track found. Re-export it and drop it again.`
-- **See what Ines knows** (primary) plays the map arrival (C1, ★4) right
-  here: the card collapses to one line `Finished studying · 297 references
-  ▸` and the map takes the space under it.
-- For an agent that was **already kept** (E1 top-up), the card has a second,
-  quieter button `Talk to Rex` (B4.3).
-- **In the chat** (scripted): `I finished studying. Here's Ines from all
-  297 references.` + a **voice card** that quotes the material (B5) +
-  change line `Sketch: persona and instructions updated`.
+- `15 set aside ▸` opens the one Set aside list (X14), a reason per file,
+  the damaged video among them: `Course – The Quiet Deal/Day 2 – Part
+  4.mp4 · damaged: no sound track found. Re-export it and drop it again.`
+- **The map arrives on its own** (C1, ★4) the first time this view is
+  visible after the batch finishes: right away if the user is looking at
+  it, else on their next visit (switch, top bar line, notification click,
+  Home row). Once per batch, as specced in C1. The map takes the space
+  under the summary.
+- After that first visit, the summary collapses to one line in the
+  References row: `296 references · studied 25 Nov`.
+- **In the chat** (scripted): `I finished studying. Here's Ines from 296
+  references.` + a **voice card** that quotes the material (B5) + change
+  line `Sketch: persona and instructions updated`.
 - **Notification** (if the window isn't focused, or the app is closed):
-  macOS notification `Ines finished studying. 297 references.` Click →
-  opens this view. Only the system sound.
+  macOS notification `Ines finished studying. 296 references.` Click →
+  opens this view (and the arrival plays there). Only the system sound.
 - Home: the Ines row reads `Ready` until opened.
-- The card stays until the user acts on it (opens the map or the lists);
-  afterwards the References section shows `297 references · studied 25 Nov`.
+- No Talk button on the summary, ever (X11). Before Keep, Talk doesn't
+  exist (F5); after Keep, the mode switch is in the top bar.
 
 ### States
-- **B4.1 All clean:** `297 references studied` alone (no "0 set aside").
-- **B4.2 Some failed** (as drawn).
-- **B4.3 Top-up finished** (kept agent): + `Talk to Rex`.
-- **B4.4 Everything failed** (e.g. all videos damaged): `Couldn't study
-  these references · 41 couldn't be read ▸`, no map arrival, the Sketcher
-  says what to do.
+- **B4.1 All clean:** `Finished studying · 296 references studied` alone
+  (no "0 set aside").
+- **B4.2 Some set aside** (as drawn).
+- **B4.3 Top-up finished** (kept agent, E1): the same summary, nothing
+  added (X11).
+- **B4.4 Nothing could be studied** (e.g. all videos damaged): `Finished
+  studying · nothing could be studied · 41 set aside ▸`, no map arrival,
+  the Sketcher says what to do.
 
 ## B5 · The generated Sketch (UJ2 · 8–9)
 
@@ -361,7 +383,10 @@ UJ3 · 1 is P2, all of it (S1–S8). At Keep, the box in the card reads:
 │ │ Marcus knows only what's in the Sketch.   │ │
 │ │ Add references to teach him more.         │ │
 ```
-- "Add references" is a link → the macOS open panel → B1 for this agent.
+- **One target (X15):** in B7 the box is **not** a button (there is no map
+  to open). Its one action is the `Add references` text button → the macOS
+  open panel → B1 for this agent. (B6 is the reverse: the whole box is one
+  button to `What Ines knows`, with no link inside it.)
   (Pronoun: the template is `[Name] knows only what's in the Sketch. Add
   references to teach [Name] more.`; the mock may use the persona's
   pronoun if the Sketch has one, else the name.)
@@ -369,12 +394,12 @@ UJ3 · 1 is P2, all of it (S1–S8). At Keep, the box in the card reads:
   before/after.
 
 ## Accessibility (block B)
-- The Studying line and Finished card are `aria-live="polite"`, announced
-  on stage change, every ~25 files, and on finish (Merlin §8).
+- The Study block (C9) has one `aria-live="polite"` region, announced on
+  stage change, every ~25 files, and on finish (Merlin §8).
 - Drop areas also open the file panel by click/keyboard.
 - Stacks are a tree (`role="tree"`), ▸ is `aria-expanded`.
-- Start studying, Stop, See what [Name] knows: 44 px targets.
-- Map levels, `first impressions`, `couldn't be read` are words.
+- Start studying, Stop, Study the rest: 44 px targets.
+- Map levels, `first impressions`, `set aside` and each reason are words.
 - Reduced motion: stack slides, line firming, overlay settle and Palette
   segments appear without motion.
 
@@ -386,8 +411,8 @@ UJ3 · 1 is P2, all of it (S1–S8). At Keep, the box in the card reads:
   one) · `Transcripts/` 120 .txt · `Notes/` 118 .md (2 duplicates `(copy)`)
   · `Live Q&A/` 18 .mp3 (`Live Q&A 1.mp3` …) · `Bonus/` 10 PDF
   (`Affiliate offer.pdf`…) · root: `Workbook.pages`, `Setup.dmg`.
-  Totals: 297 studied · 14 set aside (10 Bonus, 2 duplicates, 2 can't
-  read) · 1 couldn't be read.
+  Totals: 297 to study · 296 studied · 15 set aside (10 Bonus, 2
+  duplicates, 2 can't read, 1 damaged during studying), all in one list.
 - **Split** before and after the correction (B2), and the two scripted
   Sketcher replies plus the `Press Start studying…` reply.
 - **Study run:** stages reading 239 (3 min) · listening 58 (35 min) ·
@@ -417,6 +442,6 @@ Finished · estimate never jumps silently.
 
 ## Journey trace
 UJ2 · 1 → B1 · 2 → B2 stacks, Set aside · 3 → B2 correction · 4 → B3 ·
-5 → B3.4 · 6 → B4 · 7 → B4 map arrival + B5 placeholder (map: C1) ·
-8 → B5 · 9 → B5 face slot → E4 · 10 → B6. UJ3 · 1 → P2 · 2 → B7 · 3 → B7
+5 → B3.4 · 6 → B4 summary · 7 → C1 arrival on first view (+ B5
+placeholder) · 8 → B5 · 9 → E4 (from the B5 face slot) · 10 → B6. UJ3 · 1 → P2 · 2 → B7 · 3 → B7
 → E1.
