@@ -166,6 +166,122 @@ export function switcherRows(items, now = Date.now()) {
     }));
 }
 
+// ── SKETCH-REWORK P2: Profile ─────────────────────────────────────────────
+// Skills come from the map the study writes (one data source for Profile and
+// DNA's quality layer). `picks` are the user's hand moves {skillId: row}; a
+// later study never moves a picked chip.
+
+export const ROWS = [
+  { id: "good", title: "Good at", hint: "plenty in the material", empty: "Nothing here yet." },
+  { id: "medium", title: "Medium", hint: "some in the material", empty: "Nothing here yet." },
+  { id: "not", title: "Not trained for", hint: "not in the material yet", empty: "Nothing missing that we know of." },
+];
+const LEVEL_ROW = { sharp: "good", rough: "medium", blank: "not" };
+const rowTitle = (row) => ROWS.find((r) => r.id === row)?.title ?? row;
+
+export function skillsFromMap(map = [], picks = {}) {
+  return (map ?? []).map((line) => {
+    const picked = Object.hasOwn(picks, line.id);
+    return { id: line.id, text: line.text, row: picked ? picks[line.id] : LEVEL_ROW[line.level] ?? "medium", picked, refs: line.refs ?? [] };
+  });
+}
+
+// A new study's map, with the user's moves kept.
+export const applyAiSkills = (skills, map) =>
+  skillsFromMap(map, Object.fromEntries(skills.filter((s) => s.picked).map((s) => [s.id, s.row])));
+
+export const profileRows = (skills) => ROWS.map((r) => ({ ...r, skills: skills.filter((s) => s.row === r.id) }));
+
+export const nextRow = (row) => ROWS[(ROWS.findIndex((r) => r.id === row) + 1) % ROWS.length].id;
+
+export const moveSkill = (picks, id, row) => ({ ...picks, [id]: row });
+
+export const skillLabel = (s) => `${s.text}, ${rowTitle(s.row)}${s.picked ? ", moved by you" : ""}`;
+
+export const moveLine = (s, name) => `Profile: "${s.text}" moved to ${rowTitle(s.row)} · summary only, ${name} answers the same`;
+
+// The description: the user's own, else the Instructions' first sentence.
+export function describe(description, instructions) {
+  const own = (description ?? "").trim();
+  return own ? { text: own, fromInstructions: false } : { text: firstSentence(instructions), fromInstructions: Boolean((instructions ?? "").trim()) };
+}
+
+// ── SKETCH-REWORK P3: DNA ─────────────────────────────────────────────────
+
+// The source files behind the instructions: every file a map line cites.
+export function sourcesOf(map = [], files = []) {
+  const ids = [...new Set((map ?? []).flatMap((l) => (l.refs ?? []).map((r) => r.fileId)))];
+  return ids.map((id) => files.find((f) => f.id === id)).filter(Boolean);
+}
+
+const lookable = (files = []) => files.filter((f) => !f.removed);
+
+export function dnaLayers({ name = "it", map = [], files = [], total } = {}) {
+  const made = sourcesOf(map, files).length;
+  const removed = files.filter((f) => f.removed).length;
+  const looks = total !== undefined ? Math.max(0, total - removed) : lookable(files).length;
+  const q = qualityFrom(skillsFromMap(map), files);
+  return [
+    { id: "instructions", title: "Instructions", sub: `what ${name} is told`, count: 1 },
+    { id: "made", title: "Made from", count: made, sub: made ? `${made} ${made === 1 ? "file" : "files"} shaped these instructions` : "Made from one sentence, no files yet." },
+    { id: "looks", title: "Looks up", count: looks, sub: looks ? `${looks} ${looks === 1 ? "file" : "files"} ${name} reads while answering` : "Nothing to look up yet." },
+    { id: "quality", title: "Strong and thin", count: q.lines.length, sub: `about the material, not about ${name}` },
+  ];
+}
+
+// Instruction parts are the paragraphs of the one Instructions box.
+export function instructionParts(text = "") {
+  const parts = [];
+  const re = /[^\n]+(?:\n(?!\s*\n)[^\n]*)*/g;
+  for (let m; (m = re.exec(text ?? "")); ) if (m[0].trim()) parts.push({ index: parts.length, text: m[0].trim(), start: m.index, end: m.index + m[0].length });
+  return parts;
+}
+
+export function partAt(text, caret) {
+  const parts = instructionParts(text);
+  if (!parts.length) return -1;
+  const hit = parts.find((p) => caret >= p.start && caret <= p.end);
+  if (hit) return hit.index;
+  const before = parts.filter((p) => p.end < caret);
+  return before.length ? before.at(-1).index : 0;
+}
+
+const words = (text) => new Set((text ?? "").toLowerCase().match(/[a-z]{5,}/g) ?? []);
+
+// Sample links until the backend sends real ones: a part is "behind" the map
+// lines it shares a word with; their cited files are its sources.
+export function threadsFor(partText, map = [], files = []) {
+  const mine = words(partText);
+  const lines = (map ?? []).filter((l) => [...words(l.text)].some((w) => mine.has(w)));
+  return sourcesOf(lines, files);
+}
+
+// Looks up: remove (with Undo) and turn off. Never touches the user's disk.
+export function removeRag(files, id) {
+  const file = files.find((f) => f.id === id);
+  if (!file || file.removed) return { files, undo: null };
+  return { files: files.map((f) => (f.id === id ? { ...f, removed: true } : f)), undo: { id, name: file.name } };
+}
+
+export const undoRag = (files, undo) => (undo ? files.map((f) => (f.id === undo.id ? { ...f, removed: false } : f)) : files);
+
+export const toggleUse = (files, id) => files.map((f) => (f.id === id ? { ...f, off: !f.off } : f));
+
+// Strong and thin: reasons first, a number last. Reads the same skills as Profile.
+export function qualityFrom(skills, files = []) {
+  const rows = profileRows(skills);
+  const [good, medium, not] = rows.map((r) => r.skills);
+  const aside = lookable(files).filter((f) => f.ease === "hard");
+  const lines = [
+    ...good.map((s) => ({ kind: "Strong", text: s.text, skill: s.id, action: null })),
+    ...medium.map((s) => ({ kind: "Thin", text: s.text, skill: s.id, action: "Add a reference" })),
+    ...not.map((s) => ({ kind: "Missing", text: s.text, skill: s.id, action: "Add a reference" })),
+    ...aside.map((f) => ({ kind: "Set aside", text: `${f.name}, hard to study`, file: f.id, action: "Remove" })),
+  ];
+  const score = skills.length ? Math.round((100 * (good.length + medium.length / 2)) / skills.length) : null;
+  return { lines, score, overall: score === null ? "Nothing to judge yet." : `Overall ${score} of 100` };
+}
+
 export function timeAgo(iso, now = Date.now()) {
   const minutes = Math.round((now - Date.parse(iso)) / 60_000);
   if (minutes < 1) return "just now";

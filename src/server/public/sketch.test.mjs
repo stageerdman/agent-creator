@@ -4,7 +4,110 @@ import { readFileSync, readdirSync } from "node:fs";
 import {
   readEvents, parseEventBlock, applyDraftEvent, changeLine, firstSentence, errorLine,
   splitPaste, replyBlocks, inlineRuns, switcherRows, timeAgo, mergePersona,
+  skillsFromMap, applyAiSkills, profileRows, nextRow, moveSkill, skillLabel, moveLine, describe,
+  sourcesOf, dnaLayers, instructionParts, partAt, threadsFor, removeRag, undoRag, toggleUse, qualityFrom,
 } from "./sketch.js";
+
+// ── SKETCH-REWORK P2 / P3 ─────────────────────────────────────────────────
+const MAP = [
+  { id: "m1", level: "rough", text: "Pricing and offers", refs: [{ fileId: "f2", location: "p 4" }] },
+  { id: "m2", level: "sharp", text: "Sales talks and closing", refs: [{ fileId: "f1", location: "12:00" }, { fileId: "f2", location: "p 9" }] },
+  { id: "m3", level: "blank", text: "Money and investing", refs: [] },
+  { id: "m4", level: "sharp", text: "Hard calls with clients", refs: [{ fileId: "f3", location: "3:10" }] },
+];
+const FILES = [
+  { id: "f1", name: "Day 1.mp4" }, { id: "f2", name: "Offers.pdf" },
+  { id: "f3", name: "Calls.mp3", ease: "hard" }, { id: "f4", name: "Notes.txt" },
+];
+
+test("profileRows sorts skills into three rows and keeps their order", () => {
+  const rows = profileRows(skillsFromMap(MAP));
+  assert.deepEqual(rows.map((r) => r.title), ["Good at", "Medium", "Not trained for"]);
+  assert.deepEqual(rows.map((r) => r.skills.map((s) => s.id)), [["m2", "m4"], ["m1"], ["m3"]]);
+  assert.deepEqual(rows.map((r) => r.hint), ["plenty in the material", "some in the material", "not in the material yet"]);
+});
+
+test("empty rows say so; Not trained for never reads as can-do-everything", () => {
+  const rows = profileRows([]);
+  assert.deepEqual(rows.map((r) => r.empty), ["Nothing here yet.", "Nothing here yet.", "Nothing missing that we know of."]);
+  for (const r of rows) assert.doesNotMatch(`${r.title} ${r.hint} ${r.empty}`, /sharp|rough|blank|persona/i);
+});
+
+test("moveSkill marks a chip picked; a later study does not move it", () => {
+  assert.equal(nextRow("good"), "medium");
+  assert.equal(nextRow("not"), "good");
+  const picks = moveSkill({}, "m3", nextRow("not"));
+  const skills = skillsFromMap(MAP, picks);
+  const money = skills.find((s) => s.id === "m3");
+  assert.equal(money.row, "good");
+  assert.equal(money.picked, true);
+  assert.equal(skillLabel(money), "Money and investing, Good at, moved by you");
+  assert.equal(moveLine(money, "Rex"), 'Profile: "Money and investing" moved to Good at · summary only, Rex answers the same');
+  const restudied = applyAiSkills(skills, MAP.map((l) => ({ ...l, level: "rough" })));
+  assert.equal(restudied.find((s) => s.id === "m3").row, "good");
+  assert.equal(restudied.find((s) => s.id === "m2").row, "medium");
+});
+
+test("describe falls back to the Instructions' first sentence, max 140 characters", () => {
+  assert.deepEqual(describe("  Mine.  ", "You coach. Hard."), { text: "Mine.", fromInstructions: false });
+  assert.deepEqual(describe("", "You coach. Hard."), { text: "You coach.", fromInstructions: true });
+  const long = describe("", `${"word ".repeat(60)}end.`);
+  assert.ok(long.text.length <= 140);
+  assert.equal(describe("", "").fromInstructions, false);
+});
+
+test("dnaLayers: four layers in fixed order, with words for an agent with no files", () => {
+  const full = dnaLayers({ name: "Rex", map: MAP, files: FILES });
+  assert.deepEqual(full.map((l) => l.title), ["Instructions", "Made from", "Looks up", "Strong and thin"]);
+  assert.equal(full[1].sub, "3 files shaped these instructions");
+  assert.equal(full[2].sub, "4 files Rex reads while answering");
+  assert.equal(full[3].sub, "about the material, not about Rex");
+  const none = dnaLayers({ name: "Edie" });
+  assert.deepEqual(none.map((l) => l.count), [1, 0, 0, 0]);
+  assert.equal(none[1].sub, "Made from one sentence, no files yet.");
+  assert.equal(none[2].sub, "Nothing to look up yet.");
+  for (const l of [...full, ...none]) assert.doesNotMatch(`${l.title} ${l.sub}`, /persona/i);
+});
+
+test("instruction parts are paragraphs; partAt follows the caret", () => {
+  const text = "You coach sales.\nShort lines.\n\nNever talk about money.";
+  const parts = instructionParts(text);
+  assert.deepEqual(parts.map((p) => p.text), ["You coach sales.\nShort lines.", "Never talk about money."]);
+  assert.equal(partAt(text, 0), 0);
+  assert.equal(partAt(text, text.length), 1);
+  assert.equal(partAt(text, text.indexOf("\n\n") + 1), 0);
+  assert.equal(partAt("", 0), -1);
+});
+
+test("threadsFor returns the source files behind a part, none for its own view", () => {
+  assert.deepEqual(threadsFor("Run sales talks like a coach.", MAP, FILES).map((f) => f.id), ["f1", "f2"]);
+  assert.deepEqual(threadsFor("Be kind.", MAP, FILES), []);
+  assert.deepEqual(sourcesOf(MAP, FILES).map((f) => f.id), ["f2", "f1", "f3"]);
+});
+
+test("removing a looked-up file can be undone; turning it off is a toggle", () => {
+  const { files, undo } = removeRag(FILES, "f4");
+  assert.equal(files.find((f) => f.id === "f4").removed, true);
+  assert.deepEqual(undo, { id: "f4", name: "Notes.txt" });
+  assert.equal(FILES.find((f) => f.id === "f4").removed, undefined); // nothing changed in place
+  assert.equal(undoRag(files, undo).find((f) => f.id === "f4").removed, false);
+  assert.equal(dnaLayers({ name: "Rex", map: MAP, files }).at(2).count, 3);
+  assert.equal(toggleUse(toggleUse(FILES, "f1"), "f1").find((f) => f.id === "f1").off, false);
+});
+
+test("quality and profileRows read the same skills", () => {
+  const skills = skillsFromMap(MAP, moveSkill({}, "m1", "good"));
+  const q = qualityFrom(skills, FILES);
+  const rows = profileRows(skills);
+  assert.deepEqual(q.lines.filter((l) => l.kind === "Strong").map((l) => l.skill), rows[0].skills.map((s) => s.id));
+  assert.deepEqual(q.lines.filter((l) => l.kind === "Thin").map((l) => l.skill), rows[1].skills.map((s) => s.id));
+  assert.deepEqual(q.lines.filter((l) => l.kind === "Missing").map((l) => l.skill), rows[2].skills.map((s) => s.id));
+  assert.deepEqual(q.lines.filter((l) => l.kind === "Set aside").map((l) => l.file), ["f3"]);
+  assert.equal(q.score, 75);
+  assert.equal(q.overall, "Overall 75 of 100");
+  for (const l of q.lines) assert.ok(l.kind === "Strong" ? l.action === null : Boolean(l.action));
+  assert.equal(qualityFrom([]).overall, "Nothing to judge yet.");
+});
 
 const streamOf = (...chunks) =>
   new ReadableStream({
