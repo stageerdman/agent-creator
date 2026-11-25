@@ -599,6 +599,9 @@ body.dragging .door { border-style: solid; border-color: var(--accent); }
 .ref-row.group .link-btn:first-child { opacity: 1; font-size: 13px; }
 .ref-name { flex: 1; }
 .ref-size { opacity: var(--muted); }
+.dna-file .ref-name { overflow-wrap: anywhere; }
+.dna-feed { font-size: 0.85em; padding: 0 0.5em; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.dna-file.is-open .dna-feed { opacity: var(--muted); border-style: dashed; }
 .ref-row > .link-btn.quiet:last-of-type { opacity: 0; }
 .ref-row:hover > .link-btn.quiet:last-of-type, .ref-row > .link-btn.quiet:last-of-type:focus-visible { opacity: var(--muted); }
 .ref-row.group > .link-btn.quiet:first-child { opacity: 1; }

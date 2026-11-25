@@ -58,13 +58,12 @@ export function topUp(a) {
   picker("Add references", items, (item) => runTopUp(a, item));
 }
 
-export function topUpFiles(a, files) {
-  if (!a || a.real || !files?.length) return;
-  if (faceSheet && files.some((n) => /\.(png|jpe?g|heic|gif|webp)$/i.test(n))) return facePhoto(a, { src: null, name: files[0] });
-  if (files.some((n) => /money has rules/i.test(n)) && a.id === "rex") return runTopUp(a, store.demo.pickerFiles.topUps.find((t) => t.id === "money"));
-  if (a.id === "marcus" && !a.references.total) return runTopUp(a, store.demo.pickerFiles.topUps.find((t) => t.id === "marcus-docs"));
-  const detail = `${files.length} ${files.length === 1 ? "file" : "files"}`;
-  runTopUp(a, { id: "generic", name: files.length === 1 ? files[0] : `${files.length} files`, detail, names: files });
+// A photo dropped while the face sheet is open becomes the face. → true if taken.
+export function facePhotoDrop(a, names) {
+  const photo = names.find((n) => /\.(png|jpe?g|heic|gif|webp)$/i.test(n));
+  if (!a || a.real || !faceSheet || !photo) return false;
+  facePhoto(a, { src: null, name: photo });
+  return true;
 }
 
 export function addForLine(a, line) {

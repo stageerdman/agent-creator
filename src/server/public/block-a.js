@@ -230,6 +230,7 @@ hooks.onDraft = (draft) => {
   if (a) Object.assign(a.draft, draft);
   if (store.screen === "sketcher") $("top-face").replaceChildren(face(a ?? { draft }, 24));
 };
+hooks.onFiles = ({ files }) => C.takeFiles(files);
 hooks.beforeSend = (message) => B.beforeSend(message);
 hooks.mockTurn = (agent, message, signal) => (isMock(agent.id) ? B.mockTurn(mockAgent(agent.id), message, signal) : undefined);
 hooks.voiceCaption = (agent) => B.voiceCaption(agent);
@@ -299,12 +300,10 @@ export async function boot() {
   dropOverlay({
     target: () => {
       const a = nav.current();
-      if (store.screen === "home") return "for a new agent";
-      if (a && !a.real && nameOf(a) && a.keptAt) return `adds to ${nameOf(a)}`;
-      if (a && (a.real || !a.keptAt) && B.doorShowing()) return null;
-      return a && nameOf(a) ? `adds to ${nameOf(a)}` : "for a new agent";
+      if (store.screen === "home" || !a || !a.real) return "for a new agent"; // see B.onDrop
+      return nameOf(a) ? `into ${nameOf(a)}'s DNA` : "into the DNA";
     },
-    onDrop: (files) => B.onDrop(files),
+    onDrop: (entries) => B.onDrop(entries),
   });
   C.init();
   D.init();

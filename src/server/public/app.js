@@ -557,6 +557,7 @@ async function runTurn(message, userEl) {
       for await (const { event, data } of readEvents(response.body)) {
         if (event === "delta") onDelta(reply, data.text);
         else if (event === "draft") onDraft(turn, data);
+        else if (event === "files") hooks.onFiles?.(data);
         else if (event === "done") outcome = { kind: "done", ...data };
         else if (event === "error") outcome = data;
       }

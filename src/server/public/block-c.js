@@ -3,10 +3,11 @@
 // DNA: Instructions → Made from → Looks up → Strong and thin, every part adjustable.
 // Grow (block E) still leaves a.removal on the agent; Undo lives in Looks up.
 
-import { P2, el, btn, store, passagePanel, refLink, shortName, nameOf } from "/components.js";
+import { P2, el, btn, store, passagePanel, refLink, shortName, nameOf, toast } from "/components.js";
 import {
   skillsFromMap, profileRows, nextRow, moveSkill, skillLabel, moveLine, describe,
   sourcesOf, dnaLayers, partAt, instructionParts, threadsFor, toggleUse, qualityFrom,
+  fileEntries, feedLabel, filesSub, sizeLabel,
 } from "/sketch.js";
 import * as B from "/block-b.js";
 import * as E from "/block-e.js";
@@ -59,6 +60,10 @@ export function init() {
     if (!a) return;
     saveProfile(a.id, { ...loadProfile(a.id), desc: $("f-desc").value });
   });
+  for (const id of ["dna-pick-files", "dna-pick-folder"]) {
+    const input = $(id);
+    input.addEventListener("change", () => { addFiles(fileEntries(input.files)); input.value = ""; });
+  }
   const ins = $("f-instructions");
   const follow = () => setPart(partAt(ins.value, ins.selectionStart ?? 0));
   for (const type of ["click", "keyup", "input", "focus"]) ins.addEventListener(type, follow);
@@ -162,6 +167,7 @@ export function renderDna(a) {
     if (sub) sub.textContent = `· ${s.sub}`;
   }
   renderMade(a);
+  renderFiles(a);
   renderLooks(a);
   renderQuality(a);
   setPart(part);
@@ -183,6 +189,52 @@ function renderMade(a) {
   host.replaceChildren(...rows,
     el("p", "dna-quiet", `Shown as is. To change ${name}, edit the Instructions.`),
     el("p", "dna-quiet small", "Sample links · real ones come with the next study"));
+}
+
+// ── Files: dropped or picked, routed by the Sketcher, never read by it ────
+
+const realOf = (a) => (a && !store.agents.includes(a) && P2.state.agent?.id === a.id ? P2.state.agent : null);
+
+function renderFiles(a) {
+  const layer = $("dna").querySelector('[data-layer="files"]');
+  const agent = realOf(a);
+  layer.hidden = !agent; // demo agents show their sample references in Looks up instead
+  if (!agent) return;
+  const files = agent.files ?? [];
+  layer.querySelector(".dna-sub").textContent = `· ${filesSub(files)}`;
+  const rows = files.map((f) => el("div", { class: `dna-row dna-file${f.feeds?.length ? "" : " is-open"}`, "data-path": f.path },
+    el("span", { class: "ref-name", title: f.path }, f.path),
+    el("span", "ref-size", sizeLabel(f.size)),
+    el("span", "dna-feed", feedLabel(f.feeds))));
+  const hint = files.some((f) => !f.feeds?.length)
+    ? el("p", "dna-quiet small", `Tell the Sketcher what each is for, like "the notes folder is for looking up, the style guide shapes the instructions".`)
+    : null;
+  $("dna-files").replaceChildren(...rows, hint,
+    el("div", "knows-actions",
+      btn("Add files", () => $("dna-pick-files").click(), "btn"),
+      btn("Add a folder", () => $("dna-pick-folder").click(), "btn")));
+}
+
+// The one way in for files, dropped or picked. → the agent's new file list.
+export async function addFiles(entries) {
+  const agent = P2.state.agent;
+  if (!agent || store.agents.some((x) => x.id === agent.id) || !entries.length) return;
+  try {
+    const { files, added } = await P2.api(`/api/agents/${agent.id}/files`, { method: "POST", body: { files: entries } });
+    agent.files = files;
+    toast(added.length ? `${added.length} ${added.length === 1 ? "file" : "files"} added to DNA` : "Already in DNA");
+  } catch (error) {
+    toast(`Couldn't add the files: ${error.message}`);
+  }
+  showDna(current());
+}
+
+// The Sketcher routed files in a chat turn.
+export function takeFiles(files) {
+  const agent = P2.state.agent;
+  if (!agent) return;
+  agent.files = files;
+  renderDna(current());
 }
 
 function setPart(index) {

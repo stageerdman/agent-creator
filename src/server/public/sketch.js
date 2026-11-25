@@ -282,6 +282,39 @@ export function qualityFrom(skills, files = []) {
   return { lines, score, overall: score === null ? "Nothing to judge yet." : `Overall ${score} of 100` };
 }
 
+// ── DNA · Files: what the user dropped or picked, routed by the creator ───
+
+// A picked File has webkitRelativePath ("notes/week 1.md") when a folder was
+// chosen, else only its name. The path is the file's identity on the server.
+export const fileEntries = (files) =>
+  [...(files ?? [])].map((f) => ({ path: f.webkitRelativePath || f.name, size: f.size }));
+
+export const agentZip = (entries) => entries.find((e) => e.path.endsWith(".agent.zip"))?.path ?? null;
+
+// Feeds come from the server ("rag", "instructions"); the page says them in DNA words.
+export function feedLabel(feeds = []) {
+  const rag = feeds.includes("rag");
+  const ins = feeds.includes("instructions");
+  if (rag && ins) return "Looks up · shapes Instructions";
+  if (rag) return "Looks up";
+  if (ins) return "Shapes Instructions";
+  return "Not routed yet";
+}
+
+export function filesSub(files = []) {
+  if (!files.length) return "Drop files or folders here. They stay on this Mac.";
+  const open = files.filter((f) => !f.feeds?.length).length;
+  const count = `${files.length} ${files.length === 1 ? "file" : "files"}`;
+  return open ? `${count} · ${open} not routed yet` : `${count} · all routed`;
+}
+
+export function sizeLabel(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+
 export function timeAgo(iso, now = Date.now()) {
   const minutes = Math.round((now - Date.parse(iso)) / 60_000);
   if (minutes < 1) return "just now";

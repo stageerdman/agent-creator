@@ -6,7 +6,7 @@ import {
   P2, el, btn, bus, store, mockAgent, nameOf, shortName, note, face, studyBlock,
   paletteStrip, picker, wait, nowIso, dayMonth,
 } from "/components.js";
-import { mergePersona } from "/sketch.js";
+import { mergePersona, agentZip } from "/sketch.js";
 import { nav } from "/block-a.js";
 import * as C from "/block-c.js";
 import * as E from "/block-e.js";
@@ -470,13 +470,18 @@ export function afterKeep(agent) {
 
 // ── Drops (C15) ───────────────────────────────────────────────────────────
 
-export function onDrop(files) {
-  const zip = files.find((n) => n.endsWith(".agent.zip"));
-  if (zip) return F.importFile(zip);
+// Dropped files never enter the chat: they land in the agent's DNA file list,
+// and the user tells the Sketcher in words what each is for.
+// Demo agents keep their sample files, so a drop on one (or on Home) makes a new agent.
+export async function onDrop(entries) {
+  const zip = agentZip(entries);
+  if (zip) return F.importFile(zip.split("/").at(-1));
+  if (!entries.length) return;
   const a = nav.current();
-  if (store.screen === "home" || !a || doorShowing() || (!a.keptAt && !a.references?.total)) {
-    if (store.screen === "home") return P2.newAgent().then(() => { nav.renderTop(); refsFlow(store.demo.pickerFiles.folders[0]); });
-    return refsFlow(store.demo.pickerFiles.folders[0]);
+  if (E.facePhotoDrop(a, entries.map((e) => e.path))) return;
+  if (store.screen === "home" || !P2.state.agent || mockAgent(P2.state.agent.id)) {
+    await P2.newAgent();
+    nav.renderTop();
   }
-  if (!a.real) E.topUpFiles(a, files);
+  await C.addFiles(entries);
 }

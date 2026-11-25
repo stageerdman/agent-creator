@@ -2,6 +2,8 @@
 // store and a tiny event bus. Zero dependencies. The P2 Sketcher (app.js)
 // registers itself on window.ACP2; its hooks live on window.ACHooks.
 
+import { fileEntries } from "/sketch.js";
+
 export const P2 = (window.ACP2 ??= {});
 export const hooks = (window.ACHooks ??= {});
 
@@ -296,7 +298,7 @@ export function dropOverlay({ target, onDrop }) {
     const t = target();
     overlay.replaceChildren(zip
       ? el("p", "drop-big", "Drop · import this agent")
-      : el("div", "", el("p", "drop-big", "Drop · your files stay on this Mac"), el("p", "drop-sub", "Claude reads them to study"), t && el("p", "drop-for", t)));
+      : el("div", "", el("p", "drop-big", "Drop · your files stay on this Mac"), el("p", "drop-sub", "They go into the DNA · tell the Sketcher what each is for"), t && el("p", "drop-for", t)));
     overlay.hidden = false;
     document.body.classList.toggle("dragging", !zip);
   };
@@ -308,10 +310,33 @@ export function dropOverlay({ target, onDrop }) {
     e.preventDefault();
     depth = 0;
     hide();
-    const files = [...(e.dataTransfer?.files ?? [])].map((f) => f.name);
-    onDrop(files);
+    // Entries must be taken now: the browser empties dataTransfer once the handler returns.
+    const roots = [...(e.dataTransfer?.items ?? [])].map((i) => i.webkitGetAsEntry?.()).filter(Boolean);
+    const loose = roots.length ? null : fileEntries(e.dataTransfer?.files);
+    (loose ? Promise.resolve(loose) : Promise.all(roots.map(walkEntry)).then((lists) => lists.flat()))
+      .then(onDrop, (error) => toast(`Couldn't read the drop: ${error.message}`));
   });
   return overlay;
+}
+
+// A dropped folder arrives as a tree of entries; its files keep their path inside it.
+async function walkEntry(entry) {
+  if (entry.isFile) {
+    const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+    return [{ path: entry.fullPath.replace(/^\//, ""), size: file.size }];
+  }
+  const children = await readAll(entry.createReader());
+  return (await Promise.all(children.map(walkEntry))).flat();
+}
+
+// readEntries hands out a folder in batches (100 in Chromium/WebKit) until an empty one.
+async function readAll(reader) {
+  const all = [];
+  for (;;) {
+    const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+    if (!batch.length) return all;
+    all.push(...batch);
+  }
 }
 
 // ── Streaming text (D: 400 ms, then ~40 chars / 50 ms) ────────────────────

@@ -6,7 +6,37 @@ import {
   splitPaste, replyBlocks, inlineRuns, switcherRows, timeAgo, mergePersona,
   skillsFromMap, applyAiSkills, profileRows, nextRow, moveSkill, skillLabel, moveLine, describe,
   sourcesOf, dnaLayers, instructionParts, partAt, threadsFor, removeRag, undoRag, toggleUse, qualityFrom,
+  fileEntries, agentZip, feedLabel, filesSub, sizeLabel,
 } from "./sketch.js";
+
+// ── DNA · Files ───────────────────────────────────────────────────────────
+test("Files: a picked folder keeps its relative paths, loose files their names", () => {
+  const picked = [{ webkitRelativePath: "notes/week 1.md", name: "week 1.md", size: 10 }, { webkitRelativePath: "", name: "a.pdf", size: 3 }];
+  assert.deepEqual(fileEntries(picked), [{ path: "notes/week 1.md", size: 10 }, { path: "a.pdf", size: 3 }]);
+  assert.deepEqual(fileEntries(null), []);
+});
+
+test("Files: an .agent.zip is an import, anything else is a file for DNA", () => {
+  assert.equal(agentZip([{ path: "x/Juno.agent.zip" }, { path: "a.md" }]), "x/Juno.agent.zip");
+  assert.equal(agentZip([{ path: "a.zip" }]), null);
+});
+
+test("Files: feeds read in DNA words; unrouted files are counted", () => {
+  assert.equal(feedLabel(["rag"]), "Looks up");
+  assert.equal(feedLabel(["instructions"]), "Shapes Instructions");
+  assert.equal(feedLabel(["rag", "instructions"]), "Looks up · shapes Instructions");
+  assert.equal(feedLabel([]), "Not routed yet");
+  assert.equal(filesSub([{ feeds: ["rag"] }, { feeds: [] }]), "2 files · 1 not routed yet");
+  assert.equal(filesSub([{ feeds: ["rag"] }]), "1 file · all routed");
+  assert.match(filesSub([]), /Drop files/);
+});
+
+test("Files: sizes read short, unknown sizes read blank", () => {
+  assert.equal(sizeLabel(512), "512 B");
+  assert.equal(sizeLabel(2048), "2 KB");
+  assert.equal(sizeLabel(3 * 1024 ** 2), "3.0 MB");
+  assert.equal(sizeLabel(null), "");
+});
 
 // ── SKETCH-REWORK P2 / P3 ─────────────────────────────────────────────────
 const MAP = [
@@ -295,12 +325,13 @@ test("P2: Profile tab holds one name, a description and the skill rows", () => {
   assert.match(read("block-c.js"), /profile-skill-chip/);
 });
 
-test("P3: DNA tab has the four layers in order, with the one Instructions box", () => {
+test("P3: DNA tab has its layers in order (Files after Made from), with the one Instructions box", () => {
   const html = read("index.html");
   assert.match(html, /id="rs-dna"[^>]*>DNA</);
   const dna = html.slice(html.indexOf('id="dna"'), html.indexOf('id="dna-passage"'));
   const layers = [...dna.matchAll(/class="dna-layer" data-layer="(\w+)" style="--dna-i: (\d)"/g)].map((m) => `${m[2]}:${m[1]}`);
-  assert.deepEqual(layers, ["0:instructions", "1:made", "2:looks", "3:quality"]);
+  assert.deepEqual(layers, ["0:instructions", "1:made", "2:files", "3:looks", "4:quality"]);
+  assert.ok(dna.includes("webkitdirectory"), "a folder can be picked in DNA");
   assert.equal(count(html, /id="f-instructions"/g), 1, "exactly one Instructions box");
   assert.ok(dna.includes('id="f-instructions"'), "Instructions live in DNA");
   for (const id of ["dna-own", "dna-made", "study-host", "knows", "dna-quality"]) assert.ok(dna.includes(`id="${id}"`), id);
