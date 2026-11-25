@@ -29,15 +29,16 @@ arrival). Likeness and study scores are **plain on purpose** (Merlin §5).*
 
 ## Where it lives
 
-Right pane in Sketch mode, second part of the switch (B, "The right pane
-in Sketch mode"):
+Right pane in Sketcher mode, second part of the switch (B, "The right pane
+in Sketcher mode"):
 
 ```
 │ [ Sketch | What Rex knows ]                                         │  header 52
 ```
-Kept agents show no Keep button here unless the draft changed (P2, F8).
-Reached by: the switch · the Keep card's box (B6) · a Blank line in Talk
-(D1) · the top bar Studying line (C9) · `See what [Name] knows` (B4).
+Kept agents never show Keep here (X4, F8): once kept, every change is live.
+Reached by: the switch · the Keep card's box (B6) · the top bar Studying
+line (C9) · the Finished notification (B4). The map arrives on its own the
+first time the view is visible after a batch (X10).
 
 The whole view sits on the behind-the-canvas surface (C8). One line at the
 top, once: `Only you see this. Rex doesn't.`
@@ -75,8 +76,7 @@ Sections, top to bottom. A section with nothing to say isn't drawn.
 │   Day 1 – Opening.mp4 · 06:15 ▸                                       │
 │ 8 of 10                                                               │
 │                                                                       │
-│ References · Rex Hart – Breakthrough Weekend     186 references ▸     │
-│ Sampled 12 files · 9 easy to study, 3 hard ▸                          │
+│ References · 186 · 3 hard to study ▸                                  │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -117,34 +117,34 @@ Sections, top to bottom. A section with nothing to say isn't drawn.
   studying: hidden (C4). One-line agents: hidden (C3).
 
 ### References (UJ4 · 3)
-- Collapsed: one row `References · Rex Hart – Breakthrough Weekend · 186
-  references ▸`, and under it the study ease summary `Sampled 12 files · 9
-  easy to study, 3 hard ▸`.
-- Expanded `186 references ▸`: the two piles (`What Rex knows`, `How Rex
-  sounds`) with C12 rows per group, ▸ to files, per-file `Remove` on hover
-  (E3), and `Set aside · n · why ▸` (B2).
-- Expanded `Sampled 12 files ▸`: the 12 sampled files as C12 rows with
-  their ease: `Easy to study` or `Hard to study · [reason]`. Hard ones
-  first. Reasons speak about the file's **structure**, never its worth:
-  - `Live Q&A 11.mp3 · Hard to study · two voices talk over each other`
-  - `Day 3 – Workbook scan.pdf · Hard to study · a scan, the text isn't selectable`
-  - `Q&A notes.txt · Hard to study · one long file, no headings, hard to split`
-- Why sampled: studying all files for ease would be slow and noisy; the
-  sample is said plainly ("Sampled 12 files").
+One list of the user's files, one expander (X16).
+- Collapsed: one row `References · 186 · 3 hard to study ▸`. With no hard
+  files: `References · 186 ▸`.
+- Expanded, top to bottom:
+  1. **Hard to study** files first, as C12 rows with their reason. Reasons
+     speak about the file's **structure**, never its worth:
+     - `Live Q&A 11.mp3 · Hard to study · two voices talk over each other`
+     - `Day 3 – Workbook scan.pdf · Hard to study · a scan, the text isn't selectable`
+     - `Q&A notes.txt · Hard to study · one long file, no headings, hard to split`
+  2. **The piles** (`What Rex knows`, `How Rex sounds`) with C12 rows per
+     group, ▸ to files, per-file `Remove` on hover (E3), and the one
+     `Set aside · n · why ▸` list (B2, X14).
+- Easy files carry `Easy to study` in their own C12 row's ease slot (13 px,
+  60%). Files not looked at for ease carry nothing (no "unknown").
+- Ease is judged on a sample (studying every file for ease is slow and
+  noisy). The prototype mock marks 12 Rex files: 3 hard, 9 easy.
 
 ### States
 - **C1.1 Full** (Rex, as drawn).
 - **C1.2 Small material** (Edie, 4 files): map 2 Sharp, 1 Rough, 2 Blank;
-  Likeness with 2 reasons; References shows the 4 files flat (no groups),
-  `Sampled 4 files · 3 easy to study, 1 hard` (all four are the sample).
-- **C1.3 Weak material** (most files hard): map mostly Rough, the first
-  Rough line still specific. Likeness `– Few references sound like him;
-  most are scans` and e.g. `4 of 10`. Nothing red, nothing apologetic. The
-  Sketcher placeholder, once: `Ask what would help, like "what should I
-  add?"…` Scripted answer names files the user could bring.
-- **C1.4 Only Blank** (every file was off-topic): no fake Rough. `Blank`
-  rows only, each with its action.
-- **C1.5 First view after a batch**: arrival plays (once).
+  Likeness with 2 reasons; References `References · 4 · 1 hard to study ▸`,
+  expanded: the hard file first, then the 3 easy files flat (no groups).
+- **C1.5 First view after a batch**: arrival plays (once), the first time
+  the view is visible (X10).
+- *(C1.3 Weak material and C1.4 Only Blank are cut from the prototype: no
+  demo agent and no journey step uses them, X17. For the real build the
+  general rules cover them: words not colours, reasons first, no fake
+  Rough when every file was off-topic.)*
 - **C1.6 Imported agent** (Juno, OQ4): the map didn't travel. On import,
   a short study of the packed knowledge runs (C4 rules, `Studying · reading
   packed knowledge · about 1 min left`), then the map arrives as normal.
@@ -239,7 +239,8 @@ The Studying block (B3) sits on top. Under it:
 - **Rex likeness:** the 3 reasons, example and `8 of 10` as drawn; after E1
   `9 of 10` (`was 8`), with a new reason `✓ Has his money rules, word for
   word` (`Money Has Rules.pdf · p. 12`).
-- **Rex study ease:** 12 sampled files, 3 hard (as listed), 9 easy.
+- **Rex study ease:** 12 files carry ease, 3 hard (as listed), 9 easy; the
+  other 174 carry none.
 - **Edie:** files `Style rules.md` (easy), `Best issues 2025.docx` (easy),
   `Reader emails.txt` (`Hard to study · one 80-page file, no headings, hard
   to split`), `Voice notes.m4a` (easy). Map: Sharp `Cutting the first
@@ -252,8 +253,7 @@ The Studying block (B3) sits on top. Under it:
   Sharp `Liability caps in plain words` · Rough `Employment contracts` ·
   Blank `Tax`.
 - **Marcus:** no references (C3).
-- **Weak material (C1.3):** no demo agent; no journey needs it. Specced
-  for the real build only (Eraser may cut it from the prototype).
+- No weak-material or only-Blank mock (X17).
 
 ## Kept plain (no magic, checked)
 Likeness: reasons first, number last, no colour, no motion, no praise
@@ -262,5 +262,5 @@ map (C8, never in the draft) · arrival is the only motion, once per batch.
 
 ## Journey trace
 UJ4 · 1 → C1 (switch, Keep box, Studying line) · 2 → C1 Likeness · 3 → C1
-References, sampled files · 4 → C1 Blank row `Add a reference for this` →
+References, the one expander (hard files first) · 4 → C1 Blank row `Add a reference for this` →
 E1. UJ2 · 7 → C1.5 arrival (from B4). UJ3 · 2 → C3. UJ11 → C1.6.

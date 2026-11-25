@@ -24,7 +24,10 @@ or a hover action. The daily path is open → face → type.
 | Thumbs up / down | A rating isn't a fix. `Not [Name]` is the fix; silence is the "good". |
 | "Regenerate" | A second answer from the same agent hides the wrong note instead of fixing it. |
 | Source badges or footnote numbers in the text | One Where from line after the answer, only when it leans on a reference. |
-| ＋ references button in the Talk composer | References go through the Sketcher (blocks §4). A drop in Talk switches to Sketch (B1). |
+| ＋ references button in the Talk composer | References go through the Sketcher (blocks §4). A drop in Talk switches to Sketcher mode (B1). |
+| The `‹ 1 of 2 ›` pager in the passage panel | X18: each source is its own link and stays visible; clicking another one swaps the passage. |
+| A link to the map on the Blank line | X20: the next move from a gap is to fill it; the map is one switch away. |
+| `New talk` as the grey title of an untitled row | X21: the same words already name the header button. |
 | "New chat" titles | Titles are topics (Merlin 10). |
 | A typing indicator with theatrics | P2's three dots only, and the first words start in seconds. |
 | A "this sounds off" detector | Only the witness says `Not [Name]` (Merlin §5). |
@@ -34,7 +37,7 @@ or a hover action. The daily path is open → face → type.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Agent Creator › (R) Rex Hart ▾                              [Talk|Sketch]│
+│ Agent Creator › (R) Rex Hart ▾                           [Talk|Sketcher]│
 ├─────────────────────────────────────┬────────────────────────────────────┤
 │                                     │ Past talks                 New talk│
 │  How do I call my landlord about    │ ┌────────────────────────────────┐ │
@@ -90,24 +93,28 @@ Same style, not a link. It is a pass, not a warning: neutral colour.
 **Blank line** (8). Only under an answer about a Blank map topic, visible
 only to the user, on a C8 strip (dashed top border, inset):
 ```
-Blank in what Rex knows · Add a reference
+Blank in what Rex knows · Add a reference for this
 ```
-- `Blank in what Rex knows` → Sketch mode, `What Rex knows`, that row
-  focused. `Add a reference` → the macOS open panel → E1 (Sketch mode).
+- `Blank in what Rex knows` is plain text (X20). `Add a reference for this`
+  (the one label for this action everywhere, X6) is the only action → the
+  macOS open panel → E1 (Sketcher mode).
 - The agent's own words never mention the map (Merlin §5).
 
-**`Not Rex` action** (★2). On hover or keyboard focus of an agent message:
-a text button `Not Rex` at the bottom-right of the message (13 px, 60% →
-100% on hover, 44 px target). The **only** per-message action. Never on
-user messages, dividers or First words before they finish streaming.
-Hidden while streaming. Touch: always visible at 60% (no hover on touch;
-not a Mac case, noted for later).
+**`Not Rex` action** (★2). A text button `Not Rex` at the bottom-right of
+an agent message (13 px, 44 px target). The **only** per-message action.
+- **The latest agent message** shows it always, at 60% (100% on hover or
+  focus), so a user who just heard a wrong note doesn't have to hunt (X19).
+- **Older agent messages** show it on hover or keyboard focus only.
+- Never on user messages or dividers. Hidden while streaming (First words
+  included).
+- Phase 7 check, kept: can a first-timer find `Not Rex` in 10 s? If the
+  latest-message rule still fails it, revisit.
 
 **Divider** (C4). Full-width thin rule with centred 13 px text:
 - `── Rex was redrawn · persona updated ──` (after a fix, D5). Click →
   expands under it: the changed sentence as added text (`+ He never says
   "great question" and never uses emoji. He answers the question first.`)
-  and `See the Sketch ↗` (Sketch mode, the changed field scrolled into
+  and `See the Sketch ↗` (Sketcher mode, the changed field scrolled into
   view with its `from your talk` tag). Click again collapses.
 - `── First words · 25 Nov ──` (D2). Not clickable.
 
@@ -162,10 +169,11 @@ Keep made elsewhere.
 
 1. Frame 0: the composer is ready and focused. The top bar face and the
    message label face are **outlines** (C5).
-2. 0–600 ms: the face **fills in** (outline → filled, C5 fill-in), in the
-   top bar and the message label at the same time. Once per agent, ever.
-3. Then the first line **streams** as Rex's first message, in voice:
-   `You came. Good. What have you been putting off?`
+2. When the first words arrive, two things start **together** (X23): the
+   first line **streams** as Rex's first message, in voice (`You came.
+   Good. What have you been putting off?`), and the face **fills in**
+   (outline → filled, 600 ms, C5 fill-in) in the top bar and the message
+   label. No motion before the words. Once per agent, ever.
 4. Above it, the mark: `── First words · 25 Nov ──`, which stays at the top
    of this first talk forever.
 5. The talk is saved at once (it has a message), titled `First words`
@@ -179,10 +187,11 @@ Keep made elsewhere.
 - The mark's date is the day of First words (Rex: `25 Oct`; Ines and Juno
   in the demo: `25 Nov`).
 - Reduced motion: the face appears filled in; the line shows in full.
-- Offline at that moment: no first words (no fake); the face fills in and
-  the C11 banner shows. The first words come with the first successful
-  open (they're from the persona, so they can't be pre-made without
-  Claude; the mock has them scripted).
+- Offline at that moment: no first words (no fake); the face **stays an
+  outline** and the C11 banner shows. The fill-in plays only when the
+  first words actually arrive, at the first successful open, so the
+  once-only moment isn't used up (X23). (They're from the persona, so they
+  can't be pre-made without Claude; the mock has them scripted.)
 
 **Lines** (mock): Rex `You came. Good. What have you been putting off?` ·
 Marcus `Sit. What is in your control today, and what isn't?` · Edie `Send
@@ -198,7 +207,7 @@ Clicking a source in a Where from line opens C7 in the right pane (over
 Past talks):
 
 ```
-│ Day 2 – Hard Calls.mp4                          ‹ 1 of 2 ›    ✕ │
+│ Day 2 – Hard Calls.mp4                                        ✕ │
 │─────────────────────────────────────────────────────────────────│
 │ 14:20                                                           │
 │                                                                 │
@@ -213,8 +222,8 @@ Past talks):
 ```
 - The underline draws left to right, 300 ms (C7). Reduced motion: there
   at once.
-- `‹ 1 of 2 ›` steps through the answer's sources; the clicked one opens
-  first.
+- No pager (X18). The Where from line stays visible on the left; with the
+  panel open, clicking another source swaps the passage in place.
 - `✕` / Esc → Past talks; focus returns to the source link.
 - The panel never opens on its own.
 - **Removed reference** (E3) still cited in an old talk: the old answer
@@ -228,15 +237,16 @@ Past talks):
 Right pane default in Talk.
 
 - **Header:** `Past talks` (17 px) · on the right `New talk` (text button,
-  ⌘N). It starts an empty talk on the left.
+  ⌘N, Talk only). It starts an empty talk on the left.
 - **Search field** `Search past talks` (P2 field style), ⌘F focuses it.
 - **Rows:** title (15 px) · when (13 px, right: `today`, `yesterday`,
   weekday within the week, `18 Nov` after). Newest first. The open talk is
   highlighted (selected row style, `aria-current`). No previews: the title
   is the topic; the list stays calm.
 - **Titles:** from the first exchange, as a topic (Merlin 10): mock
-  provides them. While a new talk has one message, its row shows
-  `New talk` in 60% until the title arrives after the first answer.
+  provides them. While a new talk has one message, its row shows the
+  first words of the user's message in 60% (`How do I call my landlord…`)
+  until the topic title arrives after the first answer (X21).
 - **Row menu** (on hover/focus, `⋯`, the only row action): `Rename` (inline
   edit, Enter saves, Esc cancels) · `Delete…` → C10 sheet `Delete "Saying
   no to Dad"? The talk goes. Rex stays as he is.` [Cancel] [Delete]. Plain.
@@ -290,11 +300,15 @@ Click `Not Rex` on the planted answer:
 - **The Sketcher is the real P2 Sketcher** of this agent (same session),
   given the pinned line as context. The opening Sketcher line is fixed
   text (not an AI call).
+- **Where the fix lives** (X22): the fix turns are part of the Sketcher's
+  chat. In Sketcher mode they appear in order under a divider
+  `── From your talk · "How do I get started…" ──` (the same C4 divider
+  pattern as D1), so the Sketch's `from your talk` tag has its trail.
 - User: `He'd never say "great question" and never uses emoji. He answers
   first, then asks one hard question.`
 - **Sketcher reply** (P2): `Got it. Rex answers first and never flatters.
   I've redrawn him.` + change line `Sketch: persona updated · from your
-  talk ↗` (↗ → Sketch mode, the field). In the Sketch the field gets P2's
+  talk ↗` (↗ → Sketcher mode, the field). In the Sketch the field gets P2's
   `new` mark and the tag `from your talk`.
 - **Hand-written field** (P2 H4): if the change touches a `✎ yours` field,
   the Sketcher asks first (P2), nothing changes until the user agrees.
@@ -310,8 +324,9 @@ Click `Not Rex` on the planted answer:
   message goes. Nothing happened, and it says nothing.
 - A normal Talk message like "be blunter" **never** changes Rex (OQ1); Rex
   just answers it in character.
-- F8: the fix sets `status: 'draft'`; Keep shows in the Sketch, Home keeps
-  Rex in kept (by `keptAt`). The talk uses the new persona right away.
+- F8 (X4): Rex is already kept, so the fix is live and saved at once. No
+  Keep reappears in the Sketch; the change line and the divider say what
+  changed. The talk uses the new persona right away.
 
 ### States
 - **D5.1 Open, waiting** (as drawn) · **D5.2 Sketcher thinking** (P2 dots)
@@ -352,7 +367,8 @@ happened, **Try again** resends. Partial agent text is removed.
 - Dividers are `role="separator"` with their text as label; the redrawn
   one is a button with `aria-expanded`.
 - First words: the fill-in is decorative; the line is announced normally.
-- Keys: ⌘N new talk · ⌘F search · Esc closes a panel · ⌘1/⌘2 modes.
+- Keys (blocks §4, X2): ⌘N new talk (Talk only) · ⌘⇧N new agent · ⌘F
+  search · Esc closes a panel · ⌘1/⌘2 modes.
 
 ## Mock data (block D)
 - **Rex talks (14):** `Landlord call` (today) · `The job offer`

@@ -3,7 +3,7 @@
 *Jony, 2026-11-25. Shared frame, components (C1–C14), data shapes and flags
 live in `blocks-jony.md`. Journeys: **UJ8, UJ9**. Owns Merlin 7 The map
 moves, 9 The Palette (full view), 11 Their face, everywhere. Everything
-here happens in **Sketch mode**, with the Sketcher in the room (blocks
+here happens in **Sketcher mode**, with the Sketcher in the room (blocks
 §4: anything that changes the agent).*
 
 ## User goal
@@ -15,7 +15,7 @@ here happens in **Sketch mode**, with the Sketcher in the room (blocks
 **One primary action per screen:**
 - E1 Add: none after the pick (one-pile batches start at once, F4).
 - E2 The map moves: the quiz invitation.
-- E3 Remove: `Remove` on the row (no confirm).
+- E3 Remove: `Remove` on the row (no confirm; `Undo` on the line after).
 - E4 Face: **Use** (the chosen face).
 - E5 Palette: none; the traits are the controls.
 
@@ -24,8 +24,12 @@ here happens in **Sketch mode**, with the Sketcher in the room (blocks
 | Removed | Why |
 |---|---|
 | An "Add material" screen | Adding is B1 again, for a kept agent: ＋, drop, or the Blank line's action. One way in. |
-| A confirmation on Remove | It's undone by adding the file back; the plain line says what happened (Merlin §5). |
-| A trash / "recently removed" | Same reason. The file is still on the user's Mac; only the study of it goes. |
+| A confirmation on Remove (file or group) | X25: the removal line's `Undo` is the way back, and it keeps the study. One pattern for a file and a group. |
+| A trash / "recently removed" | `Undo` covers the visit; the file is still on the user's Mac, only the study of it goes. |
+| `Add more on this` on a Rough row | X24: a Rough row is a Rough row (`refs ▸`); adding goes through ＋ or drop. |
+| `Change face…` in the agent menu | X26: the face slot in the Sketch is the one door, and its change line has one home (the Sketcher chat). |
+| The Palette footer `Mixed from …` | X27: its numbers move into the header. |
+| The buttons on a top-up Finished card | X10, X11: the view is already open and the map arrives on its own; the quiz invitation (E2) is the way to Talk. |
 | A before/after diff screen | The map marks (`was Blank`) and Likeness `was 8` say it in place. |
 | Crop and zoom controls for photos | Auto circle crop, centred on the face (mock: centred). Re-pick is cheaper than a cropper. |
 | Free sliders on the Palette | 5-step scales: each step has a sentence in the Sketch. A slider implies precision that isn't there. |
@@ -38,8 +42,9 @@ Ways in (all B1):
 1. `Add a reference for this` on a Blank row (C1) or on the Blank line in
    Talk (D1). Opens the macOS open panel.
 2. ＋ in the Sketcher composer.
-3. Drop on the window (in Talk: the overlay `Drop · add to Rex Hart's
-   references`, then Sketch mode).
+3. Drop on the window: the C15 overlay `Drop · your files stay on this
+   Mac` / `Claude reads them to study` / `adds to Rex Hart` (X5). From
+   Talk it then switches to Sketcher mode.
 
 Then, for `Money Has Rules.pdf`:
 - **Chat:** references chip `References · Money Has Rules.pdf · 1 file ·
@@ -55,8 +60,9 @@ Then, for `Money Has Rules.pdf`:
   ```
 - **Top bar:** `Studying · about 1 min left` (C9). Talk still works on the
   old Rex (D1.5).
-- **Finished** (B4.3): `Finished studying · 1 reference studied` with
-  `See what Rex knows` (primary) and `Talk to Rex` (quiet). Then E2.
+- **Finished** (B4.3): the summary only, `Finished studying · 1 reference
+  studied`, no buttons (X10, X11). The user is already in `What Rex
+  knows`, so E2 plays right there.
 
 ### States
 - **E1.1 One file** (as above) · **E1.2 Several files, one pile** (Marcus:
@@ -68,7 +74,9 @@ Then, for `Money Has Rules.pdf`:
 
 ## E2 · The map moves (UJ8 · 3–4, Merlin 7)
 
-On `See what Rex knows` after the batch (first view only):
+The first time `What Rex knows` is visible after the batch finishes (at
+once if the user stayed, or later via the notification, the switch or the
+Studying line). First view only (X10):
 
 ```
 │ Only you see this. Rex doesn't.                                       │
@@ -107,14 +115,12 @@ On `See what Rex knows` after the batch (first view only):
   longer Blank.` + change line `What Rex knows: Money and investing, Blank
   → Sharp ↗`. The persona fields are not touched (knowledge, not voice); if
   a batch did change the persona, P2's change line and marks apply.
-- **The Keep button** does not appear for a knowledge-only change (the
-  draft didn't change).
 - Reduced motion: the mark without the redraw.
 
 ### States
 - **E2.1 Blank → Sharp** (as drawn) · **E2.2 Blank → Rough** (`was Blank`,
-  no quiz invitation: Rough isn't worth quizzing yet; instead `Add more on
-  this` as the row action) · **E2.3 Nothing moved** (the book was about
+  no quiz invitation: Rough isn't worth quizzing yet; the row is a normal
+  Rough row with `refs ▸`, X24) · **E2.3 Nothing moved** (the book was about
   something already Sharp): no marks; one Sketcher line `Studied. Money
   Has Rules.pdf adds to what Rex already knows well.` Honest, no fake
   change · **E2.4 Several lines moved:** each gets its mark; only the first
@@ -125,10 +131,10 @@ On `See what Rex knows` after the batch (first view only):
 In `What Rex knows` → References → expanded → a file row (C12). On hover
 or focus: `Remove` (13 px text button, the row's only action).
 
-- **Click:** no confirm. The row goes (no animation). In its place, one
-  plain line for this visit:
+- **Click:** no confirm (X25). The row goes (no animation). In its place,
+  one plain line for this visit:
   ```
-  Removed. Rex no longer uses "Old seminar 2009.mp4".
+  Removed. Rex no longer uses "Old seminar 2009.mp4". · Undo
   ```
 - **The study of it** is dropped from what Rex knows. The file on the Mac is
   never touched (said once in the tooltip of `Remove`: `Rex stops using it.
@@ -144,11 +150,12 @@ or focus: `Remove` (13 px text button, the row's only action).
   2009.mp4"` (no Sketcher reply needed; the change is the user's).
 - **Talk:** new answers never cite the file (watch-out "removed sources
   still show up"); old talks keep their line with `· removed` (D3).
-- **Undo:** add the file again (E1). The removal line has no Undo button
-  (one way).
-- **Remove a group** (folder row): `Remove` on the group → C10 sheet
-  (a group is many files): `Remove "Live Q&A" from Rex? 18 recordings.
-  Rex stops using them. The files stay on your Mac.` [Cancel] [Remove].
+- **Undo** (X25), for this visit: the row, its kept study, the map line and
+  Likeness come back as they were. Nothing is re-studied. The chat gets
+  `References: put back "Old seminar 2009.mp4"`. After the visit, the way
+  back is adding the file again (E1).
+- **Remove a group** (folder row): the same pattern, no sheet:
+  `Removed. Rex no longer uses "Live Q&A" (18 recordings). · Undo`.
 - **Removing the last reference:** the view becomes C3 (`Rex knows only
   what's in the Sketch…`).
 - **While studying that batch:** the file is skipped if not studied yet,
@@ -157,8 +164,8 @@ or focus: `Remove` (13 px text button, the row's only action).
 
 ## E4 · Face (UJ9 · 1, UJ2 · 9, Merlin 11)
 
-Opened by: clicking the face slot in the Sketch (48 px, left of Name), or
-`Change face…` in the agent menu. A C10 sheet:
+Opened only by clicking the face slot in the Sketch (48 px, left of Name),
+in Sketcher mode (X26). A C10 sheet:
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -176,17 +183,19 @@ Opened by: clicking the face slot in the Sketch (48 px, left of Name), or
 - The three AI icons are "quick sketches of a face" (Merlin 11). The
   current face is preselected. **Use** is disabled until the choice differs
   from the current face.
-- `Draw three more` replaces the three with new ones (mock: a second set;
-  the button shows `Drawing…` 800 ms). The old three are gone (no history).
+- The **current face is always the first choice** (X28), whether it's an
+  icon or a photo.
+- `Draw three more` replaces only the other choices with new ones (mock: a
+  second set; the button shows `Drawing…` 800 ms). The current face stays;
+  the replaced icons are gone (no history).
 - `Use a photo…` → macOS open panel (images). Or drop an image on the
   sheet. The photo appears as a fourth choice, selected, auto circle crop,
   centred.
 - **Use** → the sheet closes and the face changes **in every visible place
   at once** (top bar, Sketch slot, message labels, Home card when visible):
   300 ms crossfade (C5). Reduced motion: instant.
-- **In the chat:** change line `Face: new photo` (no Sketcher reply).
-- The face is not part of the P2 draft fields; it doesn't set `status:
-  'draft'`, so Keep doesn't reappear.
+- **In the Sketcher chat:** change line `Face: new photo` (no Sketcher
+  reply). It's live and saved at once, like every change after Keep (X4).
 - **Errors:** `Agent Creator can't open this image. Try a JPEG, PNG or
   HEIC.` (under the drop area, error colour). Very small image (< 96 px):
   allowed, shown with `Small image, it may look soft.` (13 px).
@@ -195,12 +204,13 @@ Opened by: clicking the face slot in the Sketch (48 px, left of Name), or
 
 ## E5 · Palette (UJ9 · 2–3, Merlin 9)
 
-Agent menu › `Palette`. Opens in the right pane in Sketch mode (it's a
+Agent menu (`Palette · Export Rex… · Delete Rex…`) › `Palette`. Opens in
+the right pane in Sketcher mode (it's a
 view of the agent, beside the Sketcher), replacing the Sketch / knows
 switch for as long as it's open:
 
 ```
-│ Palette · what Rex is mixed from                                  ✕ │
+│ Palette · what Rex is mixed from · 186 references, 4 traits       ✕ │
 │─────────────────────────────────────────────────────────────────────│
 │                                                                     │
 │   ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬   stand-in look  │
@@ -210,9 +220,8 @@ switch for as long as it's open:
 │ Warmth       ○ ● ○ ○ ○      Cares, rarely says so.                  │
 │ Energy       ○ ○ ○ ● ○      Fast, short, pushes.                    │
 │ Humour       ○ ● ○ ○ ○      Dry, rare.                              │
-│                                                                     │
-│ Mixed from 186 references and 4 traits.                             │
 ```
+No footer: the numbers live in the header (X27).
 
 - **The mix** (C13, full form): a larger stand-in (a band 48 px high, or
   the P11 look later) of named segments: reference groups (sized by how
@@ -238,15 +247,16 @@ switch for as long as it's open:
     a time); scales are disabled while a turn runs (P2 field rule), with
     `Sketching…` in the header.
 - **Close** `✕` / Esc → back to the Sketch / knows switch, where it was.
-- **No references** (Marcus): the mix shows traits only; line `Mixed from
-  the Sketch and 4 traits.`
+- **No references** (Marcus): the mix shows traits only; header
+  `Palette · what Marcus is mixed from · 3 traits`.
 - **Studying:** the mix fills in like B3 (a segment per finished group).
 - **Errors:** Sketcher errors are P2 S10 in the chat; the scale returns to
   the Sketch's step.
 
 ## Accessibility (block E)
-- Remove: a real button per row; after removing, focus goes to the next row
-  (or the removal line if last). The removal line is `aria-live="polite"`.
+- Remove: a real button per row; after removing, focus goes to the
+  removal line's `Undo` (so it's one key away). The removal line is
+  `aria-live="polite"`. After Undo, focus returns to the restored row.
 - `was Blank`, `was Sharp · now Rough…` are text. The quiz invitation is a
   link named with its question.
 - Face sheet: a radio group of images, `alt` "Face option 1 of 3"; photo
@@ -283,7 +293,7 @@ switch for as long as it's open:
 - Marcus: traits only (Calm 5, Directness 3, Warmth 3).
 
 ## Kept plain (no magic, checked)
-Remove is plain words, no fade-away, no confirm for one file · no motion
+Remove is plain words, no fade-away, no confirm, one Undo · no motion
 on removal or on scores · the Palette never edits in secret: every trait
 change is a visible Sketcher message · a batch that changed nothing says
 so · the face change is the only crossfade.

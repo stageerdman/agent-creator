@@ -11,7 +11,7 @@ plain on purpose; the only "magic" is the honest `Stays here` line.*
 > Or bring one in, see what's in it first, and don't lose the one I
 > already have."
 
-**One primary action per sheet:** Export → **Export…** · Import →
+**One primary action per sheet:** Export → **Export** · Import →
 **Import** (or **Keep both** on a name clash).
 
 ## What I removed, and why
@@ -25,6 +25,10 @@ plain on purpose; the only "magic" is the honest `Stays here` line.*
 | "Merge" on a name clash | Two agents can't be merged meaningfully. Keep both or replace. |
 | A progress screen for export | Mock: instant. Real: a few seconds; the button shows `Exporting…`. |
 | An Import button on Home | Drop or File › Import…, the macOS way. No new chrome for a rare job. |
+| The save panel on every export | X29: the sheet already says where the file goes; `Change…` opens the panel only when asked. |
+| The "unkept changes" line in Export | X4: there are no unkept changes after Keep; the file is the agent as it is. |
+| The update dot on the title after Import | X30: Import goes Home, where `new here` is the one mark. |
+| `Imported from Juno.agent.zip` in the Sketch | X32: a third "this is new" signal no journey step needs. |
 
 ## F1 · Export (UJ10 · 1–2, Merlin 13)
 
@@ -43,11 +47,13 @@ Agent menu › `Export Rex…` (also File › Export Rex…, ⌘E). A C10 sheet:
 │                                                      │
 │ Stays here                                           │
 │      What Rex knows (only you see it)                │
+│      Palette (only you see it)                       │
 │      Your talks with Rex                             │
 │                                                      │
 │ One file: Rex Hart.agent.zip · about 2.3 GB          │
+│ Desktop · Change…                                    │
 │                                                      │
-│                           [ Cancel ]  [ Export… ]    │
+│                            [ Cancel ]  [ Export ]    │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -55,10 +61,17 @@ Agent menu › `Export Rex…` (also File › Export Rex…, ⌘E). A C10 sheet:
   the face kind, and the knowledge as `from 186 references · 2.3 GB` (the
   built knowledge, not the raw files, F6). Values are 13 px; labels 15 px.
 - **Stays here** (Merlin 13), its own group, 13 px, 60%: `What Rex knows
-  (only you see it)` and `Your talks with Rex`. The honest exclusion.
-- **Export…** → macOS save panel, name `Rex Hart.agent.zip`, last-used
-  folder (first time: Desktop). On save the sheet shows `Exporting…` on the
-  button (real), then the done state.
+  (only you see it)`, `Palette (only you see it)` (X35; the trait
+  sentences already live in the persona, which travels) and `Your talks
+  with Rex`. The honest exclusion, complete.
+- **Where it goes** (X29), one line under the file line: the last-used
+  folder (first time: `Desktop`) and `Change…` (text button). `Change…`
+  opens the macOS save panel only when asked; on Save the line shows the
+  new folder and the sheet stays.
+- **Export** (primary) writes the file at once, no second dialog. The
+  button shows `Exporting…` (real), then the done state. A file with the
+  same name in that folder gets ` 2` (`Rex Hart 2.agent.zip`), never
+  silently overwritten.
 - **Done:** the sheet's body becomes one line `Exported · Rex Hart.agent.zip`
   with `Show in Finder` (primary) and `Done`. Esc = Done.
 - **UJ10 · 2** (open in another app) is outside the prototype; the done
@@ -69,9 +82,8 @@ Agent menu › `Export Rex…` (also File › Export Rex…, ⌘E). A C10 sheet:
 - **F1.4 Sketch never kept:** menu item reads `Export Rex…` only after the
   first Keep; before, it isn't in the menu (an unkept sketch isn't an agent
   yet, F5).
-- **F1.5 Unkept changes** (status `draft` after a fix, F8): one line in the
-  sheet above the buttons: `Exports the Sketch as it is now, with your
-  latest changes.` No block: the file is what the Sketch says.
+- *(F1.5 Unkept changes is cut, X4: after the first Keep every change is
+  live, so the file is always the agent as it is.)*
 - **F1.6 Still studying:** `Knowledge · from 251 of 297 references so far`
   and the line `Studying isn't finished. The file has what's studied so
   far.` Export still allowed.
@@ -79,7 +91,8 @@ Agent menu › `Export Rex…` (also File › Export Rex…, ⌘E). A C10 sheet:
 - **F1.8 Errors:** `Couldn't export · there isn't enough space on this
   disk. · Try again` or `Couldn't export · Agent Creator can't write to
   this folder. · Try again` (error colour, under the list). Try again
-  reopens the save panel.
+  re-runs the export to the same place; `Change…` stays there to pick
+  another folder.
 
 ## F2 · Import (UJ11 · 1–2, Merlin 13)
 
@@ -104,10 +117,10 @@ this agent`), or File › Import… (⌘⇧I) → open panel. Then a C10 sheet:
 ```
 - Same list as export (Merlin: "the same list shows before anything is
   added"), 48 px face. No `Stays here` group (nothing stayed with us).
-- **Import** → the sheet closes, Home shows the Juno card with `new here`
-  (F3); if the user was inside an agent, they stay there, and the top bar
-  title gets the P2 update dot until they go Home. No auto-open (the
-  user didn't ask to talk).
+- **Import** → the sheet closes and the app goes **Home**, from anywhere
+  (X30), where Juno's card shows `new here` (F3). The user just asked for
+  this agent; showing it is the answer. No title dot, and no auto-open
+  (the agent isn't opened; the user didn't ask to talk).
 - The persona and instructions are shown as counts, not text: the user can
   read them in the Sketch after import. (A preview of words would be a
   second Sketch view.)
@@ -120,15 +133,17 @@ this agent`), or File › Import… (⌘⇧I) → open panel. Then a C10 sheet:
 │ You already have Marcus.                             │
 │                                                      │
 │              [ Replace Marcus ]  [ Keep both ]       │
+│ Replace: your Marcus and his 3 talks go. This can't  │
+│ be undone.                                           │
 ```
 - **Keep both** (primary, accent): imports as `Marcus 2` (the Name field
   can be changed in its Sketch). Safe default.
 - **Replace Marcus** (secondary): the button text alone isn't enough for a
-  destructive act, so one 13 px line appears under it on hover/focus:
-  `Your Marcus and his 3 talks go. This can't be undone.` (With
-  references: `Your Marcus, his references and 3 talks go…`.) A
-  second click isn't needed; the line is the warning (one confirmation,
-  like A3).
+  destructive act, so one 13 px line is **always shown** under the buttons
+  in the clash state (X31), never hover-only: `Replace: your Marcus and his
+  3 talks go. This can't be undone.` (With references: `Replace: your
+  Marcus, his references and 3 talks go…`.) A second click isn't needed;
+  the visible line is the warning (one confirmation, like A3).
 - Cancel stays on the left (Esc).
 
 ### F2.3 Broken or old file (`Old coach.agent.zip`)
@@ -164,19 +179,19 @@ per file, in turn (rare; no batch UI).
   time): the mode switch shows, Talk is the default mode.
 - **First open:** Talk, D2 First words (`Paste the clause that worries you.
   I'll tell you what it means in plain words.`), the face fills in,
-  `First words · 25 Nov` mark. Then UJ5 or UJ4 (switch to Sketch › `What
-  Juno knows`).
+  `First words · 25 Nov` mark. Then UJ5 or UJ4 (switch to Sketcher ›
+  `What Juno knows`).
 - **Sketch:** fields arrive filled, no `new` marks (they weren't drawn
-  here); a 13 px line under the Name field, until first edit: `Imported
-  from Juno.agent.zip`.
+  here). No "imported from" line (X32): `new here` and First words already
+  say it.
 
 ## Accessibility (block F)
 - Sheets are modal dialogs (`role="dialog"`, `aria-modal`), focus starts on
   the primary button, Esc cancels, focus returns where it was.
 - The Packed / Stays here lists are definition lists (`dl`), read as
   "Knowledge: from 186 references, 2.3 GB".
-- Replace's consequence line is linked by `aria-describedby`, so it's read
-  on focus too, not only on hover.
+- Replace's consequence line is always visible and linked to the button by
+  `aria-describedby`, so it's read on focus too.
 - Drop areas have a keyboard path (File › Import…).
 
 ## Mock data (block F)
@@ -191,11 +206,11 @@ per file, in turn (rare; no batch UI).
   the prototype can't count on them being in Finder.
 
 ## Kept plain (no magic, checked)
-Utility sheets, no motion · the map never travels and says so · talks stay
+Utility sheets, no motion · the map and the Palette never travel and say so · talks stay
 here and say so · nothing is added before Import · replacing says exactly
 what goes.
 
 ## Journey trace
-UJ10 · 1 → F1 · 2 → F1.3 done (outside the prototype). UJ11 · 1 → F2 drop
+UJ10 · 1 → F1 (one sheet, Export writes) · 2 → F1.3 done (outside the prototype). UJ11 · 1 → F2 drop
 or File › Import… (valid F2.1 / broken F2.3) · 2 → F2.1 list, F2.2 clash →
 F3 → D2 First words.
