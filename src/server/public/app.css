@@ -608,7 +608,7 @@ body.dragging .door { border-style: solid; border-color: var(--accent); }
 .ref-row.hard .ref-why { color: var(--warm-text); opacity: 1; }
 .indent { padding-left: 16px; }
 
-/* ── E Face sheet, Palette ─────────────────────────────── */
+/* ── E Face sheet ─────────────────────────────────────── */
 
 .face-options { display: flex; justify-content: center; gap: 16px; padding: 8px 0; }
 .face-option {
@@ -622,27 +622,6 @@ body.dragging .door { border-style: solid; border-color: var(--accent); }
   display: block; width: 100%; min-height: 44px; border-radius: 10px; font-size: 13px; opacity: var(--muted);
   border: 1.5px dashed color-mix(in srgb, currentcolor 22%, transparent); background: none;
 }
-
-.palette-view[hidden] { display: none; }
-.palette-head { display: flex; align-items: flex-start; gap: 8px; }
-.palette-head .knows-h { flex: 1; margin: 6px 0 0; }
-.palette-mix { display: flex; align-items: center; gap: 12px; }
-.palette-mix .palette-band { flex: 1; height: 48px; }
-.palette-names { margin-top: -12px; }
-.traits { display: flex; flex-direction: column; }
-.trait-row { display: grid; grid-template-columns: 96px auto 1fr; align-items: center; gap: 12px; min-height: 44px; }
-.trait-label { font-weight: 600; font-size: 13px; }
-.trait-steps { display: flex; }
-.step { width: 32px; height: 44px; display: grid; place-items: center; cursor: pointer; position: relative; }
-.step input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-.step .dot {
-  width: 14px; height: 14px; border-radius: 50%; pointer-events: none;
-  border: 1.5px solid color-mix(in srgb, currentcolor 40%, transparent);
-}
-.step input:checked + .dot { background: var(--accent); border-color: var(--accent); }
-.step input:focus-visible + .dot { outline: 2px solid var(--accent); outline-offset: 2px; }
-.step input:disabled + .dot { opacity: 0.5; }
-.trait-line { font-size: 13px; opacity: var(--muted); }
 
 /* ── C13 Palette strip ─────────────────────────────────── */
 
@@ -731,7 +710,6 @@ body.dragging .door { border-style: solid; border-color: var(--accent); }
   }
   .talk-views button { flex: 1; height: 40px; border: 0; border-radius: 8px; background: none; font-weight: 600; }
   .talk-views button[aria-selected="true"] { background: var(--canvas); box-shadow: 0 1px 2px rgb(0 0 0 / 12%); }
-  .talk-views .dot { color: #e8a33d; margin-left: 4px; }
   .talk[data-view="chat"] .talk-side, .talk[data-view="side"] .talk-main { display: none; }
   .talk-side { flex: 1; min-height: 0; max-width: none; border-left: 0; }
   .home { padding: 24px 16px; }

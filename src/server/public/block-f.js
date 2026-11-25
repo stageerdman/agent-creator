@@ -52,7 +52,7 @@ export function openExport(a) {
         ["Face", faceWord(a)], ["Knowledge", knowledge(a)]]),
       studying ? el("p", "sheet-note", "Studying isn't finished. The file has what's studied so far.") : null,
       el("h3", "sheet-h", "Stays here"),
-      el("ul", "stays", el("li", "", `What ${shortName(a)} knows (only you see it)`), el("li", "", "Palette (only you see it)"), el("li", "", `Your talks with ${shortName(a)}`)),
+      el("ul", "stays", el("li", "", `What ${shortName(a)} knows (only you see it)`), el("li", "", `Your talks with ${shortName(a)}`)),
       el("p", "export-file", `One file: ${fileName()} · about ${size}`),
       where,
     ],

@@ -339,12 +339,28 @@ test("P3: DNA tab has its layers in order (Files after Made from), with the one 
   for (const cls of ["is-revealed", "dna-thread", "is-active", "dna-quality-glow"]) assert.ok(c.includes(cls), cls);
 });
 
+test("MAGIC-PASS X3: no Palette view, no second way to change the agent", () => {
+  assert.doesNotMatch(read("block-e.js"), /openPalette|setTrait|TRAIT_COLOURS/);
+  assert.doesNotMatch(read("block-a.js"), /"Palette"/);
+  assert.doesNotMatch(read("app.css"), /\.palette-view|\.trait-row/);
+  assert.match(read("app.css"), /\.stand-in \.palette-band/, "study progress keeps its strip");
+});
+
+test("MAGIC-PASS X1/X2/X4: one name per motion, errors stay still", () => {
+  const css = read("magic.css");
+  const names = [...css.matchAll(/@keyframes ([\w-]+)/g)].map((m) => m[1]);
+  assert.deepEqual(names.filter((n, i) => names.indexOf(n) !== i), [], "duplicate keyframes");
+  assert.doesNotMatch(css, /magic-toast-rise|magic-fade\b(?!-)/);
+  assert.match(css, /\.toast:not\(\.is-error\)/);
+  assert.match(read("components.js"), /Couldn't read the drop[^\n]*\{ error: true \}/);
+  assert.match(read("block-c.js"), /Couldn't add the files[^\n]*\{ error: true \}/);
+});
+
 test("P2/P3: every id the blocks ask for is on the page", () => {
   const html = read("index.html");
   const ids = new Set([...html.matchAll(/id="([\w-]+)"/g)].map((m) => m[1]));
   for (const f of ["block-b.js", "block-c.js", "block-e.js"]) {
     for (const [, id] of read(f).matchAll(/\$\("([\w-]+)"\)/g)) {
-      if (id === "palette") continue; // made on demand by block E
       assert.ok(ids.has(id), `${f} asks for #${id}, not in index.html`);
     }
   }

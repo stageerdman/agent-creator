@@ -57,7 +57,6 @@ export function replayNotes(a) {
 export function afterLoad(agent) {
   const a = mockAgent(agent.id);
   const shown = a ?? realShown(agent);
-  E.closePalette();
   // MAGIC-PASS Q1: until Keep the Sketch opens on DNA (the portrait forms there); after, on Profile.
   if (agent.draft?.status === "saved") C.showProfile();
   else C.showDna(shown);

@@ -314,7 +314,7 @@ export function dropOverlay({ target, onDrop }) {
     const roots = [...(e.dataTransfer?.items ?? [])].map((i) => i.webkitGetAsEntry?.()).filter(Boolean);
     const loose = roots.length ? null : fileEntries(e.dataTransfer?.files);
     (loose ? Promise.resolve(loose) : Promise.all(roots.map(walkEntry)).then((lists) => lists.flat()))
-      .then(onDrop, (error) => toast(`Couldn't read the drop: ${error.message}`));
+      .then(onDrop, (error) => toast(`Couldn't read the drop: ${error.message}`, null, { error: true }));
   });
   return overlay;
 }
@@ -355,9 +355,10 @@ export async function stream(node, text, { signal, onTick } = {}) {
 }
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function toast(text, action) {
+// { error: true } marks an error toast: it appears at once and never moves (E1).
+export function toast(text, action, { error = false } = {}) {
   const host = document.getElementById("toast");
-  const t = el("div", { class: "toast", role: "status" }, text, action && " · ", action);
+  const t = el("div", { class: error ? "toast is-error" : "toast", role: "status" }, text, action && " · ", action);
   host.replaceChildren(t);
   clearTimeout(host.timer);
   host.timer = setTimeout(() => t.remove(), 8000);

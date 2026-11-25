@@ -9,7 +9,6 @@ import { mergePersona } from "/sketch.js";
 import * as B from "/block-b.js";
 import * as C from "/block-c.js";
 import * as D from "/block-d.js";
-import * as E from "/block-e.js";
 import * as F from "/block-f.js";
 
 const $ = (id) => document.getElementById(id);
@@ -121,7 +120,6 @@ hooks.menu = () => {
   if (!a || a.real) return [];
   const name = nameOf(a);
   const items = [];
-  if (name) items.push({ label: "Palette", run: () => E.openPalette(a) });
   if (a.keptAt) items.push({ label: `Export ${name}…`, run: () => F.openExport(a) });
   if (items.length) items.push("-");
   items.push({ label: `Delete ${name || "this sketch"}…`, run: () => openDelete(a) });
@@ -291,7 +289,7 @@ addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (sheetOpen()) { e.preventDefault(); closeSheet(); return; }
     if (store.screen === "talk" && D.escape()) { e.preventDefault(); return; }
-    if (store.screen === "sketcher" && (E.escape() || C.escape())) { e.preventDefault(); return; }
+    if (store.screen === "sketcher" && C.escape()) { e.preventDefault(); return; }
     return;
   }
   if (!cmd) return;

@@ -235,7 +235,7 @@ export async function addFiles(entries) {
     // D2: files but no words yet → the creator asks who this is.
     if (!P2.els.log.childElementCount) P2.waitForWords?.(files.length);
   } catch (error) {
-    toast(`Couldn't add the files: ${error.message}`);
+    toast(`Couldn't add the files: ${error.message}`, null, { error: true });
   }
   showDna(current());
 }

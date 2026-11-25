@@ -462,6 +462,8 @@ function addCustomLine(msg, { text, onClick }) {
   return line;
 }
 
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 function addChangeLine(msg, changed, isFirst = false) {
   // MAGIC-PASS beat 2: the first draft is named for where the portrait forms.
   const line = el("button", "change-line", `${isFirst ? "First sketch · Instructions" : changeLine(changed)} ↗`);
@@ -471,7 +473,7 @@ function addChangeLine(msg, changed, isFirst = false) {
     const first = isFirst ? "instructions" : FIELDS.find((name) => changed.includes(name));
     // Name lives in Profile, Instructions in DNA: open the switch that holds it.
     if (fields[first].wrap.closest("[hidden]")) $(fields[first].wrap.closest("#dna") ? "rs-dna" : "rs-profile")?.click();
-    fields[first].wrap.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    fields[first].wrap.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
     for (const name of changed) markUpdated(name);
   });
   msg.append(line);
@@ -666,8 +668,6 @@ function onDraft(turn, data) {
   if (result.firstSketch) state.hint = `Ask how ${result.draft.name.trim() || "they"} would answer something real…`;
 }
 
-const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 // ── MAGIC-PASS: the first sketch (beats 2 and 3), once per agent ──────────
 
 // Beat 2: one warm wash on Instructions. Beat 3: the name settles in after the fill.
@@ -680,15 +680,20 @@ function firstSketch(draft, still) {
   if (!draft.name.trim()) return;
   const id = state.agent.id;
   els.switcherName.textContent = "New agent";
-  const arrive = () => {
+  const arrive = (calm) => {
     if (state.agent.id !== id) return;
     renderName();
-    if (still) return;
+    if (calm) return;
     els.switcherName.classList.add("name-arrive");
     setTimeout(() => els.switcherName.classList.remove("name-arrive"), 300);
   };
-  if (still) arrive();
-  else setTimeout(arrive, 550); // the fill takes 400 ms; the name lands ~150 ms later
+  if (still) return arrive(true);
+  // W10: a click or key wins at once: the name shows now, with no motion.
+  const now = () => { clearTimeout(timer); stop(); arrive(true); };
+  const stop = () => { removeEventListener("pointerdown", now, true); removeEventListener("keydown", now, true); };
+  const timer = setTimeout(() => { stop(); arrive(false); }, 550); // the fill takes 400 ms; the name lands ~150 ms later
+  addEventListener("pointerdown", now, { capture: true, once: true });
+  addEventListener("keydown", now, { capture: true, once: true });
 }
 
 // ── C1: a still dot on the switch that holds a change you can't see ───────
