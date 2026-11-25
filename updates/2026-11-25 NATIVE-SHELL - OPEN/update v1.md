@@ -84,6 +84,10 @@ Agent Creator.app
     gone too.
   - Walk: 33/33 in WebKit and 33/33 in Chromium, with no page errors.
   - `npm test`: 85 pass, 1 skipped (live).
+- 2026-11-25: Magic UX checked the look and the clicks (Columbo walk, Jony
+  look, Eraser sign-off). Flows: 33/33 in WebKit. **Sign-off OPEN:** 7
+  regressions (2 high: NF-1 Finder drops do nothing, NV-1 Tab skips all
+  buttons) went to Uncle Bob in `regressions-for-bob.md`.
 
 ## How to run
 
