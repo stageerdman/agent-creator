@@ -99,7 +99,7 @@ async function newAgentFlow() {
 function renderTop() {
   const a = store.screen === "home" ? null : nav.current();
   const kept = Boolean(a && (a.keptAt || a.draft?.status === "saved"));
-  $("top-face").replaceChildren(a ? face(a, 24) : "");
+  $("top-face").replaceChildren(a ? face(a, 24, { outline: store.screen === "talk" && D.outlineFace(a) }) : "");
   if (a && store.screen === "talk") $("switcher-name").textContent = nameOf(a) || "New agent";
   $("mode").hidden = !kept;
   $("mode-talk").setAttribute("aria-selected", String(store.screen === "talk"));
