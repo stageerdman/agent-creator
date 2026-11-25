@@ -542,8 +542,13 @@ skipping after the first time.
   study scores get **no magic at all** (see the list below).
 - **UJ12 Manage the library:** rename, delete and start new stay plain.
 
-**Coverage check for UJ1–UJ6:** UJ1 (P2 ★3 + door), UJ2 (★3, ★4, ★5, 6,
-11), UJ3 (★4 card, ★5), UJ4 (★4), UJ5 (★1, ★5, 8, 12), UJ6 (10).
+- **UJ6 · 2 search** and **UJ12 · 2 rename/delete** stay plain (utility).
+
+**Coverage check, all twelve journeys:** UJ1 (P2 ★3 + door), UJ2 (★3, ★4,
+★5, 6, 11, ★1 voice card), UJ3 (★4 card, ★5, 6, 7), UJ4 (★4; scores plain),
+UJ5 (★1, ★5, 8, 12), UJ6 (10), UJ7 (★2), UJ8 (★3 short run, 6, 7, ★1
+quiz), UJ9 (11, 9), UJ10 (13), UJ11 (★5, 13), UJ12 (12, ★3 card; rest
+plain). *(Integration check by Columbo, 2026-11-25.)*
 
 ## 5. No magic here
 
