@@ -585,10 +585,9 @@ function sprite(hex) {
 }
 const SPR = {}; PAL.forEach(c => { SPR[c] = sprite(c); });
 
-/* the street: bokeh, a slow-shutter crowd, rain, the wet ground */
+/* the street: bokeh, rain, the wet ground */
 const R = rng(7);
 const bokeh = Array.from({ length: 44 }, () => ({ x: R(), y: R(), r: 6 + R() * 30, c: PAL[Math.floor(R() * PAL.length)], a: .08 + R() * .22, ph: R() * 6.28, sp: .3 + R() * .8 }));
-const crowd = Array.from({ length: 16 }, () => ({ x: R(), v: (R() < .5 ? -1 : 1) * (18 + R() * 30), h: 40 + R() * 34, w: 12 + R() * 9, z: R(), c: PAL[Math.floor(R() * 4)] }));
 const drops = Array.from({ length: 90 }, () => ({ x: R(), y: R(), l: 8 + R() * 14, v: 700 + R() * 400 }));
 const puddles = [];
 let groundY = 600, spots = [], needFull = true, lastStep = 0, pace = 1, paceTarget = 1;
@@ -620,16 +619,6 @@ function drawStreet(t, sdt, trail) {
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = 'rgba(242,233,236,.07)'; ctx.fillRect(0, g0, W, 1);
-  // the crowd: soft dark shapes on the near pavement, smeared like a slow shutter
-  for (const p of crowd) {
-    p.x += p.v * sdt / W; if (p.x < -.05) p.x += 1.1; if (p.x > 1.05) p.x -= 1.1;
-    const base = g0 + 40 + p.z * Math.max(10, Math.min(120, H - g0 - 60)), sc = .8 + p.z * .5, h = p.h * sc, w = p.w * sc, x = p.x * W;
-    for (let k = 3; k >= 0; k--) {
-      const xo = x - Math.sign(p.v) * k * w * .35;
-      ctx.fillStyle = `rgba(6,4,6,${k ? .16 : .62})`; rrect(xo - w / 2, base - h, w, h, w / 2); ctx.fill();
-    }
-    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hexA(p.c, .1); rrect(x - w / 2, base - h, 2, h, 1); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
-  }
   // rain falling through the street, and its rings on the ground
   ctx.strokeStyle = 'rgba(190,180,200,.12)'; ctx.lineWidth = 1; ctx.beginPath();
   for (const d of drops) {
@@ -642,7 +631,6 @@ function drawStreet(t, sdt, trail) {
     ctx.strokeStyle = `rgba(242,233,236,${.14 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, 2 + k * 10, (2 + k * 10) * .25, 0, 0, 6.2832); ctx.stroke();
   }
 }
-function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
 
 /* sparks: up a thin wire from the row to its tube on the sign (500 ms) */
 const sparks = []; let fxDirty = false;
@@ -650,21 +638,28 @@ function spark(f) {
   if (reduced || !filesSign.w || !f.li) return false;
   const mark = f.li.querySelector('.mark'), ul = $('#fRows').getBoundingClientRect(), mr = mark.getBoundingClientRect(), pr = $('.files-panel').getBoundingClientRect();
   const y0 = clamp(mr.top + mr.height / 2, ul.top + 4, ul.bottom - 4), gx = pr.left - 14;
-  const pts = [[mr.left, y0], [gx, y0], filesSign.segPoint(f)];
-  const lens = [Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]), Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])];
-  sparks.push({ f, pts, lens, t0: clock(), c: colorOf(MARCUS)[0], arrived: false }); pending.add(f); return true;
+  // Route around the list, never across it: out to the left gutter, straight up above the panel, then across to the tube.
+  const end = filesSign.segPoint(f), upY = Math.min(end[1], pr.top - 10);
+  const pts = [[mr.left, y0], [gx, y0], [gx, upY], end];
+  const lens = []; for (let i = 1; i < pts.length; i++) lens.push(Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  sparks.push({ f, pts, lens, L: lens.reduce((a, b) => a + b, 0), t0: clock(), c: colorOf(MARCUS)[0], arrived: false }); pending.add(f); return true;
 }
-function along(s, d) { if (d <= s.lens[0]) { const k = d / (s.lens[0] || 1); return [lerp(s.pts[0][0], s.pts[1][0], k), lerp(s.pts[0][1], s.pts[1][1], k)]; } const k = (d - s.lens[0]) / (s.lens[1] || 1); return [lerp(s.pts[1][0], s.pts[2][0], k), lerp(s.pts[1][1], s.pts[2][1], k)]; }
+function along(s, d) {
+  for (let i = 0; i < s.lens.length; i++) {
+    if (d <= s.lens[i] || i === s.lens.length - 1) { const k = clamp(d / (s.lens[i] || 1), 0, 1); return [lerp(s.pts[i][0], s.pts[i + 1][0], k), lerp(s.pts[i][1], s.pts[i + 1][1], k), i]; }
+    d -= s.lens[i];
+  }
+}
 function drawSparks(t) {
   if (!sparks.length && !fxDirty) return;
   fctx.setTransform(DPR, 0, 0, DPR, 0, 0); fctx.clearRect(0, 0, W, H); fxDirty = sparks.length > 0;
   for (let i = sparks.length - 1; i >= 0; i--) {
-    const s = sparks[i], k = (t - s.t0) / 500, L = s.lens[0] + s.lens[1];
+    const s = sparks[i], k = (t - s.t0) / 500;
     if (k >= 1 && !s.arrived) { s.arrived = true; pending.delete(s.f); filesSign.paint(); }
     if (k >= 1.6) { sparks.splice(i, 1); continue; }
-    const head = along(s, easeInOut(clamp(k, 0, 1)) * L), wa = k < 1 ? .3 : .3 * (1 - (k - 1) / .6);
+    const head = along(s, easeInOut(clamp(k, 0, 1)) * s.L), wa = k < 1 ? .3 : .3 * (1 - (k - 1) / .6);
     fctx.strokeStyle = hexA(s.c, wa); fctx.lineWidth = 1; fctx.beginPath(); fctx.moveTo(s.pts[0][0], s.pts[0][1]);
-    if (easeInOut(clamp(k, 0, 1)) * L > s.lens[0]) fctx.lineTo(s.pts[1][0], s.pts[1][1]);
+    for (let j = 1; j <= head[2]; j++) fctx.lineTo(s.pts[j][0], s.pts[j][1]);
     fctx.lineTo(head[0], head[1]); fctx.stroke();
     fctx.globalCompositeOperation = 'lighter';
     const a = k < 1 ? 1 : 1 - (k - 1) / .6, r = k < 1 ? 9 : 9 + (k - 1) * 30;
