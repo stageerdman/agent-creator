@@ -70,6 +70,28 @@ test("a hand edit reaches the prompt and survives a patch to other fields", asyn
   assert.deepEqual(events.at(-2).data.draft, { name: "Tony", persona: "You are calm.", instructions: "Coach daily.", status: "draft" });
 });
 
+test("dropped files land in the DNA list, never the chat; the creator routes them", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  const added = await json("POST", `/api/agents/${id}/files`, { files: [{ path: "notes/deep/a.md", size: 3 }, { path: "bio.pdf" }] });
+  assert.deepEqual(added.added, ["notes/deep/a.md", "bio.pdf"]);
+  assert.equal((await json("GET", `/api/agents/${id}`)).sessionId, null);
+
+  const events = await chat(id, '{"files":{"/":"rag","bio.pdf":"instructions"}}');
+  assert.match(prompts.at(-1), /<files>\n- notes\/deep\/a\.md → not routed yet\n- bio\.pdf → not routed yet\n<\/files>/);
+  assert.deepEqual(events.map((e) => e.event).slice(-2), ["files", "done"]);
+  assert.deepEqual(events.at(-2).data.changed, ["notes/deep/a.md", "bio.pdf"]);
+  const saved = await json("GET", `/api/agents/${id}`);
+  assert.deepEqual(saved.files.map((f) => [f.path, f.feeds]), [["notes/deep/a.md", ["rag"]], ["bio.pdf", ["instructions"]]]);
+});
+
+test("a files body without paths is 400", async () => {
+  const id = await newAgent();
+  assert.equal((await call("POST", `/api/agents/${id}/files`, { files: [] })).status, 400);
+  assert.equal((await call("POST", `/api/agents/${id}/files`, { files: [{ name: "x" }] })).status, 400);
+  assert.equal((await call("POST", `/api/agents/${id}/files`, { files: [{ path: "./" }] })).status, 400);
+});
+
 test("a reply that changes nothing sends no draft event", async () => {
   scenario = "stream-ok";
   const id = await newAgent();

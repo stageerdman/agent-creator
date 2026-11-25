@@ -2,7 +2,8 @@
 // material). One folder per agent, `<home>/agents/<id>/agent.json`, so P3
 // can later keep the agent's materials next to it.
 //
-// Record: { id, draft, sessionId, handEdited, handLines?, createdAt, updatedAt }.
+// Record: { id, draft, sessionId, handEdited, handLines?, files?, createdAt, updatedAt }.
+// `files` is the DNA file list (see files.mjs): paths and feeds, never content.
 
 import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -61,7 +62,8 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
     // The autosave. `draft.status` is whatever the caller computed:
     // applyPatch already turns a changed kept agent back into a draft.
     // Fields left out stay as they are.
-    saveDraft: (id, { draft, sessionId, handEdited, handLines }) => update(id, definedOnly({ draft, sessionId, handEdited, handLines })),
+    saveDraft: (id, { draft, sessionId, handEdited, handLines, files }) =>
+      update(id, definedOnly({ draft, sessionId, handEdited, handLines, files })),
 
     async markSaved(id) {
       const record = await loadAgent(id);

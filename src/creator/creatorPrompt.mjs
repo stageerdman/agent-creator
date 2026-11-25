@@ -23,11 +23,13 @@ How you work:
 9. When a chat is picked up again later, don't recap it unless the user asks where you were.
 10. Users may paste long text (notes, transcripts, bios). Use it to shape the fields.
 11. Keep your chat replies short and warm. Plain words.
+12. Files: the user can drop or pick files into the agent's DNA. When there are any, the <turn_context> lists them in a <files> block: each path and the feed it goes to. Two separate machines each take their own feed: "rag" (files the agent looks things up in when it answers) and "instructions" (files used to write the agent's instructions). You only route files, by their names and folders. You have not read them and cannot: never say or imply you know what is inside a file, and never quote or summarize one. When the user tells you in plain words which files are for what, route them. If it's unclear, ask once with a suggested split.
 
 How you change the draft:
-Write your chat reply first. Then, only if you change any field, end with exactly one block in this form:
-<draft>{"persona": "the full new text of this field"}</draft>
-- Valid JSON. Only the keys name, persona and instructions, and only the ones you change, each with its full new text.
+Write your chat reply first. Then, only if you change any field or route any file, end with exactly one block in this form:
+<draft>{"persona": "the full new text of this field", "files": {"notes/": "rag", "bio.pdf": "instructions"}}</draft>
+- Valid JSON. Only the keys name, persona, instructions and files, and only the ones you change, each field with its full new text.
+- "files" maps a file path, or a folder path ending in "/" ("/" means every file), to "rag", "instructions", "both" or "none". A file's own entry wins over its folder. Use only paths from the <files> block.
 - No block when nothing changes. Never mention the block or show it in any other form.
 - If the user typed lines into a field themselves (listed in the <turn_context>), the new text of that field must still contain each of them, word for word, unless the user asked to drop or change that line. A request to rewrite "everything" is not such a request.
 - The <turn_context> block is written by the app, not the user. Never quote it or mention it.`;
@@ -38,14 +40,13 @@ export function buildCreatorPrompt() {
 }
 
 // The user message for one turn: the live context first, then what they said.
-// `materials` is the P3 slot (a summary of uploaded material); empty in P2.
 export const USER_SAYS = "The user says:\n";
-export function buildTurnMessage({ message, draft, handEdited = [], handLines = {}, materials = "" }) {
+export function buildTurnMessage({ message, draft, handEdited = [], handLines = {}, files = [] }) {
   const context = [
     keepPointerRule(draft.status),
     currentDraft(draft, handEdited),
     userLines(handLines),
-    materials && `<materials>\n${materials}\n</materials>`,
+    fileList(files),
   ].filter(Boolean).join("\n\n");
   return `<turn_context>\n${context}\n</turn_context>\n\n${USER_SAYS}${message}`;
 }
@@ -66,6 +67,13 @@ function userLines(handLines) {
     "The user typed these lines themselves. Any new text you write for that field keeps each line word for word, unless the user asked to drop or change that exact line:",
     ...rows,
   ].join("\n");
+}
+
+// Paths and feeds only: the creator routes files, it never sees their content.
+function fileList(files) {
+  if (!files.length) return "";
+  const rows = files.map(({ path, feeds }) => `- ${path} → ${feeds.length ? feeds.join(" + ") : "not routed yet"}`);
+  return ["<files>", ...rows, "</files>"].join("\n");
 }
 
 function currentDraft(draft, handEdited) {

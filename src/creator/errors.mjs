@@ -7,3 +7,12 @@ export class AgentNotFound extends Error {
     this.kind = "not-found";
   }
 }
+
+// Input the creator can't use, e.g. a file with no path.
+export class BadInput extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BadInput";
+    this.kind = "bad-input";
+  }
+}

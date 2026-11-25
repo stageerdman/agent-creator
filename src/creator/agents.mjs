@@ -2,16 +2,18 @@
 // shell) call. Store and engine are passed in; no HTTP here.
 
 import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
+import { addFiles, routeFiles } from "./files.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
 const summary = ({ id, draft, updatedAt }) => ({ id, draft: { name: draft.name, status: draft.status }, updatedAt });
-const view = ({ id, draft, sessionId }) => ({ id, draft, sessionId });
+const view = ({ id, draft, sessionId, files = [] }) => ({ id, draft, sessionId, files });
+const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
 export function createAgents({ store, engine }) {
   return {
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
-      const unused = (await store.listAgents()).find((r) => isEmpty(r.draft) && !r.sessionId);
+      const unused = (await store.listAgents()).find(isUnused);
       return { id: (unused ?? (await store.createAgent())).id };
     },
 
@@ -22,18 +24,20 @@ export function createAgents({ store, engine }) {
 
     // One chat turn. The patch is applied to the draft as it is *after* the
     // reply, so nothing saved meanwhile is lost. Autosaved before resolving.
+    // The creator sees file paths only and may route them (patch.files).
     async chat(id, message, { onSay, signal, traceId } = {}) {
       const before = await store.loadAgent(id);
       const turn = await creatorTurn(
-        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, sessionId: before.sessionId },
+        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, files: before.files, sessionId: before.sessionId },
         { engine, onSay, signal, traceId },
       );
       const latest = await store.loadAgent(id);
       const { draft, changed } = applyPatch(latest.draft, turn.patch);
+      const routed = routeFiles(latest.files ?? [], turn.patch?.files);
       const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
-      await store.saveDraft(id, { draft, handEdited, handLines, sessionId: turn.sessionId });
-      return { say: turn.say, draft, changed, sessionId: turn.sessionId };
+      await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId });
+      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId };
     },
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.
@@ -44,6 +48,14 @@ export function createAgents({ store, engine }) {
       const handEdited = trackHandEdits(record.handEdited, changed, "hand");
       const handLines = trackHandLines(record.handLines, record.draft, draft, "hand");
       return (await store.saveDraft(id, { draft, handEdited, handLines })).draft;
+    },
+
+    // Dropped or picked files join the DNA file list, unrouted. Never the chat.
+    async addFiles(id, entries) {
+      const record = await store.loadAgent(id);
+      const { files, added } = addFiles(record.files ?? [], entries);
+      if (added.length) await store.saveDraft(id, { files });
+      return { files, added };
     },
 
     keep: async (id) => (await store.markSaved(id)).draft,

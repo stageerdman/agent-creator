@@ -23,7 +23,8 @@ test("addFiles: nested paths are kept, cleaned, named; a repeat keeps its feeds"
 });
 
 test("addFiles: a file without a path fails fast", () => {
-  assert.throws(() => addFiles([], [{ name: "x" }]), TypeError);
+  assert.throws(() => addFiles([], [{ name: "x" }]), { kind: "bad-input" });
+  assert.throws(() => addFiles([], [{ path: "./" }]), { kind: "bad-input" });
 });
 
 test("routeFiles: own entry beats the deepest folder, which beats '/'", () => {

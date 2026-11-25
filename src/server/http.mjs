@@ -34,6 +34,13 @@ export function requireMessage(body) {
   return message;
 }
 
+export function requireFiles(body) {
+  const { files } = body;
+  const valid = Array.isArray(files) && files.length > 0 && files.every((file) => typeof file?.path === "string" && file.path.trim());
+  if (!valid) throw new BadRequest("`files` must be a non-empty list of { path, size }.");
+  return files;
+}
+
 function openEventStream(res) {
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
   return (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);

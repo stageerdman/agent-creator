@@ -104,7 +104,24 @@ test("agents: a chat turn applies the patch, autosaves it and keeps the session"
   const turn = await agents.chat(id, "a loud coach");
   assert.deepEqual(turn.changed, ["name", "persona"]);
   assert.equal(turn.say, "Sketched.");
-  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1" });
+  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [] });
+});
+
+test("agents: dropped files join the DNA list, the creator routes them by path", async () => {
+  const store = await freshStore();
+  const engine = scriptedEngine(['Done. <draft>{"files":{"notes/":"rag","bio.pdf":"instructions"}}</draft>']);
+  const agents = createAgents({ store, engine });
+  const { id } = await agents.create();
+  const { added } = await agents.addFiles(id, [{ path: "notes/a/b.md", size: 4 }, { path: "bio.pdf", size: 9 }]);
+  assert.deepEqual(added, ["notes/a/b.md", "bio.pdf"]);
+  // A record holding only files is not reused as an "empty" agent.
+  assert.notEqual((await agents.create()).id, id);
+
+  const turn = await agents.chat(id, "notes for lookups, the bio shapes who he is");
+  assert.match(engine.calls[0].message, /<files>\n- notes\/a\/b\.md → not routed yet/);
+  assert.deepEqual(turn.filesChanged, ["notes/a/b.md", "bio.pdf"]);
+  assert.deepEqual(turn.changed, []);
+  assert.deepEqual((await agents.get(id)).files.map((f) => f.feeds), [["rag"], ["instructions"]]);
 });
 
 test("agents: a reply with no block leaves the draft as it is", async () => {

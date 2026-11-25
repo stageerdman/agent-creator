@@ -117,7 +117,16 @@ test("the turn message carries the current draft, its hand edits and status, the
   assert.match(prompt, /edited by hand since you last changed them: persona\./);
   assert.match(prompt, /status="draft"/);
   assert.match(prompt, /at most once/);
-  assert.doesNotMatch(prompt, /<materials>/);
+  assert.doesNotMatch(prompt, /<files>/);
+});
+
+test("the turn message lists file paths and feeds, never content", () => {
+  const files = [
+    { path: "notes/a.md", name: "a.md", size: 3, feeds: ["rag", "instructions"] },
+    { path: "bio.pdf", name: "bio.pdf", size: null, feeds: [] },
+  ];
+  const prompt = buildTurnMessage({ message: "hi", draft: draft(), files });
+  assert.match(prompt, /<files>\n- notes\/a\.md → rag \+ instructions\n- bio\.pdf → not routed yet\n<\/files>/);
 });
 
 test("after Keep the prompt says so and drops the Keep pointer", () => {

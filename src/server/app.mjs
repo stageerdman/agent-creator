@@ -52,7 +52,7 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
 
 // The one place request errors are reported.
 function handleError(error, req, res, traceId) {
-  const status = error instanceof BadRequest ? 400 : error.kind === "not-found" ? 404 : 500;
+  const status = error instanceof BadRequest || error.kind === "bad-input" ? 400 : error.kind === "not-found" ? 404 : 500;
   if (status === 500) log.error("request", "unhandled", { traceId, method: req.method, url: req.url, error });
   if (res.headersSent) return res.end();
   sendJson(res, status, { error: status === 500 ? "Internal error." : error.message, traceId });

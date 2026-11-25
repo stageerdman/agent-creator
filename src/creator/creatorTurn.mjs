@@ -7,10 +7,10 @@ import { splitReply, streamFilter } from "./creatorReply.mjs";
 
 // Resolves to { say, patch | null, sessionId }. Engine errors pass through
 // untouched, so their `kind` reaches the caller.
-export async function creatorTurn({ message, draft, handEdited, handLines, sessionId }, { engine, onSay = () => {}, signal, traceId }) {
+export async function creatorTurn({ message, draft, handEdited, handLines, files, sessionId }, { engine, onSay = () => {}, signal, traceId }) {
   const filter = streamFilter();
   const reply = await engine.askAgent(
-    { message: buildTurnMessage({ message, draft, handEdited, handLines }), systemPrompt: buildCreatorPrompt(), resumeSessionId: sessionId ?? undefined },
+    { message: buildTurnMessage({ message, draft, handEdited, handLines, files }), systemPrompt: buildCreatorPrompt(), resumeSessionId: sessionId ?? undefined },
     { onDelta: (text) => emit(onSay, filter.push(text)), signal, traceId },
   );
   emit(onSay, filter.flush());

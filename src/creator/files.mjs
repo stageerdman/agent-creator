@@ -6,6 +6,8 @@
 // File: { path, name, size, feeds }. `path` is relative to what the user
 // dropped or picked ("notes/week 1.md") and is the file's identity.
 
+import { BadInput } from "./errors.mjs";
+
 // The two machines that each get their own feed of files.
 export const FEEDS = ["rag", "instructions"];
 
@@ -58,7 +60,7 @@ function routeFor(path, routes) {
 
 function newFile({ path, size }) {
   const clean = normalPath(path);
-  if (!clean) throw new TypeError(`A file needs a path, got ${JSON.stringify(path)}.`);
+  if (!clean) throw new BadInput(`A file needs a path, got ${JSON.stringify(path)}.`);
   return { path: clean, name: clean.split("/").at(-1), size: Number.isFinite(size) && size >= 0 ? size : null, feeds: [] };
 }
 
