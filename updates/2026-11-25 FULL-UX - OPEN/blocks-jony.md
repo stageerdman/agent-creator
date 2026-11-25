@@ -363,7 +363,10 @@ Merlin's table stays the single list. These are new, all plain:
 `Start studying` · `Couldn't be read` · `Picked up where it left off` ·
 `Studying paused` · `New talk` · `Search past talks` · `Change face…` ·
 `Draw three more` · `Use a photo…` · `Delete [Name]…` · `Keep both` ·
-`Replace [Name]` · `New agent` (home card; P2 already had `+ New agent`).
+`Replace [Name]` · `New agent` (home card; P2 already had `+ New agent`) ·
+`Export [Name]…` · `Import…` · `Packed` · `Show in Finder` · `Remove` ·
+`[Name]'s own view · no reference` · `Ask [Name] about it` ·
+`Imported from [file]`.
 No word for the home screen itself: it's just "Agent Creator".
 
 ## 10. What I removed across the whole app, and why
