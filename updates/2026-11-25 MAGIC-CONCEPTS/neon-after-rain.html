@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neon After Rain · Agent Creator</title>
+<style>
+  :root {
+    --asphalt: #120E12; --haze: #2A2228; --tube: #3A3036; --matte: #1A1418; --ink: #F2E9EC; --quiet: #A8999F; --line: #2F262C; --err: #E89A8F;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --neon: "Avenir Next", "Avenir", "Futura", "Helvetica Neue", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--asphalt); color: var(--ink); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+  canvas#street { position: fixed; inset: 0; display: block; z-index: 0; }
+  canvas#fx { position: fixed; inset: 0; display: block; z-index: 15; pointer-events: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Rain on the window glass, in front of the street */
+  .glass { position: fixed; inset: 48px 0 0 0; z-index: 1; pointer-events: none; overflow: hidden; }
+  .glass i { position: absolute; top: -20%; width: 1.5px; border-radius: 1px; background: linear-gradient(to bottom, rgba(242,233,236,0), rgba(242,233,236,.13) 70%, rgba(242,233,236,.28)); animation: slide linear infinite; }
+  .glass b { position: absolute; width: 4px; height: 5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.32), rgba(242,233,236,.04) 70%); }
+  @keyframes slide { to { transform: translateY(140vh); } }
+
+  /* Top bar: matte, plain words only */
+  .bar { position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 10; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px;
+    background: var(--matte); border-bottom: 1px solid var(--line); transition: opacity .6s ease-in-out; }
+  body.birthing .bar { opacity: .18; }
+  body.birthing .bar:hover, body.birthing .bar:focus-within { opacity: 1; }
+  .back { color: var(--quiet); text-decoration: none; font-size: 13px; justify-self: start; padding: 6px 4px; }
+  .back:hover { color: var(--ink); }
+  .scenes { display: flex; gap: 2px; background: var(--asphalt); border-radius: 9px; padding: 2px; }
+  .scenes button { border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 5px 14px; border-radius: 7px; min-height: 30px; }
+  .scenes button:hover { color: var(--ink); }
+  .scenes button[aria-current="true"] { background: var(--haze); color: var(--ink); }
+  .sound { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
+  .sound[aria-pressed="true"] { color: var(--ink); }
+
+  .scene { position: fixed; inset: 48px 0 0 0; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+  .scene[hidden] { display: none !important; }
+  .panel { background: var(--matte); color: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .primary { background: var(--ink); color: var(--matte); border: 0; border-radius: 10px; padding: 10px 18px; font-weight: 600; min-height: 44px; }
+  .primary:disabled { opacity: .4; cursor: default; }
+  .quiet-btn { background: transparent; border: 1px solid var(--tube); color: var(--ink); border-radius: 8px; padding: 4px 10px; font-size: 13px; min-height: 32px; }
+  .quiet-btn:hover { background: var(--haze); }
+
+  /* The sign: name in glass tube, a frame of tubes, one per file */
+  .sign { position: relative; display: inline-block; padding: .26em .55em .34em; font: 300 48px/1 var(--neon); letter-spacing: .06em; white-space: nowrap; transition: filter .12s ease-out; }
+  .sign .word, .sign .lit { transition: opacity .4s ease-out; }
+  .sign .l { color: var(--tube); }
+  .sign .l.on { color: var(--core); text-shadow: 0 0 .14em var(--c), 0 0 .32em var(--c); }
+  .sign svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .sign path { fill: none; stroke: var(--tube); stroke-width: 3; stroke-linecap: round; }
+  .sign path.reading { stroke: var(--c); animation: shimmer 1.6s ease-in-out infinite; }
+  .sign path.failed { stroke: #2A2228; }
+  .sign path.crack { stroke: #9B8890; stroke-width: 1; stroke-linecap: butt; }
+  .sign svg.lit { filter: drop-shadow(0 0 2px var(--c)) drop-shadow(0 0 7px var(--c)); }
+  .sign svg.lit path { stroke: var(--core); stroke-width: 2.6; }
+  .sign.dim .word, .sign.dim .lit { opacity: .6; }
+  .sign.blink .word, .sign.blink .lit { opacity: .12; transition: none; }
+  .sign.reflect { transform: scaleY(-1); filter: blur(2.4px); opacity: .34; pointer-events: none;
+    -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 85%); mask-image: linear-gradient(to top, #000 0%, transparent 85%); }
+  .sign.pull { filter: blur(5px); opacity: .72; transition: filter 1.5s ease-in-out, opacity 1.5s ease-in-out; }
+  .sign.reflect.pull { filter: blur(7px); opacity: .2; }
+  @keyframes shimmer { 0%, 100% { opacity: .22; } 50% { opacity: .42; } }
+
+  /* 1 · Home: shop signs in a row across the street */
+  #home { flex-direction: row; justify-content: center; align-items: flex-start; gap: clamp(16px, 4vw, 64px); padding-top: 20vh; }
+  .col { display: flex; flex-direction: column; align-items: center; }
+  .agent { background: none; border: 0; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 14px; }
+  .agent .sign { font-size: clamp(28px, 4.4vw, 56px); }
+  .agent:hover .sign, .agent:focus-visible .sign { filter: brightness(1.1); }
+  .agent .state { font-size: 13px; line-height: 20px; color: var(--quiet); }
+  .agent .state.ready { color: var(--ink); }
+  .col .sign.reflect { font-size: clamp(28px, 4.4vw, 56px); margin-top: 14px; }
+
+  /* 2 · Birth */
+  #birth { padding-top: 14vh; }
+  #birth .sign { font-size: clamp(48px, 7vw, 84px); }
+  #bSign .sign { opacity: 0; }
+  .birth-words { width: min(560px, calc(100% - 32px)); padding: 16px 20px; margin-top: -24px; opacity: 0; filter: blur(8px); transition: opacity .6s ease-in-out, filter .6s ease-in-out;
+    box-shadow: 0 -1px 0 rgba(255,181,71,.25) inset, 0 0 40px rgba(255,181,71,.06), 0 20px 60px rgba(0,0,0,.5); }
+  .birth-words.on { opacity: 1; filter: none; }
+  .birth-words p { margin: 0; }
+  .birth-words .mark { display: block; font-size: 13px; color: var(--quiet); margin-bottom: 4px; }
+  .birth-go { margin-top: 18px; opacity: 0; transition: opacity .4s; }
+  .birth-go.on { opacity: 1; }
+  .skip { position: absolute; right: 20px; bottom: 20px; background: var(--matte); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; min-height: 40px; font-size: 13px; }
+
+  /* 3 · Files: the sign up top, a plain list below */
+  #files { padding: 22px 16px 16px; gap: 20px; }
+  #files .sign { font-size: clamp(36px, 5vw, 58px); }
+  .files-panel { width: min(600px, 100%); flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .files-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--line); }
+  .count { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sub { font-size: 13px; color: var(--quiet); }
+  .rows { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+  .rows li { display: grid; grid-template-columns: 26px 1fr auto; gap: 0 10px; padding: 7px 20px; font-size: 13px; }
+  .rows .mark { width: 16px; height: 4px; border-radius: 2px; background: var(--tube); align-self: center; }
+  .rows li.reading .mark { background: var(--c); animation: shimmer 1.6s ease-in-out infinite; }
+  .rows li.learned .mark { background: var(--core); box-shadow: 0 0 4px var(--c), 0 0 9px var(--c); }
+  .rows li.failed .mark { background: linear-gradient(115deg, var(--tube) 44%, #9B8890 46%, #9B8890 52%, var(--tube) 54%); }
+  .rows .fname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rows .fsize { color: var(--quiet); text-align: right; }
+  .rows .fstate { color: var(--quiet); grid-column: 2 / -1; display: flex; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+  .rows li.reading .fstate { color: var(--ink); }
+  .rows li.failed .fstate { color: var(--err); }
+  .drop-hint { padding: 12px 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--quiet); margin: 0; }
+  .dropping { position: fixed; inset: 48px 0 0 0; z-index: 20; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .dropping span { background: var(--matte); color: var(--ink); padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); }
+  body.drag .dropping { display: flex; }
+
+  /* 4 · Talk: the sign small at the top, matte panels */
+  #talk { padding: 16px 16px 0; gap: 14px; }
+  #talk .sign { font-size: 30px; }
+  .chat { width: min(640px, 100%); flex: 1 1 auto; min-height: 0; margin-bottom: 12vh; display: flex; flex-direction: column; overflow: hidden; }
+  .chat-head { padding: 12px 22px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--quiet); }
+  .chat-head h1 { margin: 0; }
+  .msgs { list-style: none; margin: 0; padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .msgs .me { align-self: flex-end; max-width: 80%; background: var(--haze); padding: 8px 14px; border-radius: 12px; }
+  .msgs .them { max-width: 92%; }
+  .msgs .who { display: block; font-size: 13px; color: var(--quiet); }
+  .msgs .text { margin: 0; }
+  .where { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--tube); border-radius: 10px; font-size: 13px; }
+  .where .label { color: var(--quiet); display: block; }
+  .where blockquote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--tube); }
+  .note { margin: 8px 0 0; font-size: 13px; color: var(--quiet); }
+  .composer { display: flex; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); align-items: flex-end; }
+  .composer textarea { flex: 1; resize: none; background: var(--asphalt); color: var(--ink); border: 1px solid var(--tube); border-radius: 10px; padding: 11px 12px; font: inherit; min-height: 44px; max-height: 140px; }
+  .composer textarea::placeholder { color: var(--quiet); }
+
+  @media (max-width: 760px) {
+    #home { flex-wrap: wrap; padding-top: 10vh; }
+    .scenes button { padding: 5px 9px; }
+    .back { font-size: 0; } .back::before { content: "←"; font-size: 15px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .glass i, .sign path.reading, .rows li.reading .mark { animation: none; }
+    .glass i { transform: translateY(40vh); }
+    .sign path.reading, .rows li.reading .mark { opacity: .3; }
+    .bar, .birth-words, .birth-go, .sign, .sign .word, .sign .lit, .sign.pull { transition: none; }
+    .sign.pull { filter: none; opacity: 1; }
+    .sign.reflect.pull { filter: blur(2.4px); opacity: .34; }
+  }
+</style>
+</head>
+<body>
+<canvas id="street" aria-hidden="true"></canvas>
+<div class="glass" id="glass" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="back" href="index.html">← All concepts</a>
+  <nav class="scenes" aria-label="Moments">
+    <button data-go="home">Home</button>
+    <button data-go="birth">Birth</button>
+    <button data-go="files">Files</button>
+    <button data-go="talk">Talk</button>
+  </nav>
+  <button class="sound" id="sound" aria-pressed="false">Sound off</button>
+</header>
+
+<main>
+  <section id="home" class="scene" aria-label="Home"></section>
+
+  <section id="birth" class="scene" aria-label="Birth" hidden>
+    <div id="bSign"></div>
+    <div id="bRefl"></div>
+    <div class="sr" id="bName" aria-live="polite"></div>
+    <div class="birth-words panel" id="bWordsBox"><span class="mark" id="bMark"></span><p id="bWords"></p></div>
+    <button class="primary birth-go" id="bTalk" hidden>Talk to Maya</button>
+    <button class="skip" id="skip">Skip</button>
+  </section>
+
+  <section id="files" class="scene" aria-label="Files" hidden>
+    <div id="fSign"></div>
+    <div class="files-panel panel">
+      <div class="files-head">
+        <h1 class="sr" id="fName">Marcus</h1>
+        <div class="count" id="fCount" aria-live="polite"></div>
+        <div class="sub" id="fSub"></div>
+      </div>
+      <ul class="rows" id="fRows"></ul>
+      <p class="drop-hint">Drop files anywhere to add them · they stay on this Mac</p>
+    </div>
+  </section>
+
+  <section id="talk" class="scene" aria-label="Talk" hidden>
+    <div id="tSign"></div>
+    <div class="chat panel">
+      <div class="chat-head"><h1 class="sr" id="tName"></h1><span id="tState"></span></div>
+      <ol class="msgs" id="msgs"></ol>
+      <form class="composer" id="composer">
+        <label class="sr" for="q">Message</label>
+        <textarea id="q" rows="1"></textarea>
+        <button class="primary" id="send">Send</button>
+      </form>
+    </div>
+  </section>
+</main>
+<div class="dropping" aria-hidden="true"><span id="dropText">adds to Marcus</span></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<script>
+"use strict";
+/* ============================================================
+   Shared demo model: agents, files, the study run, talk, sound.
+   (Each concept page carries its own copy, so it opens alone.)
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+function fmtSize(b) { return b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+
+let SEQ = 0;
+function mkFile(name, size, extra) { return Object.assign({ name, size, status: 'learned', t0: 0, dur: 0, pct: 1, seq: SEQ++ }, extra || {}); }
+function generic(n) { const a = []; for (let i = 0; i < n; i++) a.push(mkFile('file ' + (i + 1), 1e5)); return a; }
+
+const MARCUS_OLD = ['Letters to a young manager.pdf', 'Talk — Leading through doubt.txt', 'Interview, radio (2018).txt', 'Notebook 1.md', 'Notebook 2.md', 'Notebook 3.md', 'Workshop day 1.txt', 'Workshop day 2.txt', 'Q&A transcripts.txt', 'Essays 2015–2019.pdf', 'Commencement speech.txt', 'Book draft, ch 1–4.docx', 'Book draft, ch 5–9.docx', 'Podcast ep 12.txt', 'Podcast ep 31.txt', 'Margin notes.md', 'Team memos.pdf', 'Reading list.md'];
+const MARCUS_NEW = [
+  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'Couldn’t read this PDF (it’s a scan)', true],
+  ['Mentoring calls (March).txt', 640e3, 6100], ['Podcast ep 57.txt', 190e3, 3900], ['Board letters 2020.pdf', 3.1e6, 8600],
+  ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet', false], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
+  ['Notebook 4.md', 80e3, 5200], ['Interview, 2022.txt', 260e3, 10600], ['Letters, part 2.pdf', 2.2e6, 11800]
+];
+const MAYA_FILES = ['Studio lectures, week 1.txt', 'Studio lectures, week 2.txt', 'Studio lectures, week 3.txt', 'Studio lectures, week 4.txt', 'Studio lectures, week 5.txt', 'Studio lectures, week 6.txt',
+  'Notebook, red.md', 'Notebook, grey.md', 'Crits 2018.pdf', 'Crits 2019.pdf', 'Crits 2020.pdf', 'Crits 2021.pdf', 'Type notes.md', 'Grid essay.pdf', 'Talk — On restraint.txt', 'Interview, 2016.txt',
+  'Letters to students.pdf', 'Portfolio reviews.txt', 'Margin notes.md', 'Reading list.md', 'Studio rules.txt', 'Open day Q&A.txt', 'Workshop, posters.txt', 'Workshop, books.txt'];
+const AGENTS = [
+  { id: 'tony', name: 'Tony', files: generic(30) },
+  { id: 'marcus', name: 'Marcus', files: MARCUS_OLD.map((n, i) => mkFile(n, 4e4 + (hash(n) % 3000) * 1000)).concat(
+      MARCUS_NEW.map(([n, s, d, reason, retry]) => mkFile(n, s, { status: 'waiting', pct: 0, dur: d, fail: !!reason, reason: reason || '', retry: !!retry }))) },
+  { id: 'ada', name: 'Ada', files: generic(22) },
+];
+const MAYA = { id: 'maya', name: 'Maya', files: MAYA_FILES.map(n => mkFile(n, 1e5)), born: false };
+const byId = id => AGENTS.concat([MAYA]).find(a => a.id === id);
+const MARCUS = byId('marcus');
+function homeAgents() { return MAYA.born ? AGENTS.concat([MAYA]) : AGENTS; }
+function counts(a) {
+  const c = { total: a.files.length, learned: 0, reading: 0, failed: 0, waiting: 0 };
+  a.files.forEach(f => c[f.status]++); return c;
+}
+function isStudying(a) { const c = counts(a); return !!(c.reading || c.waiting); }
+function stateText(a) { const c = counts(a); return (c.reading || c.waiting) ? `Studying · ${c.learned} of ${c.total}` : 'Ready'; }
+
+/* ---------- The study run: honest, runs whether you watch or not ---------- */
+const run = { started: false, celebrated: true };
+const BASE_TITLE = document.title;
+function startRun() {
+  if (run.started) return; run.started = true;
+  const t = Date.now();
+  const arriving = MARCUS.files.filter(f => f.status === 'waiting');
+  arriving.forEach(f => { f.status = 'reading'; f.t0 = t; });
+  run.celebrated = false;
+  world.filesArrived(arriving, null);
+  renderFiles();
+}
+function addRealFiles(list, x, y) {
+  const t = Date.now(), added = [];
+  for (const file of list) {
+    const tooBig = file.size > 200e6;
+    const f = mkFile(file.name, file.size, { status: 'reading', t0: t, pct: 0, dur: 2500 + Math.random() * 4000,
+      fail: tooBig || file.size === 0, reason: tooBig ? 'Too large to read (over 200 MB)' : 'This file is empty' });
+    MARCUS.files.unshift(f); added.push(f);
+  }
+  run.started = true; run.celebrated = false;
+  world.filesArrived(added, x == null ? null : { x, y });
+  renderFiles();
+}
+function retry(f) { f.status = 'reading'; f.t0 = Date.now(); f.dur = 3000; f.fail = false; f.pct = 0; run.celebrated = false; world.fileRetry(f); renderFiles(); }
+function tickRun() {
+  const t = Date.now(); let changed = false;
+  for (const f of MARCUS.files) {
+    if (f.status !== 'reading') continue;
+    f.pct = clamp((t - f.t0) / f.dur, 0, 1);
+    if (f.pct >= 1) { f.status = f.fail ? 'failed' : 'learned'; changed = true; f.status === 'learned' ? world.fileLearned(f) : world.fileFailed(f); }
+  }
+  const c = counts(MARCUS);
+  document.title = c.reading ? `${c.learned}/${c.total} · ${BASE_TITLE}` : BASE_TITLE;
+  if (!c.reading && !run.celebrated) { run.celebrated = true; world.allDone(); }
+  if (changed) { renderFiles(); renderHome(); }
+}
+setInterval(tickRun, 100);
+
+const pctText = f => `Reading · ${Math.floor(f.pct * 100)}%`;
+function renderFiles() {
+  const c = counts(MARCUS);
+  $('#fCount').textContent = `${c.learned} of ${c.total} lit`;
+  const bits = [];
+  if (c.reading) bits.push(`${c.reading} reading`);
+  if (c.waiting) bits.push(`${c.waiting} waiting`);
+  if (c.failed) bits.push(`${c.failed} couldn’t read`);
+  $('#fSub').textContent = c.reading ? bits.join(' · ') + ' · you can leave, it keeps going'
+                                     : (c.waiting ? 'Studying · ' : 'Ready') + (bits.length ? ' · ' + bits.join(' · ') : '');
+  const ul = $('#fRows'); ul.textContent = '';
+  for (const f of MARCUS.files) {
+    const li = document.createElement('li'); li.className = f.status; f.li = li;
+    const st = f.status === 'learned' ? 'Learned' : f.status === 'reading' ? pctText(f) : f.status === 'waiting' ? 'Waiting' : f.reason;
+    li.innerHTML = `<span class="mark" aria-hidden="true"></span><span class="fname"></span><span class="fsize">${fmtSize(f.size)}</span><span class="fstate"><span></span></span>`;
+    li.querySelector('.fname').textContent = f.name; li.querySelector('.fname').title = f.name;
+    li.querySelector('.fstate span').textContent = st;
+    if (f.status === 'failed' && f.retry) {
+      const b = document.createElement('button'); b.className = 'quiet-btn'; b.textContent = 'Try again';
+      b.onclick = () => retry(f); li.querySelector('.fstate').appendChild(b);
+    }
+    ul.appendChild(li);
+  }
+  world.paintSigns();
+}
+
+/* ---------- Talk: first words never wait; sources stay plain ---------- */
+const BANK = {
+  tony: { q: 'A client says we’re too expensive. What do I say?', keys: ['expensive', 'price', 'client', 'sell', 'sale', 'deal', 'objection', 'cost'],
+    a: 'Don’t defend the price. Ask what they’re comparing it to. Nine times out of ten “too expensive” means “I don’t see the value yet”, so go back to the outcome they told you they wanted, and price that, not the hours.',
+    src: { ref: 'Workshop 3 · transcript, 14:22', quote: 'Price is only an issue when the value isn’t clear yet.' } },
+  marcus: { q: 'I made a mistake in front of the whole team. How do I face them tomorrow?', keys: ['mistake', 'team', 'fail', 'wrong', 'face', 'sorry', 'lead'],
+    a: 'Say it first, and say it plainly. What you did is done; what you do next is yours. People forget the mistake long before they forget how you carried it.',
+    src: { ref: 'Letters to a young manager.pdf · letter 4', quote: 'The error is the event. The account you give of it is the choice.' } },
+  ada: { q: 'Should we rewrite the old billing system?', keys: ['rewrite', 'system', 'code', 'legacy', 'billing', 'refactor', 'bug'],
+    a: 'Not yet. Write down the three things that hurt most and fix them in place. If you still want a rewrite after that, at least you’ll know what the new one has to do better.',
+    src: { ref: 'Engineering notes 2021 · p. 12', quote: 'Rewrites fail when nobody can say what the old system does.' } },
+  maya: { q: 'How do I know when a layout is finished?', keys: ['layout', 'design', 'finished', 'done', 'type', 'grid', 'page'],
+    a: 'When you can’t take anything away without it falling apart. Take one thing out. If nobody misses it, it was never needed.',
+    src: { ref: 'Studio lectures, week 6 · 31:05', quote: 'Finished is when taking away starts to hurt.' } },
+};
+const UNKNOWN_Q = 'What do you think about the new tax rules?';
+const convo = {}; let talkAgent = byId('tony'); let streaming = null;
+function answerFor(a, q) {
+  const b = BANK[a.id], s = q.toLowerCase();
+  if (b.keys.some(k => s.includes(k))) return { text: b.a, src: b.src };
+  return { text: 'That isn’t in anything you gave me, so I’d only be guessing. I’d rather not.', unknown: true };
+}
+function nextPrompt(a) { const log = convo[a.id] || []; const asked = log.filter(m => m.who === 'me').length; return asked === 0 ? BANK[a.id].q : asked === 1 ? UNKNOWN_Q : ''; }
+function openTalk(a) { talkAgent = a; go('talk'); }
+function renderTalk() {
+  const a = talkAgent; $('#tName').textContent = `Talk to ${a.name}`; $('#tState').textContent = stateText(a);
+  const ol = $('#msgs'); ol.textContent = '';
+  (convo[a.id] || []).forEach(m => ol.appendChild(msgEl(m, a)));
+  const q = $('#q'); q.value = nextPrompt(a); q.placeholder = `Ask ${a.name} anything`; autoGrow();
+  ol.scrollTop = ol.scrollHeight;
+  world.talkSign(a);
+}
+function msgEl(m, a) {
+  const li = document.createElement('li'); li.className = m.who;
+  if (m.who === 'me') { li.textContent = m.text; return li; }
+  li.innerHTML = '<span class="who"></span><p class="text"></p>';
+  li.querySelector('.who').textContent = m.mark || a.name;
+  li.querySelector('.text').textContent = m.shown != null ? m.shown : m.text;
+  if (m.done !== false) addTail(li, m, a);
+  return li;
+}
+function addTail(li, m, a) {
+  if (m.src) {
+    const d = document.createElement('div'); d.className = 'where';
+    d.innerHTML = '<span class="label">Where from</span><span class="ref"></span><blockquote></blockquote>';
+    d.querySelector('.ref').textContent = m.src.ref; d.querySelector('blockquote').textContent = '“' + m.src.quote + '”';
+    li.appendChild(d);
+  } else if (m.unknown) {
+    const p = document.createElement('p'); p.className = 'note'; p.textContent = `Not in ${a.name}’s references`; li.appendChild(p);
+  }
+}
+function send(q) {
+  if (!q.trim() || streaming) return;
+  const a = talkAgent; const log = convo[a.id] = convo[a.id] || [];
+  log.push({ who: 'me', text: q.trim() });
+  const ans = answerFor(a, q);
+  const m = { who: 'them', text: ans.text, src: ans.src, unknown: ans.unknown, done: false };
+  const words = ans.text.split(' ');
+  m.shown = words.slice(0, 4).join(' ');            // first words land in this very frame, crisp
+  log.push(m);
+  const ol = $('#msgs'); ol.appendChild(msgEl(log[log.length - 2], a)); const li = msgEl(m, a); ol.appendChild(li);
+  ol.scrollTop = ol.scrollHeight;
+  world.firstWords(a, !!ans.unknown);               // the street follows the words, never precedes them
+  $('#q').value = nextPrompt(a); autoGrow(); $('#send').disabled = true;
+  let i = 4; const p = li.querySelector('.text');
+  streaming = { m, li, a, timer: 0, finish() {
+    clearTimeout(this.timer); m.shown = m.text; m.done = true; p.textContent = m.text; addTail(li, m, a);
+    streaming = null; $('#send').disabled = false; world.answerEnd(a); ol.scrollTop = ol.scrollHeight; } };
+  const step = () => {
+    if (i >= words.length) return streaming.finish();
+    m.shown += ' ' + words[i++]; p.textContent = m.shown; ol.scrollTop = ol.scrollHeight;
+    streaming.timer = setTimeout(step, 34);
+  };
+  streaming.timer = setTimeout(step, 34);
+}
+function autoGrow() { const q = $('#q'); q.style.height = 'auto'; q.style.height = Math.min(140, q.scrollHeight + 2) + 'px'; }
+$('#composer').addEventListener('submit', e => { e.preventDefault(); send($('#q').value); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($('#q').value); } });
+$('#q').addEventListener('input', autoGrow);
+
+/* ---------- Sound: off by default, one switch, quiet ---------- */
+const sound = { on: false, ctx: null, out: null };
+function audio() {
+  if (!sound.on) return null;
+  if (!sound.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    sound.ctx = new AC(); sound.out = sound.ctx.createGain(); sound.out.gain.value = 0.063; sound.out.connect(sound.ctx.destination); }
+  if (sound.ctx.state === 'suspended') sound.ctx.resume();
+  return sound.ctx;
+}
+function noise(c, sec) { const b = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * sec)), c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+function env(c, g, t, a, peak, r) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + r); }
+$('#sound').addEventListener('click', () => {
+  sound.on = !sound.on; $('#sound').setAttribute('aria-pressed', sound.on); $('#sound').textContent = sound.on ? 'Sound on' : 'Sound off';
+  if (sound.on) audio(); else if (sound.ctx) sound.ctx.suspend();
+  world.soundChanged();
+});
+function rainStart(freq, gain) {
+  const c = audio(); if (!c) return null;
+  const s = c.createBufferSource(); s.buffer = noise(c, 2); s.loop = true;
+  const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+  const g = c.createGain(), t = c.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .8);
+  s.connect(f).connect(g).connect(sound.out); s.start(t);
+  return {
+    to(fr, gn, sec) { const n = c.currentTime; f.frequency.setTargetAtTime(fr, n, sec / 3); g.gain.setTargetAtTime(gn, n, sec / 3); },
+    stop(sec) { const n = c.currentTime; g.gain.cancelScheduledValues(n); g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), n); g.gain.exponentialRampToValueAtTime(0.0001, n + sec); s.stop(n + sec + .05); },
+  };
+}
+/* the voice of neon: ballast tick, crackle on each catch, the hum at lock-on */
+function burst(freq, q, len, peak) {
+  const c = audio(); if (!c) return; const s = c.createBufferSource(); s.buffer = noise(c, len);
+  const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+  const g = c.createGain(), t = c.currentTime; env(c, g, t, .002, peak, len); s.connect(f).connect(g).connect(sound.out); s.start(t); s.stop(t + len + .05);
+}
+const playTick = () => burst(2400, 2, .012, .9);
+const playCrackle = () => burst(3000 + Math.random() * 1500, 1, .03 + Math.random() * .03, .22);
+function playHum() {
+  const c = audio(); if (!c) return; const t = c.currentTime, g = c.createGain(), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+  env(c, g, t, .05, .55, 2); lp.connect(g).connect(sound.out);
+  [100, 200, 300].forEach((fr, i) => { const o = c.createOscillator(), og = c.createGain(); o.type = 'sawtooth'; o.frequency.value = fr; og.gain.value = [1, .35, .12][i]; o.connect(og).connect(lp); o.start(t); o.stop(t + 2.2); });
+}
+
+/* ---------- Scenes ---------- */
+let scene = null;
+const SCENES = ['home', 'birth', 'files', 'talk'];
+function go(name) {
+  if (name === scene) return;
+  if (scene === 'birth') stopBirth();
+  if (scene === 'talk' && streaming) streaming.finish();
+  scene = name; document.body.dataset.scene = name;
+  SCENES.forEach(s => { $('#' + s).hidden = s !== name; });
+  document.querySelectorAll('[data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === name));
+  history.replaceState(null, '', '#' + name);
+  if (name === 'home') renderHome();
+  if (name === 'files') { startRun(); renderFiles(); }
+  if (name === 'birth') startBirth();
+  if (name === 'talk') { renderTalk(); $('#q').focus({ preventScroll: true }); }
+  world.enter(name);
+}
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+
+/* Home: one shop sign per agent; the state in plain type under it */
+const homeSigns = new Map();
+function renderHome() {
+  if (scene !== 'home') return;
+  const home = $('#home'); home.textContent = '';
+  for (const a of homeAgents()) {
+    let s = homeSigns.get(a.id); if (!s) { s = new Sign(a, true); homeSigns.set(a.id, s); }
+    const col = document.createElement('div'); col.className = 'col';
+    const b = document.createElement('button'); b.className = 'agent'; b.dataset.id = a.id;
+    const st = document.createElement('span'); st.className = 'state' + (isStudying(a) ? '' : ' ready'); st.textContent = stateText(a);
+    b.append(s.el, st); b.setAttribute('aria-label', `Talk to ${a.name} · ${stateText(a)}`);
+    b.addEventListener('click', () => openTalk(a));
+    col.append(b, s.refl); home.appendChild(col);
+    s.layout();
+  }
+  world.placeHomeButtons();
+}
+
+/* Dropping real files: always lands in Files, always adds to Marcus */
+let dragDepth = 0;
+addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag');
+  const list = e.dataTransfer && e.dataTransfer.files; if (!list || !list.length) return;
+  go('files'); addRealFiles(Array.from(list), e.clientX, e.clientY);
+});
+
+/* ============================================================
+   Neon After Rain: their sign is lit = they're home.
+   Each file learned wires in one more tube on the frame.
+   ============================================================ */
+const COLORS = [['#FF3B4E', '#FFE1E4'], ['#19C2A6', '#D8FFF7'], ['#FFB547', '#FFF1D9'], ['#5B8CFF', '#E2EAFF']];
+const colorOf = a => COLORS[(hash(a.name) >>> 11) % 4];
+const DASH = .72;
+
+class Sign {
+  constructor(a, withReflection) {
+    this.a = a; this.mode = 'files'; this.w = 0;
+    const [c, core] = colorOf(a);
+    const make = r => {
+      const d = document.createElement('div'); d.className = 'sign' + (r ? ' reflect' : ''); d.setAttribute('aria-hidden', 'true');
+      d.style.setProperty('--c', c); d.style.setProperty('--core', core);
+      d.innerHTML = '<svg class="base"></svg><svg class="lit"></svg><span class="word">' + a.name.split('').map(ch => `<span class="l on">${ch}</span>`).join('') + '</span>';
+      return d;
+    };
+    this.el = make(false); this.refl = withReflection ? make(true) : null;
+    this.L = this.els().map(e => Array.from(e.querySelectorAll('.l')));
+    this.nextFlutter = clock() + 3000 + Math.random() * 9000;
+  }
+  els() { return this.refl ? [this.el, this.refl] : [this.el]; }
+  cls(name, on) { this.els().forEach(e => e.classList.toggle(name, on)); }
+  setLetter(i, on) { this.L.forEach(arr => arr[i].classList.toggle('on', on)); }
+  allLetters(on) { for (let i = 0; i < this.a.name.length; i++) this.setLetter(i, on); }
+  litLetters() { return this.L[0].filter(l => l.classList.contains('on')).length; }
+  layout() {
+    const w = this.el.offsetWidth, h = this.el.offsetHeight; if (!w) return;
+    if (w === this.w && h === this.h) return this.paint();
+    this.w = w; this.h = h;
+    const x = 2, y = 2, ww = w - 4, hh = h - 4, r = Math.min(12, hh / 4);
+    this.geo = { x, y, ww, hh, r };
+    this.d = `M${x + ww / 2} ${y}H${x + ww - r}A${r} ${r} 0 0 1 ${x + ww} ${y + r}V${y + hh - r}A${r} ${r} 0 0 1 ${x + ww - r} ${y + hh}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + hh - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+    this.els().forEach(e => e.querySelectorAll('svg').forEach(s => s.setAttribute('viewBox', `0 0 ${w} ${h}`)));
+    this.paint();
+  }
+  /* a point (and the outward normal) at arc length s along the frame, starting top-centre, clockwise */
+  pointAt(u) {
+    const { x, y, ww, hh, r } = this.geo, q = Math.PI * r / 2;
+    const parts = [
+      [ww / 2 - r, k => [x + ww / 2 + k, y, 0, -1]],
+      [q, k => { const a = -Math.PI / 2 + k / r; return [x + ww - r + Math.cos(a) * r, y + r + Math.sin(a) * r, Math.cos(a), Math.sin(a)]; }],
+      [hh - 2 * r, k => [x + ww, y + r + k, 1, 0]],
+      [q, k => { const a = k / r; return [x + ww - r + Math.cos(a) * r, y + hh - r + Math.sin(a) * r, Math.cos(a), Math.sin(a)]; }],
+      [ww - 2 * r, k => [x + ww - r - k, y + hh, 0, 1]],
+      [q, k => { const a = Math.PI / 2 + k / r; return [x + r + Math.cos(a) * r, y + hh - r + Math.sin(a) * r, Math.cos(a), Math.sin(a)]; }],
+      [hh - 2 * r, k => [x, y + hh - r - k, -1, 0]],
+      [q, k => { const a = Math.PI + k / r; return [x + r + Math.cos(a) * r, y + r + Math.sin(a) * r, Math.cos(a), Math.sin(a)]; }],
+      [ww / 2 - r, k => [x + r + k, y, 0, -1]],
+    ];
+    let s = u * parts.reduce((t, p) => t + p[0], 0);
+    for (const [len, f] of parts) { if (s <= len) return f(s); s -= len; }
+    return parts[parts.length - 1][1](parts[parts.length - 1][0]);
+  }
+  sorted() { return this.a.files.slice().sort((p, q) => p.seq - q.seq); }
+  segPoint(f) { const list = this.sorted(), i = list.indexOf(f), r = this.el.getBoundingClientRect(); const p = this.pointAt((i + DASH / 2) / list.length); return [r.left + p[0], r.top + p[1]]; }
+  paint() {
+    if (!this.w) return;
+    const list = this.sorted(), N = list.length; let base = '', lit = '';
+    list.forEach((f, i) => {
+      let st = this.mode === 'off' ? 'waiting' : this.mode === 'on' ? 'learned' : f.status;
+      if (st === 'learned' && pending.has(f)) st = 'reading';
+      const seg = `<path d="${this.d}" pathLength="${N}" stroke-dasharray="${DASH} ${N - DASH}" stroke-dashoffset="${-i}"`;
+      if (st === 'learned') { lit += seg + '/>'; return; }
+      base += seg + ` class="${st}"/>`;
+      if (st === 'failed') {                           // cracked glass: a hairline across the dark tube
+        const [px, py, nx, ny] = this.pointAt((i + DASH / 2) / N), tx = -ny, ty = nx;
+        base += `<path class="crack" d="M${px - nx * 5 + tx} ${py - ny * 5 + ty}L${px - nx + tx * -2} ${py - ny + ty * -2}L${px + nx * 1.5 + tx * 1.5} ${py + ny * 1.5 + ty * 1.5}L${px + nx * 5 - tx} ${py + ny * 5 - ty}"/>`;
+      }
+    });
+    this.els().forEach(e => { e.querySelector('.base').innerHTML = base; e.querySelector('.lit').innerHTML = lit; });
+  }
+  /* one tube flutters: two dips of 40 ms, the way real neon does */
+  flutter() {
+    if (reduced) return; const i = Math.floor(Math.random() * this.a.name.length);
+    [[0, 0], [40, 1], [100, 0], [140, 1]].forEach(([d, on]) => setTimeout(() => this.setLetter(i, !!on), d));
+  }
+  /* the whole sign: flutter and hold (600 ms, silent) */
+  flutterAll() {
+    if (reduced) return;
+    [[0, 1], [60, 0], [130, 1], [190, 0], [330, 1], [380, 0]].forEach(([d, on]) => setTimeout(() => this.cls('blink', !!on), d));
+  }
+}
+const pending = new Set();                           // learned, but the spark hasn't reached the sign yet
+
+const cv = $('#street'), ctx = cv.getContext('2d'), fx = $('#fx'), fctx = fx.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const TOP = 48;
+const PAL = ['#FF3B4E', '#19C2A6', '#FFB547', '#5B8CFF', '#FFE3B0'];
+function hexA(h, a) { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+function sprite(hex) {
+  const s = document.createElement('canvas'); s.width = s.height = 64; const x = s.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, hexA(hex, 1)); g.addColorStop(.35, hexA(hex, .5)); g.addColorStop(1, hexA(hex, 0)); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return s;
+}
+const SPR = {}; PAL.forEach(c => { SPR[c] = sprite(c); });
+
+/* the street: bokeh, a slow-shutter crowd, rain, the wet ground */
+const R = rng(7);
+const bokeh = Array.from({ length: 44 }, () => ({ x: R(), y: R(), r: 6 + R() * 30, c: PAL[Math.floor(R() * PAL.length)], a: .08 + R() * .22, ph: R() * 6.28, sp: .3 + R() * .8 }));
+const crowd = Array.from({ length: 16 }, () => ({ x: R(), v: (R() < .5 ? -1 : 1) * (18 + R() * 30), h: 40 + R() * 34, w: 12 + R() * 9, z: R(), c: PAL[Math.floor(R() * 4)] }));
+const drops = Array.from({ length: 90 }, () => ({ x: R(), y: R(), l: 8 + R() * 14, v: 700 + R() * 400 }));
+const puddles = [];
+let groundY = 600, spots = [], needFull = true, lastStep = 0, pace = 1, paceTarget = 1;
+const street = { simT: 0 };
+
+function drawStreet(t, sdt, trail) {
+  const g0 = groundY;
+  ctx.globalAlpha = trail;
+  let g = ctx.createLinearGradient(0, TOP, 0, g0);
+  g.addColorStop(0, '#1C151A'); g.addColorStop(.6, '#2A2228'); g.addColorStop(1, '#171116');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, g0);
+  g = ctx.createLinearGradient(0, g0, 0, H); g.addColorStop(0, '#1B1419'); g.addColorStop(1, '#0B080A');
+  ctx.fillStyle = g; ctx.fillRect(0, g0, W, H - g0);
+  ctx.globalAlpha = 1;
+  street.simT += sdt;
+  const st = street.simT;
+  // bokeh, and its smeared twin in the wet ground
+  ctx.globalCompositeOperation = 'lighter';
+  for (const b of bokeh) {
+    const x = b.x * W, y = TOP + (g0 - TOP) * (.06 + .86 * b.y), a = b.a * (.75 + .25 * Math.sin(st * b.sp + b.ph));
+    ctx.globalAlpha = a; ctx.drawImage(SPR[b.c], x - b.r, y - b.r, b.r * 2, b.r * 2);
+    const ry = g0 + (g0 - y) * .3; ctx.globalAlpha = a * .4; ctx.drawImage(SPR[b.c], x - b.r * .45, ry - b.r * 1.4, b.r * .9, b.r * 2.8);
+  }
+  // light spilled on the ground under each lit sign
+  for (const s of spots) {
+    const k = s.spill(); if (k <= .01) continue;
+    ctx.globalAlpha = .32 * k; ctx.drawImage(SPR[s.c], s.x - s.w * .9, g0 - 14, s.w * 1.8, 90);
+    ctx.globalAlpha = .14 * k; ctx.drawImage(SPR[s.c], s.x - s.w * .5, g0 - 6, s.w, Math.min(H - g0, 260));
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(242,233,236,.07)'; ctx.fillRect(0, g0, W, 1);
+  // the crowd: soft dark shapes on the near pavement, smeared like a slow shutter
+  for (const p of crowd) {
+    p.x += p.v * sdt / W; if (p.x < -.05) p.x += 1.1; if (p.x > 1.05) p.x -= 1.1;
+    const base = g0 + 40 + p.z * Math.max(10, Math.min(120, H - g0 - 60)), sc = .8 + p.z * .5, h = p.h * sc, w = p.w * sc, x = p.x * W;
+    for (let k = 3; k >= 0; k--) {
+      const xo = x - Math.sign(p.v) * k * w * .35;
+      ctx.fillStyle = `rgba(6,4,6,${k ? .16 : .62})`; rrect(xo - w / 2, base - h, w, h, w / 2); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hexA(p.c, .1); rrect(x - w / 2, base - h, 2, h, 1); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+  }
+  // rain falling through the street, and its rings on the ground
+  ctx.strokeStyle = 'rgba(190,180,200,.12)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (const d of drops) {
+    d.y += d.v * sdt / H; if (d.y > 1) { d.y -= 1; d.x = Math.random(); if (Math.random() < .3) puddles.push({ x: d.x * W, y: g0 + Math.random() * (H - g0), t: st }); }
+    const x = d.x * W, y = TOP + d.y * (H - TOP); ctx.moveTo(x, y); ctx.lineTo(x - 2, y - d.l);
+  }
+  ctx.stroke();
+  for (let i = puddles.length - 1; i >= 0; i--) {
+    const p = puddles[i], k = (st - p.t) / .6; if (k >= 1 || k < 0) { puddles.splice(i, 1); continue; }
+    ctx.strokeStyle = `rgba(242,233,236,${.14 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, 2 + k * 10, (2 + k * 10) * .25, 0, 0, 6.2832); ctx.stroke();
+  }
+}
+function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+
+/* sparks: up a thin wire from the row to its tube on the sign (500 ms) */
+const sparks = []; let fxDirty = false;
+function spark(f) {
+  if (reduced || !filesSign.w || !f.li) return false;
+  const mark = f.li.querySelector('.mark'), ul = $('#fRows').getBoundingClientRect(), mr = mark.getBoundingClientRect(), pr = $('.files-panel').getBoundingClientRect();
+  const y0 = clamp(mr.top + mr.height / 2, ul.top + 4, ul.bottom - 4), gx = pr.left - 14;
+  const pts = [[mr.left, y0], [gx, y0], filesSign.segPoint(f)];
+  const lens = [Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]), Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1])];
+  sparks.push({ f, pts, lens, t0: clock(), c: colorOf(MARCUS)[0], arrived: false }); pending.add(f); return true;
+}
+function along(s, d) { if (d <= s.lens[0]) { const k = d / (s.lens[0] || 1); return [lerp(s.pts[0][0], s.pts[1][0], k), lerp(s.pts[0][1], s.pts[1][1], k)]; } const k = (d - s.lens[0]) / (s.lens[1] || 1); return [lerp(s.pts[1][0], s.pts[2][0], k), lerp(s.pts[1][1], s.pts[2][1], k)]; }
+function drawSparks(t) {
+  if (!sparks.length && !fxDirty) return;
+  fctx.setTransform(DPR, 0, 0, DPR, 0, 0); fctx.clearRect(0, 0, W, H); fxDirty = sparks.length > 0;
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i], k = (t - s.t0) / 500, L = s.lens[0] + s.lens[1];
+    if (k >= 1 && !s.arrived) { s.arrived = true; pending.delete(s.f); filesSign.paint(); }
+    if (k >= 1.6) { sparks.splice(i, 1); continue; }
+    const head = along(s, easeInOut(clamp(k, 0, 1)) * L), wa = k < 1 ? .3 : .3 * (1 - (k - 1) / .6);
+    fctx.strokeStyle = hexA(s.c, wa); fctx.lineWidth = 1; fctx.beginPath(); fctx.moveTo(s.pts[0][0], s.pts[0][1]);
+    if (easeInOut(clamp(k, 0, 1)) * L > s.lens[0]) fctx.lineTo(s.pts[1][0], s.pts[1][1]);
+    fctx.lineTo(head[0], head[1]); fctx.stroke();
+    fctx.globalCompositeOperation = 'lighter';
+    const a = k < 1 ? 1 : 1 - (k - 1) / .6, r = k < 1 ? 9 : 9 + (k - 1) * 30;
+    fctx.globalAlpha = a; fctx.drawImage(SPR[s.c], head[0] - r, head[1] - r, r * 2, r * 2);
+    if (k < 1) { fctx.fillStyle = '#fff'; fctx.beginPath(); fctx.arc(head[0], head[1], 1.6, 0, 6.2832); fctx.fill(); }
+    fctx.globalAlpha = 1; fctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+/* ---------- 3 · Files and 4 · Talk signs ---------- */
+const filesSign = new Sign(MARCUS, false); $('#fSign').appendChild(filesSign.el);
+$('.files-panel').style.setProperty('--c', colorOf(MARCUS)[0]); $('.files-panel').style.setProperty('--core', colorOf(MARCUS)[1]);
+let talkSign = null;
+
+/* ---------- 2 · Birth: the strike ---------- */
+const birth = { active: false, t0: 0, ev: [], i: 0, sign: null, locked: false, lockT: 0, bed: null, timers: [] };
+function strikePlan(n, r) {
+  const ev = [], stub = Math.min(n - 1, Math.floor(n / 2));
+  for (let i = 0; i < n; i++) {
+    if (i === stub) { [[2350, 2420], [2700, 2760], [3250, 3600], [3980, 4320]].forEach(([a, b]) => ev.push({ t: a, i, on: 1 }, { t: b, i, on: 0 })); continue; }   // the stubborn one: catches, dies, catches, dies
+    const catches = r() < .55, limit = catches ? 2700 + r() * 1800 : 4850; let t = 2000 + r() * 450;
+    while (t + 160 < limit) { const d = 40 + r() * 80; ev.push({ t, i, on: 1 }, { t: t + d, i, on: 0 }); t += d + 120 + r() * 520; }
+    if (catches) ev.push({ t: limit, i, on: 1 });
+  }
+  return ev.map(e => ({ t: e.t, fn: () => { birth.sign.setLetter(e.i, !!e.on); if (e.on) playCrackle(); } }));
+}
+function startBirth() {
+  const b = birth; b.active = true; b.locked = false; b.i = 0; b.t0 = clock();
+  document.body.classList.add('birthing');
+  b.sign = new Sign(MAYA, true); b.sign.mode = 'off'; b.sign.allLetters(false);
+  $('#bSign').textContent = ''; $('#bRefl').textContent = ''; $('#bSign').appendChild(b.sign.el); $('#bRefl').appendChild(b.sign.refl);
+  b.sign.layout();
+  $('#bName').textContent = ''; $('#bWordsBox').classList.remove('on'); $('#bWords').textContent = ''; $('#bMark').textContent = '';
+  $('#bTalk').hidden = true; $('#bTalk').classList.remove('on'); $('#skip').hidden = false;
+  if (reduced) {                                   // a 300 ms fade to lit, the words at once
+    b.sign.els().forEach(e => e.animate([{ opacity: 0 }, { opacity: e === b.sign.refl ? .34 : 1 }], { duration: 300, fill: 'forwards' }));
+    lockOn(true); showWords(); return;
+  }
+  paceTarget = 0;                                  // 0–0.8 s: the street goes quiet, step-printed
+  b.bed = rainStart(1800, .26); if (b.bed) b.bed.to(500, .07, .8);
+  b.ev = [
+    { t: 800, fn: () => b.sign.els().forEach(e => e.animate([{ opacity: 0 }, { opacity: e === b.sign.refl ? .34 : 1 }], { duration: 300, fill: 'forwards' })) },
+    { t: 1000, fn: playTick }, { t: 1550, fn: playTick },
+    ...strikePlan(MAYA.name.length, rng(hash(MAYA.name))),
+    { t: 5000, fn: () => lockOn(false) },
+    { t: 5500, fn: () => b.sign.cls('pull', true) },
+    { t: 6000, fn: showWords },
+    { t: 6800, fn: () => { paceTarget = 1; } },
+  ].sort((p, q) => p.t - q.t);
+}
+function lockOn(still) {
+  const b = birth; b.locked = true; b.lockT = clock();
+  b.sign.allLetters(true); b.sign.mode = 'on'; b.sign.paint();
+  MAYA.born = true; $('#skip').hidden = true; $('#bName').textContent = MAYA.name;
+  if (still) return;
+  playHum(); if (b.bed) b.bed.to(1400, .14, 1);
+  b.sign.refl.animate([{ transform: 'scaleY(-1)' }, { transform: 'scale(1.05,-.9) skewX(4deg)', offset: .25 }, { transform: 'scale(.98,-1.04) skewX(-2deg)', offset: .55 }, { transform: 'scaleY(-1)' }], { duration: 800, easing: 'ease-out' });
+}
+const FIRST_WORDS = 'You gave me six years of lectures, two notebooks and every crit you ever wrote down. Ask me what you’d have asked me in the studio.';
+function showWords() {
+  $('#bMark').textContent = 'First words · 25 Nov'; $('#bWords').textContent = FIRST_WORDS; $('#bWordsBox').classList.add('on');
+  if (!convo.maya) convo.maya = [{ who: 'them', text: FIRST_WORDS, mark: 'First words · 25 Nov' }];
+  $('#bTalk').hidden = false; requestAnimationFrame(() => $('#bTalk').classList.add('on'));
+}
+function stopBirth() {
+  const b = birth; b.active = false; if (b.bed) b.bed.stop(.4); b.bed = null; paceTarget = 1;
+  document.body.classList.remove('birthing');
+}
+function skipBirth() {
+  const b = birth; if (!b.active || b.locked || clock() - b.t0 < 200) return;
+  while (b.ev[b.i] && b.ev[b.i].t < 5000) b.i++;
+  b.sign.els().forEach(e => { e.getAnimations().forEach(a => a.cancel()); e.style.opacity = e === b.sign.refl ? .34 : 1; });
+  b.sign.allLetters(false); b.t0 = clock() - 5000;
+}
+function tickBirth() {
+  const b = birth; if (!b.active || reduced) return;
+  const tt = clock() - b.t0; while (b.ev[b.i] && b.ev[b.i].t <= tt) b.ev[b.i++].fn();
+}
+$('#skip').addEventListener('click', e => { e.stopPropagation(); skipBirth(); });
+$('#birth').addEventListener('click', e => { if (e.target.closest('button')) return; skipBirth(); });
+addEventListener('keydown', e => { if (scene === 'birth' && !['Tab', 'Shift', 'Meta', 'Alt', 'Control'].includes(e.key) && !e.target.closest('.bar')) skipBirth(); });
+$('#bTalk').addEventListener('click', () => openTalk(MAYA));
+
+/* ---------- layout per scene: where the ground is, where the signs spill light ---------- */
+function shareOf(a) { const c = counts(a); return c.total ? c.learned / c.total : 0; }
+function layoutScene() {
+  spots = [];
+  if (scene === 'home') {
+    homeSigns.forEach(s => s.layout());
+    const btns = Array.from(document.querySelectorAll('.agent'));
+    groundY = btns.length ? Math.max(...btns.map(b => b.getBoundingClientRect().bottom)) + 8 : H * .6;
+    spots = homeAgents().map(a => { const r = homeSigns.get(a.id).el.getBoundingClientRect(); return { x: r.left + r.width / 2, w: r.width, c: colorOf(a)[0], spill: () => .4 + .6 * shareOf(a) }; });
+  } else if (scene === 'birth' && birth.sign) {
+    birth.sign.layout();
+    const r = birth.sign.el.getBoundingClientRect(); groundY = r.bottom + 6;
+    spots = [{ x: r.left + r.width / 2, w: r.width, c: colorOf(MAYA)[0], spill: () => birth.locked ? clamp((clock() - birth.lockT) / 600, 0, 1) : .25 * birth.sign.litLetters() / MAYA.name.length }];
+  } else if (scene === 'files') { filesSign.layout(); groundY = H * .9; }
+  else if (scene === 'talk') { if (talkSign) talkSign.layout(); groundY = H - (H - TOP) * .12 + 14; }
+  needFull = true;
+}
+
+/* ---------- the world hooks the shared model calls ---------- */
+let bedSound = null;
+function talkBed() {
+  const want = sound.on && scene === 'talk';
+  if (want && !bedSound) bedSound = rainStart(1100, .2);
+  if (!want && bedSound) { bedSound.stop(.6); bedSound = null; }
+}
+const world = {
+  enter(name) { if (name !== 'birth') paceTarget = 1; layoutScene(); requestAnimationFrame(layoutScene); talkBed(); },
+  filesArrived() { },
+  fileLearned(f) { if (scene === 'files') spark(f); },
+  fileFailed() { },
+  fileRetry() { },
+  allDone() { if (scene === 'files') setTimeout(() => filesSign.flutterAll(), 560); },
+  notice() { },
+  firstWords(a, unknown) { if (talkSign) talkSign.cls('dim', unknown); if (!unknown && !reduced) paceTarget = 0; },
+  answerEnd() { paceTarget = 1; },
+  placeHomeButtons() { layoutScene(); },
+  soundChanged() { talkBed(); },
+  paintSigns() { filesSign.paint(); if (talkSign && talkSign.a === MARCUS) { talkSign.paint(); if (scene === 'talk') $('#tState').textContent = stateText(MARCUS); } },
+  talkSign(a) { talkSign = new Sign(a, false); $('#tSign').textContent = ''; $('#tSign').appendChild(talkSign.el); talkSign.layout(); },
+};
+
+/* rain on the glass: slow streaks and still beads */
+(function () {
+  const g = $('#glass'), r = rng(23); let html = '';
+  for (let i = 0; i < 22; i++) html += `<i style="left:${(r() * 100).toFixed(2)}%;height:${40 + r() * 100 | 0}px;animation-duration:${(7 + r() * 9).toFixed(1)}s;animation-delay:-${(r() * 16).toFixed(1)}s;opacity:${(.4 + r() * .6).toFixed(2)}"></i>`;
+  for (let i = 0; i < 40; i++) { const s = 2 + r() * 4; html += `<b style="left:${(r() * 100).toFixed(2)}%;top:${(r() * 100).toFixed(2)}%;width:${s.toFixed(1)}px;height:${(s * 1.2).toFixed(1)}px"></b>`; }
+  g.innerHTML = html;
+})();
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  [cv, fx].forEach(c => { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); c.style.width = W + 'px'; c.style.height = H + 'px'; });
+  layoutScene();
+}
+addEventListener('resize', resize);
+
+let last = clock(), lastPct = 0;
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  if (reduced) { pace = paceTarget = 1; }
+  else if (pace !== paceTarget) pace = paceTarget > pace ? Math.min(paceTarget, pace + dt / .4) : Math.max(paceTarget, pace - dt / .3);
+  const stepMs = 125 * (1 - pace);
+  if (needFull || (!reduced && t - lastStep >= stepMs)) {
+    const sdt = reduced ? 0 : Math.min(.2, (t - lastStep) / 1000) * lerp(.4, 1, pace);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalCompositeOperation = 'source-over';
+    drawStreet(t, needFull ? 0 : sdt, needFull ? 1 : lerp(.3, 1, pace));
+    lastStep = t; needFull = false;
+  }
+  drawSparks(t);
+  tickBirth();
+  if (scene === 'birth' && birth.active) needFull = needFull || reduced;   // spill follows the strike
+  if (scene === 'home' && !reduced) for (const a of homeAgents()) { const s = homeSigns.get(a.id); if (s && t > s.nextFlutter) { if (!isStudying(a)) s.flutter(); s.nextFlutter = t + 15000 + Math.random() * 10000; } }
+  if (scene === 'files' && t - lastPct > 150) {
+    lastPct = t;
+    for (const f of MARCUS.files) if (f.status === 'reading' && f.li) { const s = f.li.querySelector('.fstate span'); const v = pctText(f); if (s.textContent !== v) s.textContent = v; }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Start ---------- */
+resize();
+go(SCENES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+requestAnimationFrame(t => { last = t; lastStep = t; frame(t); });
+</script>
+</body>
+</html>
