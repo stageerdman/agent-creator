@@ -9,6 +9,9 @@
 - Hand edits win. The AI never quietly overwrites what the user typed.
 - Nothing blocks without a visible reason. An action that needs a save
   first does the save itself.
+- Every screen and moment points to a journey step (`UJ# · step` in
+  `updates/2026-11-25 FULL-UX - OPEN/journeys-columbo.md`). No journey
+  step, no screen.
 - Order of work: research (Columbo) → magic (Merlin) → design (Jony) →
   cut review (Eraser). The captain applies the review's required changes
   into the design, so the build team reads one file.

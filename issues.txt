@@ -23,3 +23,15 @@
       14 bulk example people, not needed for our use). If a reference example
       is ever needed, pull one from https://github.com/alchaincyf/nuwa-skill
       directly rather than re-adding the whole examples/ tree.
+
+- [ ] FULL-UX (updates/2026-11-25 FULL-UX - OPEN/): roadmap and journey
+      map are done (Phase 0). Next for Magic UX: Merlin writes
+      magic-merlin.md (Phase 1), then Jony designs blocks A–F (Phase 2),
+      then Eraser reviews (Phase 3). Open questions that need a decision
+      before Jony's block D: does a correction in agent chat change the
+      agent or only that chat (journeys §10 Q1), and how the P10 persona
+      rating avoids being a fake number (Q2).
+
+- [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
+      living people that leave this app. Needs an orchestrator decision
+      (journeys-columbo.md §9).
