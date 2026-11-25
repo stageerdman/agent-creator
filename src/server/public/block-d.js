@@ -4,7 +4,7 @@
 // agents get one marked demo line, never a fake answer.
 
 import {
-  P2, el, btn, store, nameOf, shortName, subj, when, dayMonth, nowIso, face, passagePanel, sheet, closeSheet,
+  P2, el, btn, closeBtn, store, nameOf, shortName, subj, when, dayMonth, nowIso, face, passagePanel, sheet, closeSheet,
   stream, wait, note, fileById,
 } from "/components.js";
 import { nav } from "/block-a.js";
@@ -568,7 +568,7 @@ function renderFix() {
   form.addEventListener("submit", (e) => { e.preventDefault(); const text = t.value.trim(); if (text) fixSend(text); });
   const example = store.demo.fixes[a.id]?.example;
   host.replaceChildren(el("section", "fix",
-    el("div", "side-head", el("h2", "side-title", `Sketcher · fixing ${shortName(a)}`), el("span", "grow"), btn("✕", closeFix, "icon-btn", { "aria-label": "Close" })),
+    el("div", "side-head", el("h2", "side-title", `Sketcher · fixing ${shortName(a)}`), el("span", "grow"), closeBtn(closeFix)),
     el("blockquote", "pinned", el("span", "pinned-who", `${shortName(a)}:`), ` "${pinned(fix.msg.text)}"`),
     log,
     !fix.log.some((m) => m.role === "user") && example ? btn(example, () => { t.value = example; grow(t); sendBtn.disabled = false; t.focus(); }, "chip fix-example", { "data-mock": "" }) : null,

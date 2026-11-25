@@ -3,7 +3,7 @@
 // design-jony-block-E.md. Every change after Keep is live (X4).
 
 import {
-  P2, el, btn, bus, store, nameOf, shortName, fileById, note, face, sheet, closeSheet,
+  P2, el, btn, closeBtn, bus, store, nameOf, shortName, fileById, note, face, sheet, closeSheet,
   picker, paletteStrip, wait, nowIso, dayMonth,
 } from "/components.js";
 import { nav } from "/block-a.js";
@@ -350,7 +350,7 @@ function renderPalette(a) {
   });
   host.replaceChildren(
     el("div", "palette-head", el("h3", "knows-h", `Palette · what ${name} is mixed from · ${head}`, busy ? el("span", "muted", " · Sketching…") : null),
-      btn("✕", closePalette, "icon-btn", { "aria-label": "Close Palette" })),
+      closeBtn(closePalette, "Close Palette")),
     el("div", "palette-mix", paletteStrip(segments, { bloom }), el("span", "muted small", "stand-in look")),
     el("p", "palette-names muted small", segments.map((s) => s.label).join(" · ")),
     el("ul", "sr-only", ...segments.map((s) => el("li", "", `${s.label} · ${s.detail}`))),

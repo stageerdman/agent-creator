@@ -7,7 +7,8 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::window::Color;
+use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
 /// Holds the server for the app's life; taking it out stops the server.
 struct ServerSlot(Mutex<Option<server::Server>>);
@@ -52,11 +53,25 @@ fn start_server(app_dir: PathBuf) -> Result<server::Server, String> {
 
 fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
     let url = url.parse().expect("main: server URL is always valid");
-    WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+    let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
         .title("Agent Creator")
         .inner_size(1200.0, 860.0)
-        .min_inner_size(900.0, 640.0)
+        // Under 860 px the page switches to its one-pane layout; 640 also fits half a 13" screen.
+        .min_inner_size(640.0, 640.0)
+        // Let Finder drops reach the page's own dragenter/drop handlers.
+        .disable_drag_drop_handler()
+        .visible(false)
         .center()
         .build()?;
-    Ok(())
+    // Paint the page's own canvas first, so a dark launch never flashes white.
+    window.set_background_color(Some(canvas(window.theme()?)))?;
+    window.show()
+}
+
+/// The page's --canvas (app.css), per theme.
+fn canvas(theme: Theme) -> Color {
+    match theme {
+        Theme::Dark => Color(0x12, 0x12, 0x12, 0xff),
+        _ => Color(0xff, 0xff, 0xff, 0xff),
+    }
 }

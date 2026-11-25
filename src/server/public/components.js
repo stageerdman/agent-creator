@@ -30,6 +30,19 @@ export function el(tag, attrs, ...children) {
 
 export const btn = (label, onclick, cls = "link-btn", extra = {}) => el("button", { class: cls, onclick, ...extra }, label);
 
+// Drawn, not typed: "✕" isn't in the system font, so each engine picks its own fallback size.
+const SVG = "http://www.w3.org/2000/svg";
+export function closeBtn(onclick, label = "Close") {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("class", "i-close");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG, "path");
+  path.setAttribute("d", "M1.5 1.5l9 9M10.5 1.5l-9 9");
+  svg.append(path);
+  return btn(svg, onclick, "icon-btn", { "aria-label": label });
+}
+
 // ── Bus ───────────────────────────────────────────────────────────────────
 const listeners = {};
 export const bus = {
@@ -145,7 +158,7 @@ export function passagePanel(r, a, { back, onBack, close, onClose, behind, used 
   const panel = el("section", { class: "passage", "aria-label": "Passage" });
   const head = el("div", "passage-head");
   if (back) head.append(btn(`← ${back}`, onBack, "link-btn quiet"));
-  if (close) head.append(el("span", "grow"), btn("✕", onClose, "icon-btn", { "aria-label": "Close" }));
+  if (close) head.append(el("span", "grow"), closeBtn(onClose));
   panel.append(head);
   if (behind) panel.append(el("p", "passage-behind", `Behind: ${behind}`));
   if (used) panel.append(el("p", "passage-behind", "Used in this answer"));

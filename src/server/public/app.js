@@ -7,6 +7,9 @@ import {
   FIELDS, readEvents, isEmptyDraft, applyDraftEvent, changeLine, firstSentence,
   errorLine, splitPaste, wordCount, replyBlocks, inlineRuns, switcherRows,
 } from "/sketch.js";
+import { installTabFocus } from "/tab-focus.js";
+
+installTabFocus();
 
 const $ = (id) => document.getElementById(id);
 const els = {
