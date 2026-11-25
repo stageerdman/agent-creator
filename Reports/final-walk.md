@@ -49,6 +49,22 @@ Branch `studio/walk-every-block-in-the-installed-app-an-a32bfa51` at 5f93f22. Wa
 8. **The drop overlay names the wrong target during creation:** while you're making a new, unkept agent, the overlay says "for a new agent", but the drop goes into that same agent (`block-b.js:487` only makes a new agent on Home or for demo agents). The cause is `block-a.js:321`, which checks `!a.real`. It should say "into the DNA" (or "into [Name]'s DNA").
 9. **The walk script is out of date:** `scripts/walk-full-ux.mjs` still waits for `#rs-knows`, `#rs-sketch`, `.refs-toggle`, "Sketch: persona updated" and "only you see this", all removed by the Sketch rework. Steps C, E1-E5, B3 and B6 fail for that reason only. Update it, or drop those steps.
 
+## Fixes (Jony)
+
+All 9 small issues fixed. No new features, no new motion. Big issues untouched.
+
+1. **X1 keyframe clash:** fixed in `f10100b`. One `magic-card-settle` is left.
+2. **X2 duplicate motions:** fixed in `f10100b`. One toast motion is left, the one Eraser chose.
+3. **X3 Palette second home:** fixed in `f10100b`. The menu item, the view (`block-e.js` E5 and `E.escape`), `E.closePalette()`, the palette, trait and step CSS, and the export line are all gone.
+4. **X4 still error toasts:** fixed in `f10100b`. `toast(…, {error:true})` adds `.is-error`. Only `.toast:not(.is-error)` rises.
+5. **X5 click wins:** fixed in `e16ff12`. While the name waits (550 ms), one capture `pointerdown`/`keydown` listener ends the wash and shows the name at once, with no motion. The listener goes away when the timer fires.
+6. **X6 leftovers:** `.talk-views .dot` was removed in `f10100b`. In `e16ff12`, `addChangeLine` now uses `reducedMotion()` and the stray space in `index.html` is gone.
+7. **"what It is told":** fixed in `f10100b`. Before there's a name, the DNA sub-lines say "it" in lower case ("what it is told"). The own-view line reads "Its own view".
+8. **Drop overlay target:** fixed in `f10100b`. The overlay now follows the same rule as `B.onDrop`. It says "for a new agent" only on Home or for a demo agent. Otherwise it says "into [Name]'s DNA" (or "into the DNA" before there's a name).
+9. **Walk script:** fixed in `e16ff12`. Segments 2 (C, E1–E2) and 3 (E3–E5, Palette) are dropped, because the Sketch rework removed what they tested. B3 no longer opens `#rs-knows`, and B6 no longer waits for "only you see this". I didn't rerun the script because there's no browser here.
+
+Checks: `npm test` 119 pass, 0 fail, 1 skipped (live). I rebuilt and reinstalled `/Applications/Agent Creator.app` with `npm run build:app`, and `node scripts/check-mac-install.mjs` passes every step.
+
 ## Big issues (logic, to send back to Uncle Bob)
 
 1. **The menu is empty for every agent you make.** For a real agent, `hooks.menu` returns `[]` (`block-a.js:121`). `app.js:782` treats any array as a custom menu (`if (custom)`), so the menu opens as an empty box. The P2 list (+ New agent, the other agents, Delete) never shows. You can't delete, switch from the menu or start a new agent there while one of your own agents is open. Seen in the installed app (screenshot `.scratch/fw-menu.png`). Fix: return `null` for real agents, or check `custom?.length`.
