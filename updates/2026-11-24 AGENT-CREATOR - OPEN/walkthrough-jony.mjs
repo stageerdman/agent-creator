@@ -488,7 +488,11 @@ async function main() {
 
   // W3 (back to the Tony agent)
   await page.click("#switcher-btn");
-  await page.click(`#switcher-menu [role=menuitem]:has-text("Kept")`);
+  // pick Tony by name: later turns may have turned it back into a draft
+  const tonyNow = (await (await fetch(`${BASE}/api/agents/${tonyId}`)).json()).draft.name;
+  await page.click(`#switcher-menu [role=menuitem]:has-text("${tonyNow}")`);
+  await page.waitForFunction((n) => document.querySelector("#f-name").value === n, tonyNow);
+  if ((await page.textContent("#keep")) !== "Kept ✓") await page.click("#keep");
   await page.waitForFunction(() => document.querySelector("#keep").textContent === "Kept ✓");
   await typeInto("#f-persona", " Always.");
   mark = Date.now();

@@ -18,11 +18,14 @@ browser ──SSE── routes/agents.mjs ── creator/agents.mjs ──┬─
 
 ## Lessons
 
-- **The draft goes in the system prompt, every turn.** `--system-prompt` is
-  passed again on each `--resume`, so the creator always sees the latest
-  draft (with hand edits) even though the resumed session remembers older
-  versions. Verified live: a hand-edited persona survived a follow-up turn
-  that changed the instructions.
+- **The draft goes in the user message, every turn, not in the system
+  prompt.** `claude --resume` keeps the session's first `--system-prompt`
+  and ignores a new one (tested: a resumed session answered with the old
+  prompt's word). So `buildCreatorPrompt()` is the fixed rules only, and
+  `buildTurnMessage()` puts a `<turn_context>` (current draft, hand edits,
+  hand lines, Keep status) before "The user says:". Verified live: a
+  hand-typed `Never use the word "awesome".` survived "Rewrite everything"
+  in a resumed session; before the fix it was dropped.
 - **Hide only the block, in both places.** If the stream filter hid
   "everything after `<draft>`" but `splitReply` kept text after the block,
   the streamed bubble and the final `say` would disagree. Both now remove
