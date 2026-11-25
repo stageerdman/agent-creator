@@ -265,7 +265,9 @@ export function demoPill(items) {
   const pill = btn("Demo", () => { pop.hidden = !pop.hidden; pill.setAttribute("aria-expanded", String(!pop.hidden)); if (!pop.hidden) render(); }, "demo-pill", { "aria-expanded": "false", "aria-haspopup": "menu" });
   const render = () => pop.replaceChildren(...items().map((it) => it === "-" ? el("hr") : it instanceof Node ? it
     : el("button", { class: "demo-item", role: "menuitem", disabled: it.disabled, onclick: () => { if (!it.keepOpen) pop.hidden = true; it.run(); if (it.keepOpen) render(); } }, it.label)));
-  document.addEventListener("click", (e) => { if (!wrap.contains(e.target)) pop.hidden = true; });
+  // composedPath is fixed at dispatch, so a menu item re-rendered by its own click still counts as inside.
+  document.addEventListener("click", (e) => { if (!e.composedPath().includes(wrap)) pop.hidden = true; });
+  pop.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); pop.hidden = true; pill.focus(); } });
   wrap.append(pill, pop);
   return wrap;
 }

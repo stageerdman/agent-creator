@@ -91,7 +91,9 @@ function renderFaceSlot(shown, a) {
 
 export function renderStudy(a) {
   const host = $("study-host");
-  if (!a || P2.state.agent?.id !== a.id || !a.study) {
+  if (a && P2.state.agent?.id !== a.id) {
+    // another agent's study (Ines in the background): only the top bar and Home change
+  } else if (!a || !a.study) {
     host.replaceChildren();
     host.hidden = true;
   } else {
@@ -457,6 +459,7 @@ export function afterKeep(agent) {
   a.keptAt ??= nowIso();
   a.ready = false;
   a.faceNew = false;
+  C.showSketch(); // the Keep card (and Talk to [Name] →) lives in the Sketch
   renderKeepExtras(a);
   renderFaceSlot(a, a);
   $("rs-knows").textContent = `What ${shortName(a)} knows`;

@@ -337,6 +337,71 @@
   }
 }
 
+/* ── FULL-UX moments (blocks A–F) ──────────────────────────────────────── */
+
+/* B4: the map arrives Sharp → Rough → Blank, 80 ms apart, once per batch. */
+.map.arrive .map-line {
+  animation: magic-arrive 300ms ease-out calc(var(--g, 0) * 80ms) both;
+}
+
+@keyframes magic-arrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* E2: the changed line redraws faint → clear, 400 ms, once. */
+.map-line.redraw {
+  animation: magic-redraw 400ms ease-out both;
+}
+
+@keyframes magic-redraw {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* E5: the Palette mix blooms from the centre, 800 ms, first open only. */
+.palette-band.bloom {
+  animation: magic-bloom 800ms ease-out both;
+}
+
+@keyframes magic-bloom {
+  from { clip-path: inset(0 50% 0 50%); opacity: 0.4; }
+  to { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+
+/* D2 First words: the outline face fills in while the line streams. */
+.face.fill-in {
+  border-color: transparent;
+  animation: magic-face-fill 600ms ease-out both;
+}
+
+.face.fill-in img { display: block; }
+
+@keyframes magic-face-fill {
+  from { opacity: 0.4; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+/* E4: a new face crossfades in every visible place at once. */
+body.face-change .face img {
+  animation: magic-face-cross 300ms ease-out both;
+}
+
+@keyframes magic-face-cross {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* D: a redrawn divider eases in after the fix panel closes. */
+.fade-in {
+  animation: magic-fade-in 300ms ease-out both;
+}
+
+@keyframes magic-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ── Reduced motion: everything still, meaning kept ────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -353,8 +418,18 @@
   .keep-btn.saved,
   .agent-born,
   .agent-born .keep-card,
-  .voice-card.first-voice {
+  .voice-card.first-voice,
+  .map.arrive .map-line,
+  .map-line.redraw,
+  .palette-band.bloom,
+  .face.fill-in,
+  body.face-change .face img,
+  .fade-in {
     animation: none;
+  }
+
+  .seg {
+    transition: none;
   }
 
   .streaming:empty::after {

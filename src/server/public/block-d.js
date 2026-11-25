@@ -425,7 +425,7 @@ function renderPast() {
   if (talks.length >= 3) {
     const input = el("input", { id: "talk-search", class: "search", type: "search", placeholder: "Search past talks", "aria-label": "Search past talks", value: query, autocomplete: "off" });
     let t = 0;
-    input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { query = input.value; renderList(list, talks, open); }, 150); });
+    input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { if (!cur || !input.isConnected) return; query = input.value; renderList(list, talks, open); }, 150); });
     input.addEventListener("keydown", (e) => { if (e.key === "Escape" && input.value) { e.stopPropagation(); e.preventDefault(); input.value = ""; query = ""; renderList(list, talks, open); } });
     parts.push(input);
   }

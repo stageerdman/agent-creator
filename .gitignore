@@ -9,6 +9,9 @@ package-lock.json
 .walkthrough-home/
 .scratch/
 
+# The built macOS app (npm run build:app)
+dist/
+
 # OS / editor
 .DS_Store
 
