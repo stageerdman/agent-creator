@@ -327,9 +327,9 @@ instance stays a reference only.
 
 | Agent | Who | State | Face | Material | Journeys |
 |---|---|---|---|---|---|
-| **Rex Hart** | tough-love coach | Kept 25 Oct, 14 past talks, has spoken First words | photo (an illustrated portrait, not a real person's photo) | `Rex Hart – Breakthrough Weekend/`, 186 references | UJ4–UJ8, UJ10 |
+| **Rex Hart** | tough-love coach | Kept 25 Oct, 14 past talks, has spoken First words | photo (an illustrated portrait, not a real person's photo) | `Rex Hart – Breakthrough Weekend/`, 186 references | UJ4–UJ8, UJ9 · 2–3, UJ10 |
 | **Marcus** | stoic mentor for founders | Kept, from one line, no references | AI icon | none | UJ3, UJ5 |
-| **Edie** | blunt newsletter editor | Kept, 4 files, 1 hard to study | AI icon | `Edie files/`, 4 files | UJ4, UJ8 |
+| **Edie** | blunt newsletter editor | Kept, 4 files, 1 hard to study | AI icon | `Edie files/`, 4 files | UJ4, UJ9 · 1 (icon → photo) |
 | **Ines Duarte** | calm negotiation coach | Sketch, Studying stage 2 of 3, first impressions, resumed after closing | outline | `Ines Duarte – The Quiet Deal/`, 312 files | UJ2 · 4–6 |
 | *Untitled sketch* | (persona only: "A patient piano teacher…") | Sketch, never kept, no name | outline, empty | none | UJ12 |
 | **Juno** | plain-language contract reader | Imported from `Juno.agent.zip`, never opened | AI icon | packed knowledge | UJ11 |
