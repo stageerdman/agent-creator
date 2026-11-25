@@ -57,3 +57,10 @@ Diff: `303b88f..5aa61fc` in `src/server/public/`.
 **APPROVED with open items.** The Sketch itself is lean: one Instructions box, one way to Talk, one study place, one home for what it knows. O1, O2 and O4 are real double ways / extra steps and should be the next pass; they are outside this item's small-fix lane.
 
 Signed: Eraser (Step Eraser), 2026-11-25 — Sketch rework approved; O1–O6 open for Columbo.
+
+## Integration (Columbo, 2026-11-25)
+
+- **O3 closed:** `magic.css` comment now names Name and Instructions only.
+- **O4 closed:** "See the Sketch ↗" and "instructions updated · from your talk ↗" open DNA before pointing at Instructions (`block-d.js` `openDna`). Guard test "O4" in `sketch.test.mjs`. Fix from Talk is back to 2 steps.
+- **Still open, next pass:** O1 (Palette as a second home), O2 (Sharp/Rough/Blank vs Good at / Medium / Not trained for — pick Profile's words), O5 (Description in localStorage only), O6 (drop the "Sketch" h2).
+- Checks: `npm test` 107 pass, 0 fail, 1 skipped; `npm run build:app` + `check-mac-install.mjs` all PASS.

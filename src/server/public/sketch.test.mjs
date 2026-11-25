@@ -274,6 +274,13 @@ test("Eraser: one home for what it knows (DNA), no old level words in change lin
   assert.match(read("block-c.js"), /lastQuality/, "quality glow plays once per new summary");
 });
 
+test("O4: a fix from Talk lands on DNA, where Instructions live", () => {
+  const d = read("block-d.js");
+  assert.match(d, /function openDna\(\)[\s\S]*?rs-dna/, "block-d has a way to open DNA");
+  assert.match(d, /async function seeSketch[\s\S]*?openDna\(\);[\s\S]*?scrollIntoView/, "See the Sketch opens DNA before scrolling");
+  assert.match(d, /instructions updated · from your talk[^\n]*openDna\(\)/, "the change line opens DNA");
+});
+
 // ── SKETCH-REWORK phases 2 and 3: the page carries Profile and DNA ────────
 const count = (text, re) => (text.match(re) ?? []).length;
 

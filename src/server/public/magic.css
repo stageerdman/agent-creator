@@ -58,9 +58,9 @@
  *                            an 8 px slide down, 200 ms.
  * .voice-card.first-voice    The first voice card per agent rises in
  *                            (scale 0.98 to 1 and fade, 250 ms, design S7).
- * --magic-order: 0 | 1 | 2   Set it on .draft-field (Name 0, Persona 1,
- *                            Instructions 2) to stagger the glow top to
- *                            bottom, 80 ms apart (design S3).
+ * --magic-order: 0 | 1       Set it on .draft-field (Name 0, Instructions 1)
+ *                            to stagger the glow top to bottom, 80 ms apart
+ *                            (design S3).
  *
  * ── NO CLASS NEEDED ──────────────────────────────────────────────────────
  *

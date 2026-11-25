@@ -386,6 +386,7 @@ async function seeSketch(a) {
     const f = P2.fields.instructions;
     f.tag.textContent = " from your talk";
     f.tag.className = "tag new";
+    openDna(); // Instructions live in DNA: a fix from Talk lands there (O4)
     f.wrap.scrollIntoView({ block: "nearest" });
     P2.markUpdated("instructions");
   }
@@ -603,10 +604,16 @@ async function fixSend(text) {
   // X22: the fix turns are part of the Sketcher's chat, under a divider.
   note(a.id, { kind: "divider", text: `From your talk · "${shortQ(f.question)}"` });
   note(a.id, { kind: "user", text });
-  note(a.id, { kind: "say", text: reply, lines: [{ text: "Sketch: instructions updated · from your talk ↗", onClick: () => { P2.markUpdated("instructions"); } }] });
+  note(a.id, { kind: "say", text: reply, lines: [{ text: "Sketch: instructions updated · from your talk ↗", onClick: () => { openDna(); P2.markUpdated("instructions"); } }] });
   if (P2.state.agent?.id === a.id) P2.state.agent.draft = { ...P2.state.agent.draft, instructions: a.draft.instructions };
   renderFix();
   $("fix-msg")?.focus();
+}
+
+// Open the DNA tab (where Instructions live) unless it is already showing.
+function openDna() {
+  const tab = document.getElementById("rs-dna");
+  if (tab && tab.getAttribute("aria-selected") !== "true") tab.click();
 }
 
 const shortQ = (q) => { if (q.length <= 22) return q; const cut = q.slice(0, 22); return `${cut.slice(0, cut.lastIndexOf(" ")).trim()}…`; };
