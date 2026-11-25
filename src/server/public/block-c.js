@@ -252,6 +252,8 @@ function renderLooks(a) {
   host.replaceChildren(...parts);
 }
 
+const lastQuality = new Map();
+
 function renderQuality(a) {
   const host = $("dna-quality");
   if (!a) { host.replaceChildren(); return; }
@@ -268,7 +270,10 @@ function renderQuality(a) {
     }
     return el("div", "dna-row dna-q", el("span", "dna-q-kind", l.kind), el("span", "dna-q-text", l.text), action);
   });
-  host.replaceChildren(el("p", "dna-quality-summary dna-quality-glow", q.overall), ...lines);
+  // Glow once per new summary, not on every re-render (Eraser F3).
+  const fresh = lastQuality.get(a.id) !== q.overall;
+  lastQuality.set(a.id, q.overall);
+  host.replaceChildren(el("p", fresh ? "dna-quality-summary dna-quality-glow" : "dna-quality-summary", q.overall), ...lines);
 }
 
 // ── Passage ───────────────────────────────────────────────────────────────

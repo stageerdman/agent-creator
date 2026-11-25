@@ -139,7 +139,7 @@ export function finishTopUp(a) {
     a.marks = Object.fromEntries(MARCUS_MAP.filter((l) => l.level === "sharp").map((l, i) => [l.id, { mark: "was Blank", quiz: i === 0 ? "What do I do with the worries I can't change?" : null, redraw: true }]));
     a.moved = MARCUS_MAP[0].id;
     B.sketcherSay(a, `I studied ${count} references. ${name} has two Sharp lines now, and one Blank.`,
-      { lines: [{ text: `What ${name} knows: 2 Sharp · 1 Blank ↗`, onClick: () => C.showKnows(a) }] });
+      { lines: [{ text: `DNA: 2 Good at · 1 Not trained for ↗`, onClick: () => C.showKnows(a) }] });
   } else {
     t.names.forEach((n, i) => refs.files.push({ id: `${a.id}-added-${Date.now()}-${i}`, name: n, folder: null, kind: "doc", size: "", pile: "knows", ease: "easy" }));
     refs.total += count;

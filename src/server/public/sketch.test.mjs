@@ -268,6 +268,12 @@ test("P1: no Persona field, no Talk to section, no top-bar study line", () => {
   }
 });
 
+test("Eraser: one home for what it knows (DNA), no old level words in change lines", () => {
+  assert.doesNotMatch(read("block-b.js"), /c8Surface\(/, "Keep card repeats what it knows next to DNA");
+  assert.doesNotMatch(read("block-e.js"), /What \$\{name\} knows: \d Sharp/, "change line uses the old name and words");
+  assert.match(read("block-c.js"), /lastQuality/, "quality glow plays once per new summary");
+});
+
 // ── SKETCH-REWORK phases 2 and 3: the page carries Profile and DNA ────────
 const count = (text, re) => (text.match(re) ?? []).length;
 

@@ -3,7 +3,7 @@
 // design-jony-block-B.md. The Sketcher's lines are scripted (F7).
 
 import {
-  P2, el, btn, bus, store, mockAgent, nameOf, shortName, note, face, c8Surface, studyBlock,
+  P2, el, btn, bus, store, mockAgent, nameOf, shortName, note, face, studyBlock,
   paletteStrip, picker, wait, nowIso, dayMonth,
 } from "/components.js";
 import { mergePersona } from "/sketch.js";
@@ -450,9 +450,10 @@ function renderKeepExtras(a) {
   const slot = P2.els.keepCard.querySelector(".keep-capability");
   if (!a?.keptAt) { slot.hidden = true; slot.replaceChildren(); return; }
   slot.hidden = false;
-  const parts = [c8Surface(a, { onOpen: () => C.showKnows(a) })];
-  if (!a.map?.length) parts.push(btn("Add references", () => E.topUp(a), "btn primary"));
-  slot.replaceChildren(...parts);
+  // What it knows lives in DNA only; the Keep card no longer repeats it (Eraser F1).
+  if (!a.map?.length) { slot.replaceChildren(btn("Add references", () => E.topUp(a), "btn primary")); return; }
+  slot.hidden = true;
+  slot.replaceChildren();
 }
 
 export function afterKeep(agent) {
