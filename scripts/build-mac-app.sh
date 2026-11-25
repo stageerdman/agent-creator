@@ -15,6 +15,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 cp -R "$ROOT/src" "$APP/Contents/Resources/app/src"
 cp "$ROOT/package.json" "$APP/Contents/Resources/app/package.json"
 find "$APP/Contents/Resources/app/src" -name "*.test.mjs" -delete
+node "$ROOT/scripts/make-mac-icon.mjs" "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -23,11 +24,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <dict>
   <key>CFBundleName</key><string>Agent Creator</string>
   <key>CFBundleDisplayName</key><string>Agent Creator</string>
-  <key>CFBundleIdentifier</key><string>app.agent-creator.prototype</string>
+  <key>CFBundleIdentifier</key><string>app.agent-creator</string>
   <key>CFBundleVersion</key><string>0.1.0</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>launcher</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
+  <key>LSArchitecturePriority</key><array><string>arm64</string><string>x86_64</string></array>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>
@@ -38,6 +42,13 @@ cat > "$APP/Contents/MacOS/launcher" <<LAUNCHER
 #!/bin/sh
 # Agent Creator launcher: start the local server, open the window, stop the
 # server when the window (or the app) quits. Data lives in ~/.agent-creator.
+
+# macOS may start a script app under Rosetta; Chrome then runs as x64 and
+# never opens its window. Re-run natively on Apple Silicon.
+if [ "\$(uname -m)" = "x86_64" ] && [ "\$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
+  exec /usr/bin/arch -arm64 /bin/sh "\$0" "\$@"
+fi
+
 HERE="\$(cd "\$(dirname "\$0")/../Resources/app" && pwd)"
 DATA="\${AGENT_CREATOR_HOME:-\$HOME/.agent-creator}"
 mkdir -p "\$DATA"
