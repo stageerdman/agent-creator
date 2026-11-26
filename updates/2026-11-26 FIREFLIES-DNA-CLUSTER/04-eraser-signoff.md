@@ -175,7 +175,8 @@ restarts a mode when that happens.
 
 ### Watch
 - **The user's folder is not pulled yet.** `/Users/stage/dev/agent-creator` is still at
-  `5f3d08b`, with `max` reading 100 MB and all dots lighting at once. Until that folder pulls `origin/main`, the
+  `57080be` (its page is the `5f3d08b` version), with `max` reading 100 MB and all dots lighting at once.
+  A plain `git pull` there should fast-forward cleanly (pull item 0620de8d is waiting for an owner). Until that folder pulls `origin/main`, the
   user opening `file:///Users/stage/dev/agent-creator/playground/fireflies-dna.html` sees the
   old page. That gap is how this goal started.
 - The readout rounds: "12 MB" can be 12.4 MB and show 13 dots. That's a one-dot gap, not a cap
