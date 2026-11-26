@@ -42,7 +42,8 @@
   @supports (corner-shape: squircle) { .find input, .plus { border-radius: 22px; } }
   .find input::placeholder { color: var(--quiet); opacity: 1; }
   .find input:focus { outline: none; background: rgba(230, 238, 232, .11); }
-  .find input:focus-visible { box-shadow: inset 0 0 0 .5px rgba(230, 238, 232, .08), 0 0 0 2px rgba(216, 242, 106, .55); }
+  /* Focused on every load (autofocus), so the ring stays soft: visible, never loud. */
+  .find input:focus-visible { box-shadow: inset 0 0 0 1px rgba(216, 242, 106, .38); }
 
   /* The plus: the one way to make an agent, just right of the search. */
   .plus {
