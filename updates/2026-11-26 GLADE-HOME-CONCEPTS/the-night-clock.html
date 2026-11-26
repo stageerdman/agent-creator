@@ -91,7 +91,11 @@
   .chip.now { color: var(--quiet); }
   .agent.ring:focus { outline: 2px solid var(--fly); outline-offset: 3px; }
   .tk { position: absolute; padding: 4px 10px 5px; border-radius: 9px; font-size: 13px; line-height: 1.3; white-space: nowrap; transition: border-color .16s; }
-  .tk span { color: var(--quiet); }
+  .tk .tm { color: var(--quiet); }
+  /* No clear room on a short window: just the time; the title opens on hover or focus. */
+  .tk.short .tt { display: none; }
+  .tk.short:hover, .tk.short:focus-visible, .tk.short.hot { z-index: 3; background: var(--panel); }
+  .tk.short:hover .tt, .tk.short:focus-visible .tt, .tk.short.hot .tt { display: inline; }
   .tk:hover, .tk:focus-visible, .tk.hot { border-color: var(--line-on); }
   .tkdot { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 0; padding: 0; background: transparent; border-radius: 50%; }
   .hollow { position: absolute; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -370,7 +374,7 @@ $$('.sets button').forEach(b => b.addEventListener('click', () => { SET = +b.dat
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  if (window.Concept) Concept.layout();
+  Concept.layout(); // resize only runs after start(), so Concept exists (a top-level const is not on window)
 }
 addEventListener('resize', resize);
 let last = performance.now();
@@ -435,7 +439,8 @@ const Concept = {
     d.talks.filter(inLastDay).slice(0, 4).forEach(k => {
       const a = byName(k.agent), h = talkHour(k).h;
       const b = document.createElement('button'); b.className = 'tk panel';
-      b.append(k.title + ' '); const s = document.createElement('span'); s.textContent = '· ' + fmt(h); b.appendChild(s);
+      const tt = document.createElement('span'); tt.className = 'tt'; tt.textContent = k.title + ' · ';
+      const s = document.createElement('span'); s.className = 'tm'; s.textContent = fmt(h); b.append(tt, s);
       b.setAttribute('aria-label', `${k.title}, with ${k.agent}, ${k.when}. Open talk.`);
       const dotB = document.createElement('button'); dotB.className = 'tkdot'; dotB.tabIndex = -1; dotB.setAttribute('aria-hidden', 'true');
       [b, dotB].forEach(x => x.addEventListener('click', () => openTalk(a, k)));
@@ -453,7 +458,7 @@ const Concept = {
   layout() {
     if (!CK.d || $('#home').hidden) return;
     const vh = H - 48, empty = !CK.d.agents.length;
-    const r = CK.r = Math.max(150, Math.min(.38 * Math.min(W, vh), (vh - 174) / 2));
+    const r = CK.r = Math.max(150, Math.min(.38 * Math.min(W, vh), (vh - 180) / 2));
     const cx = CK.cx = W / 2, cy = CK.cy = 48 + vh / 2 - 11;
     // Agents on the dial.
     const n = CK.clusters.length;
@@ -467,22 +472,32 @@ const Concept = {
         placeAgent(b, { cx: c.cx, cy: c.cy, R: c.R + extra, scale: 1 }, Math.max(2 * (c.R + extra) + 16, tw + 4));
       });
     }
-    // The inner track at 62%.
-    const ri = .62 * r;
-    CK.talks.forEach(t => {
-      const th = (t.h - CK.nowH) * 15 * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
-      t.x = cx + s * ri; t.y = cy - co * ri;
-      t.dotB.style.left = t.x + 'px'; t.dotB.style.top = (t.y - 48) + 'px';
-      const w = t.b.offsetWidth, h = t.b.offsetHeight;
-      let left, top;
-      if (Math.abs(s) < .5) { left = t.x - w / 2; top = co > 0 ? t.y + 16 : t.y - 16 - h; }
-      else { left = s > 0 ? t.x - 16 - w : t.x + 16; top = t.y - h / 2; }
-      t.b.style.left = left + 'px'; t.b.style.top = (top - 48) + 'px';
-    });
     // The hollow, in the centre.
     const hp = $('#hollow'), hw = Math.min(300, W - 48);
     hp.style.width = hw + 'px'; hp.style.left = (cx - hw / 2) + 'px';
     hp.style.top = (cy - hp.offsetHeight / 2 - 48) + 'px';
+    // The inner track at 62%. Each label takes the first side of its dot (inward first) that is clear
+    // of the name tags, the hollow and the labels already placed; on a short window it may sit outward.
+    const ri = .62 * r, pad = 4;
+    const taken = CK.btns.map(b => b.querySelector('.tag').getBoundingClientRect()).concat([hp.getBoundingClientRect()]);
+    const clear = q => taken.every(o => q.right + pad <= o.left || q.left >= o.right + pad || q.bottom + pad <= o.top || q.top >= o.bottom + pad);
+    CK.talks.forEach(t => {
+      const th = (t.h - CK.nowH) * 15 * Math.PI / 180, s = Math.sin(th), co = Math.cos(th);
+      t.x = cx + s * ri; t.y = cy - co * ri;
+      t.dotB.style.left = t.x + 'px'; t.dotB.style.top = (t.y - 48) + 'px';
+      const sides = () => {
+        const w = t.b.offsetWidth, h = t.b.offsetHeight;
+        const at = (left, top) => ({ left, top, right: left + w, bottom: top + h });
+        const inV = at(t.x - w / 2, co > 0 ? t.y + 16 : t.y - 16 - h), outV = at(t.x - w / 2, co > 0 ? t.y - 16 - h : t.y + 16);
+        const inH = at(s > 0 ? t.x - 16 - w : t.x + 16, t.y - h / 2), outH = at(s > 0 ? t.x + 16 : t.x - 16 - w, t.y - h / 2);
+        return Math.abs(s) < .5 ? [inV, inH, outH, outV] : [inH, inV, outV, outH];
+      };
+      t.b.classList.remove('short');
+      let tries = sides(), q = tries.find(clear);
+      if (!q) { t.b.classList.add('short'); tries = sides(); q = tries.find(clear) || tries[0]; }
+      taken.push(q);
+      t.b.style.left = q.left + 'px'; t.b.style.top = (q.top - 48) + 'px';
+    });
     // The moon at 12, outside the ring; its panel to the right, the find chip to the left.
     CK.moon = { x: cx, y: cy - r - 58 };
     moonEl.textContent = 'now · ' + fmt(CK.nowH);

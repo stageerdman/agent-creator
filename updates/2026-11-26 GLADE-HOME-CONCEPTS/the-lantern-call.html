@@ -386,7 +386,7 @@ $$('.sets button').forEach(b => b.addEventListener('click', () => { SET = +b.dat
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  if (window.Concept) Concept.layout();
+  Concept.layout(); // resize only runs after start(), so Concept exists (a top-level const is not on window)
 }
 addEventListener('resize', resize);
 let last = performance.now();
