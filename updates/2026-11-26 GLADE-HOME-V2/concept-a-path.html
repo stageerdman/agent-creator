@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glade Home · A · The Path</title>
+<style>
+/* ── core (same in all three concepts) ───────────────────────────── */
+:root{--field:#0B1410;--shadow:#060B08;--fly:#D8F26A;--text:#E6EEE8;--quiet:#8C9A90;--panel:#101A15;--line:#1E2B24;--line-on:#3A4A40}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(ellipse at 60% 40%,var(--field) 0%,var(--field) 50%,var(--shadow) 100%);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+:focus-visible{outline:2px solid var(--fly);outline-offset:2px}
+[hidden]{display:none!important}
+.solid{background:var(--panel);border:1px solid var(--line);position:relative;z-index:1}
+.quiet{color:var(--quiet)}
+.ell{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none}
+.view{position:fixed;top:36px;left:0;right:0;bottom:0}
+.demo{position:fixed;top:0;left:0;right:0;height:36px;z-index:30;display:flex;align-items:center;gap:20px;padding:0 16px;background:var(--shadow);border-bottom:1px solid var(--line);font-size:12px;color:var(--quiet)}
+.demo a{color:var(--quiet);text-decoration:none;padding:4px 2px;border-radius:4px}
+.demo a:hover{color:var(--text)}
+.demo .tag{letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+.demo .seg{display:flex;gap:2px;align-items:center}
+.demo .seg span{margin-right:6px}
+.demo button{padding:3px 9px;border-radius:6px;color:var(--quiet)}
+.demo button:hover{color:var(--text)}
+.demo button[aria-pressed="true"]{color:var(--text);box-shadow:inset 0 0 0 1px var(--line-on)}
+.demo .rmb{margin-left:auto}
+.mark{display:inline-block;width:16px;height:10px;flex:none;filter:drop-shadow(0 0 3px rgba(216,242,106,.25))}
+.chip{font-size:13px;color:var(--quiet);height:32px;display:flex;align-items:center;gap:6px;padding:0 12px;border-radius:8px;white-space:nowrap;overflow:hidden}
+.chip b{font-weight:500;color:var(--text);white-space:pre}
+.chip .caret{display:inline-block;width:1px;height:15px;background:var(--fly);margin-left:-4px}
+.state{font-size:12px;color:var(--quiet);font-weight:400}
+.drop-on{border-color:var(--fly)!important;box-shadow:0 0 0 1px var(--fly)!important}
+.primary{background:var(--fly);color:var(--field);font-weight:600;border-radius:10px;padding:0 22px;height:44px;display:inline-flex;align-items:center;gap:8px}
+.primary:hover{filter:brightness(1.07)}
+.second{border:1px solid var(--line-on);border-radius:10px;padding:0 22px;height:44px;display:inline-flex;align-items:center}
+.second:hover{border-color:var(--quiet)}
+#screen{z-index:2}
+.stub{position:absolute;inset:0;padding:20px 32px;overflow:auto}
+.back{color:var(--quiet);font-size:14px;height:36px;padding:0 6px;border-radius:6px}
+.back:hover{color:var(--text)}
+.stub-panel{max-width:560px;margin-top:16px;border-radius:16px;padding:28px 32px 30px}
+.stub-panel h1{font-size:24px;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:12px}
+.stub-panel h1 .mark{width:24px;height:15px}
+.stub-panel p{margin:0 0 10px;line-height:1.45}
+.stub-panel .note{color:var(--quiet);font-size:14px;margin-top:18px}
+.stub-panel dl{display:grid;grid-template-columns:90px 1fr;gap:10px 16px;margin:20px 0 0}
+.stub-panel dt{color:var(--quiet);font-size:13px;padding-top:1px}
+.stub-panel dd{margin:0}
+.who{display:block;width:100%;height:48px;border-radius:10px;border:1px solid var(--line-on);background:var(--shadow);padding:0 14px;margin:16px 0 12px;font-size:16px}
+.who:focus{outline:2px solid var(--fly);outline-offset:1px}
+.folder{font-size:14px;color:var(--quiet);margin:0 0 14px}
+.folder b{color:var(--text);font-weight:500}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.rm *{transition:none!important;animation:none!important}
+
+/* ── A · The Path ────────────────────────────────────────────────── */
+.a{display:grid;grid-template-columns:300px 1fr}
+.path{border-width:0 1px 0 0;display:flex;flex-direction:column;min-height:0;height:100%}
+.trail{display:flex;align-items:center;gap:10px;height:48px;margin:12px 12px 6px;padding:0 14px;border:1px solid var(--line-on);border-radius:10px;font-weight:600;flex:none}
+.trail .plus{color:var(--fly);font-size:20px;line-height:1;font-weight:400}
+.trail:hover{border-color:var(--quiet)}
+.a .chip{margin:0 12px 2px;flex:none}
+.list{flex:1;overflow-y:auto;padding:0 8px 12px 12px;min-height:0}
+.day{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--quiet);padding:9px 10px 3px}
+.row{display:flex;gap:10px;align-items:flex-start;width:100%;padding:3px 10px;border-radius:8px;border:1px solid transparent;position:relative}
+.row:hover{border-color:var(--line-on)}
+.row[aria-current="true"]{background:#15231C;border-color:var(--line)}
+.row[aria-current="true"]:hover{border-color:var(--line-on)}
+.row[aria-current="true"]::before{content:"";position:absolute;left:-1px;top:7px;bottom:7px;width:2px;border-radius:2px;background:var(--fly)}
+.row .mark{margin-top:5px}
+.row .tx{flex:1;min-width:0}
+.row .nm{font-weight:600;display:flex;gap:8px;align-items:baseline;line-height:1.25}
+.row .nm .ell{min-width:0}
+.row .nm .state{margin-left:auto;flex:none}
+.row .rl{font-size:13px;color:var(--quiet);line-height:1.25}
+.none{color:var(--quiet);font-size:13px;padding:10px}
+.clearing{position:relative;padding:48px;min-width:0}
+.card{max-width:520px;border-radius:16px;padding:28px 32px 30px;margin-top:5vh}
+.card h2{font-size:30px;margin:0 0 6px;font-weight:600;display:flex;align-items:center;gap:12px;line-height:1.15}
+.card h2 .mark{width:22px;height:14px}
+.card .role{font-size:17px;color:var(--quiet);margin:0 0 8px}
+.card .when{font-size:14px;color:var(--quiet);margin:0}
+.card .acts{display:flex;gap:12px;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="demo" role="region" aria-label="Demo controls">
+  <a href="index.html">← All concepts</a>
+  <span class="tag">Demo · A · The Path</span>
+  <span class="seg" role="group" aria-label="How many agents"><span>Agents</span><button data-n="0">0</button><button data-n="1">1</button><button data-n="12">12</button><button data-n="50">50</button></span>
+  <button class="rmb" id="rmb" aria-pressed="false">Reduced motion</button>
+</div>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<main id="home" class="view a">
+  <nav class="path solid" aria-label="Your agents, most recent first">
+    <button class="trail" id="door"><span class="plus" aria-hidden="true">+</span>New agent</button>
+    <div class="chip" id="chip" aria-hidden="true"></div>
+    <div class="list" id="list"></div>
+  </nav>
+  <section class="clearing" id="clearing" aria-label="Chosen agent">
+    <div class="card solid" id="card"></div>
+  </section>
+</main>
+
+<section id="screen" class="view" hidden>
+  <div class="stub"><button class="back" id="back">← Back to Home</button><div class="stub-panel solid" id="stubp"></div></div>
+</section>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script>
+/* ── A · The Path: the Home ──────────────────────────────────────── */
+const S = { sel: null };
+const Concept = {
+  shown() { return G.agents.filter(a => G.match(a)); },
+  render() {
+    if (!G.agents.some(a => a.name === S.sel)) S.sel = G.agents[0].name;
+    this.find();
+  },
+  find() {
+    const f = this.shown();
+    if (G.q.trim()) S.sel = f.length ? f[0].name : null;
+    else if (!f.some(a => a.name === S.sel)) S.sel = f[0].name;
+    let html = '', day = '';
+    for (const a of f) {
+      if (a.day !== day) { day = a.day; html += `<div class="day" aria-hidden="true">${day}</div>`; }
+      const st = a.state === 'ready' ? '' : `<span class="state">${words(a)}</span>`;
+      html += `<button class="row" data-name="${esc(a.name)}" aria-label="${esc(a.name)}, ${esc(a.role)}, ${words(a)}">${mark(a.state)}<span class="tx"><span class="nm"><span class="ell">${esc(a.name)}</span>${st}</span><span class="rl ell">${esc(a.role)}</span></span></button>`;
+    }
+    if (!f.length) html = `<div class="none">No one here by that name or role.</div>`;
+    $('#list').innerHTML = html;
+    $('#list').querySelectorAll('.row').forEach(b => b.onclick = () => this.pick(b.dataset.name));
+    this.show();
+  },
+  pick(name, focus) {
+    S.sel = name;
+    this.show();
+    const r = this.rowOf(name);
+    if (r && focus) { r.focus(); r.scrollIntoView({ block: 'nearest' }); }
+  },
+  rowOf(name) { return [...document.querySelectorAll('#list .row')].find(r => r.dataset.name === name); },
+  show() {
+    document.querySelectorAll('#list .row').forEach(r => r.setAttribute('aria-current', r.dataset.name === S.sel ? 'true' : 'false'));
+    const a = G.agents.find(x => x.name === S.sel);
+    const card = $('#card');
+    card.hidden = !a;
+    if (!a) return;
+    card.innerHTML = `<h2>${mark(a.state)}<span>${esc(a.name)}</span></h2><p class="role">${esc(a.role)}</p><p class="when">${words(a)} · last talked ${esc(a.last)}</p><div class="acts"><button class="primary" id="chat">Chat</button><button class="second" id="edit">Edit</button></div>`;
+    $('#chat').onclick = () => G.open('chat', a);
+    $('#edit').onclick = () => G.open('edit', a);
+  },
+  onKey(e) {
+    const f = this.shown();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!f.length) return true;
+      let i = f.findIndex(a => a.name === S.sel);
+      i = e.key === 'ArrowDown' ? Math.min(f.length - 1, i + 1) : Math.max(0, i - 1);
+      this.pick(f[i].name, true);
+      return true;
+    }
+    if (e.key === 'Enter') {
+      const ae = document.activeElement;
+      if (ae && ae.matches('button') && !ae.matches('.row')) return false; // New agent, Chat, Edit, demo: their own job
+      const a = G.agents.find(x => x.name === S.sel);
+      if (a && f.includes(a)) { G.open('chat', a); return true; }
+    }
+    return false;
+  },
+  restoreFocus() { const r = this.rowOf(S.sel); if (r) { r.focus(); r.scrollIntoView({ block: 'nearest' }); } },
+  afterKeep(a) { S.sel = a.name; this.render(); this.restoreFocus(); },
+  afterChat() {
+    // Quiet magic 1 · They answer: one flash on the chat header mark, after the screen has changed.
+    const m = $('#bigmark'); if (!m) return;
+    const off = 'drop-shadow(0 0 0px rgba(216,242,106,0))', on = 'drop-shadow(0 0 8px rgba(216,242,106,.75))';
+    if (G.rm) m.animate([{ filter: on }, { filter: on }], { duration: 1000 });
+    else m.animate([{ filter: off, opacity: .75, easing: 'ease-out' }, { filter: on, opacity: 1, offset: 120 / 1020, easing: 'ease-in' }, { filter: off, opacity: 1 }], { duration: 1020 });
+  },
+  chip() { return $('#chip'); },
+  door() { return $('#door'); },
+  flyRegion() { return $('#clearing').getBoundingClientRect(); },
+  editRows() { return ''; }
+};
+</script>
+<script>
+/* ── core (same in all three concepts) ───────────────────────────── */
+const ROWS = [
+['Rex','Blunt editor for my newsletter','today 09:50','r','Writing'],
+['Maya','Career mentor','today 08:15','r','Work'],
+['Ines','Her design course, week by week','yesterday 19:10','s18/30','Learning','she'],
+['Tony','Pricing and sales','yesterday 14:05','r','Work'],
+['Lena','Research supervisor','yesterday 09:20','r','Learning'],
+['Marcus','Running coach','Tue 07:00','r','Body & mind'],
+['Amara','Contract lawyer','Tue 11:30','s4/22','Work','she'],
+['Priya','Product strategist','Mon 13:10','r','Work'],
+['Theo','Poetry teacher','Mon 22:00','r','Writing'],
+['Jun','Imported from Lena','Sun 16:40','new','Learning'],
+['Sol','Sleep and calm','Sun 23:05','r','Body & mind'],
+['Hugo','Cookbook author','Sat 18:20','r','Home & life'],
+['Ada','Python code reviewer','Sat 10:15','r','Work'],
+['Bruno','Landlord and tenancy questions','Fri 20 Nov','r','Home & life'],
+['Clara','Grant writing','Fri 20 Nov','r','Writing'],
+['Dev','Startup board advisor','Thu 19 Nov','r','Work'],
+['Elif','Turkish tutor','Thu 19 Nov','r','Learning'],
+['Felix','Guitar teacher','Wed 18 Nov','r','Learning'],
+['Grace','Grief counsellor','Wed 18 Nov','r','Body & mind'],
+['Hana',"Japanese cooking, Grandma's notes",'Tue 17 Nov','r','Home & life'],
+['Ivan','Chess coach','Tue 17 Nov','r','Learning'],
+['Jade','Instagram captions','Mon 16 Nov','r','Writing'],
+['Kofi','Personal finance','Mon 16 Nov','r','Home & life'],
+['Lars','Woodworking','Sun 15 Nov','r','Home & life'],
+['Mina','UX research critique','Sat 14 Nov','r','Work'],
+['Nadia','Podcast producer','Fri 13 Nov','r','Writing'],
+['Oscar',"Dad's letters, 1970–1995",'Thu 12 Nov','r','Home & life'],
+['Paula','Pitch deck coach','Wed 11 Nov','r','Work'],
+['Quinn','Debate sparring partner','Tue 10 Nov','r','Learning'],
+['Rosa','Garden planner','Mon 9 Nov','r','Home & life'],
+['Sami','Arabic calligraphy','Sun 8 Nov','r','Learning'],
+['Tara','Wedding speech helper','Sat 7 Nov','r','Writing'],
+['Umar','Tax return questions','Fri 6 Nov','r','Home & life'],
+['Vera','Novel editor, chapter feedback','Thu 5 Nov','r','Writing'],
+['Wes','Fantasy football league','Wed 4 Nov','r','Home & life'],
+['Xena','Climbing coach','Mon 2 Nov','r','Body & mind'],
+['Yara','Nutritionist','Sat 31 Oct','r','Body & mind'],
+['Zane','Linux sysadmin','Thu 29 Oct','r','Work'],
+['Abel','Sunday sermon notes','Tue 27 Oct','r','Writing'],
+['Bea',"Kids' bedtime stories",'Sun 25 Oct','r','Home & life'],
+['Cyrus','History of Persia','Fri 23 Oct','r','Learning'],
+['Dora','Job interview practice','Tue 20 Oct','r','Work'],
+['Emil','Philosophy reading group','Sat 17 Oct','r','Learning'],
+['Fern','Houseplant doctor','Tue 13 Oct','r','Home & life'],
+['Gus','Car repair manual','Fri 9 Oct','r','Home & life'],
+['Holly','Email tone checker','Sun 4 Oct','r','Writing'],
+['Iris',"Old professor's lectures",'28 Sep','r','Learning'],
+['Jonas','Spanish for travel','21 Sep','r','Learning'],
+['Kai','Meditation guide','12 Sep','r','Body & mind'],
+['Untitled sketch','A sketch, never kept','3 Sep','sketch','Unsorted']
+];
+// The demo's "Keep" always makes this one person (not in the 50, so no duplicate).
+const NELL = { name: 'Nell', role: "Mum's recipes", last: 'today 10:40', state: 'new', grove: 'Home & life', pron: 'she', day: 'Today' };
+const dayOf = i => i < 2 ? 'Today' : i < 5 ? 'Yesterday' : i < 13 ? 'This week' : 'Earlier';
+function toAgent(r, i) {
+  const [name, role, last, st, grove, pron] = r;
+  const a = { name, role, last, grove, pron: pron || 'they', day: dayOf(i), state: 'ready' };
+  if (st === 'sketch') a.state = 'sketch';
+  else if (st === 'new') a.state = 'new';
+  else if (st[0] === 's') { const [l, t] = st.slice(1).split('/'); a.state = 'studying'; a.learned = +l; a.total = +t; }
+  return a;
+}
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function words(a) { return a.state === 'studying' ? `Studying · ${a.learned} of ${a.total}` : a.state === 'new' ? 'new here' : a.state === 'sketch' ? 'sketch' : 'Ready'; }
+// One small mark: three lights in step = Ready, scattered = Studying, hollow = sketch.
+function mark(state, id) {
+  const c = (x, y, o = 1) => state === 'sketch'
+    ? `<circle cx="${x}" cy="${y}" r="1.4" fill="none" stroke="#D8F26A" stroke-width="1" opacity="${o}"/>`
+    : `<circle cx="${x}" cy="${y}" r="1.6" fill="#D8F26A" opacity="${o}"/>`;
+  const d = state === 'studying' ? c(2.5, 7.6, .9) + c(8.2, 2.4, .55) + c(13.6, 6, .9) : c(3, 5, .9) + c(8, 5, .9) + c(13, 5, .9);
+  return `<svg class="mark"${id ? ` id="${id}"` : ''} viewBox="0 0 16 10" aria-hidden="true">${d}</svg>`;
+}
+const G = {
+  n: 12, q: '', agents: [], extra: null, screen: null, rm: false, lastOpen: null,
+  build() { this.agents = ROWS.slice(0, this.n).map(toAgent); if (this.extra) this.agents.unshift(this.extra); },
+  match(a) {
+    const q = this.q.toLowerCase().trim();
+    if (!q) return true;
+    const re = new RegExp('(^|[^a-z0-9])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return re.test((a.name + ' ' + a.role).toLowerCase());
+  },
+  setN(n) {
+    this.n = n; this.extra = null; this.q = '';
+    history.replaceState(null, '', '?n=' + n + (this.rmForced ? '&rm=1' : ''));
+    document.querySelectorAll('.demo [data-n]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.n === n ? 'true' : 'false'));
+    this.build(); this.render();
+  },
+  render() {
+    if (!this.agents.length) { this.open('new', null, { root: true }); return; }
+    $('#screen').hidden = true; $('#home').hidden = false; this.screen = null;
+    Concept.render(); this.chip(); Sky.build();
+  },
+  setQ(q) {
+    this.q = q; this.chip(); Concept.find();
+    const k = this.agents.filter(a => this.match(a)).length;
+    $('#live').textContent = q.trim() ? (k ? `${k} found` : 'No one found') : '';
+  },
+  chip() {
+    const el = Concept.chip(); if (!el) return;
+    el.hidden = this.agents.length <= 1;
+    const q = this.q;
+    if (!q) el.innerHTML = `<span>Type to find</span>`;
+    else if (q.trim() && !this.agents.some(a => this.match(a))) el.innerHTML = `<span>No one called “<b>${esc(q)}</b>”</span>`;
+    else el.innerHTML = `<span>Find</span><b>${esc(q)}</b><span class="caret"></span>`;
+  },
+  open(kind, a, opt = {}) {
+    this.screen = kind; this.lastOpen = a ? a.name : null;
+    $('#home').hidden = true; $('#screen').hidden = false; $('#back').hidden = !!opt.root;
+    const p = $('#stubp');
+    if (kind === 'chat') {
+      const P = { she: 'She answers', he: 'He answers', they: 'They answer' }[a.pron];
+      p.innerHTML = `<h1>${mark(a.state, 'bigmark')}Chat · ${esc(a.name)}</h1><p class="quiet">${esc(a.role)}</p>`
+        + (a.state === 'studying' ? `<p>${esc(a.name)} has studied ${a.learned} of ${a.total} files so far. ${P} from those.</p>` : '')
+        + `<p class="note">Stand-in. The chat with ${esc(a.name)} opens here, and so do ${a.pron === 'they' ? 'their' : a.pron === 'she' ? 'her' : 'his'} past talks.</p>`;
+    } else if (kind === 'edit') {
+      p.innerHTML = `<h1>${mark(a.state)}Edit · ${esc(a.name)}</h1><dl><dt>Name</dt><dd>${esc(a.name)}</dd><dt>Role</dt><dd>${esc(a.role)}</dd><dt>State</dt><dd>${words(a)}</dd>${Concept.editRows(a)}</dl>`
+        + `<p class="note">Stand-in. The agent screen opens here: name, files, tone. Opening it changes nothing.</p>`;
+    } else {
+      p.innerHTML = `<h1>New agent</h1><p>Who do you have in mind?</p>${opt.root ? '<p class="quiet">Drop a folder, or start here.</p>' : ''}`
+        + `<input class="who" id="who" aria-label="Who do you have in mind?" placeholder="A blunt editor, my old professor, Mum’s recipes…">`
+        + (opt.folder ? `<p class="folder">Folder in: <b>${esc(opt.folder)}</b> · ${opt.count} ${opt.count === 1 ? 'item' : 'items'}</p>` : '')
+        + `<button class="primary" id="keep">Keep</button><p class="note">Demo: Keep always makes Nell, Mum’s recipes.</p>`;
+      $('#keep').onclick = () => this.keep();
+      $('#who').onkeydown = e => { if (e.key === 'Enter') this.keep(); };
+    }
+    Sky.build();
+    (kind === 'new' ? $('#who') : (opt.root ? null : $('#back')))?.focus();
+    if (kind === 'chat' && Concept.afterChat) Concept.afterChat(a);
+  },
+  home() {
+    $('#screen').hidden = true; $('#home').hidden = false; this.screen = null;
+    Sky.build(); Concept.restoreFocus();
+  },
+  keep() {
+    if (!this.agents.some(a => a.name === NELL.name)) this.extra = { ...NELL };
+    this.build(); this.q = '';
+    $('#screen').hidden = true; $('#home').hidden = false; this.screen = null;
+    Concept.render(); this.chip(); Sky.build();
+    Concept.afterKeep(this.agents.find(a => a.name === NELL.name));
+  }
+};
+
+/* Fireflies: a few points on a canvas, only where Concept.flyRegion() allows, never near a panel. */
+const Sky = {
+  pts: [], fl: null, next: 0,
+  build() {
+    const c = $('#sky'), d = devicePixelRatio || 1;
+    c.width = innerWidth * d; c.height = innerHeight * d; c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px';
+    this.ctx = c.getContext('2d'); this.ctx.setTransform(d, 0, 0, d, 0, 0);
+    this.pts = []; this.fl = null;
+    const R = G.screen ? null : Concept.flyRegion();
+    if (R && R.width > 40 && R.height > 40) {
+      const blocks = [...document.querySelectorAll('#home .solid, .demo')].filter(e => e.offsetParent || e.classList.contains('demo')).map(e => e.getBoundingClientRect());
+      let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+      for (let tries = 0; tries < 600 && this.pts.length < 6; tries++) {
+        const x = R.left + rnd() * R.width, y = R.top + rnd() * R.height;
+        if (blocks.some(b => x > b.left - 28 && x < b.right + 28 && y > b.top - 28 && y < b.bottom + 28)) continue;
+        if (this.pts.some(p => Math.hypot(p.x - x, p.y - y) < 70)) continue;
+        this.pts.push({ x, y });
+      }
+    }
+    this.draw(performance.now());
+  },
+  draw(t) {
+    const x = this.ctx; if (!x) return;
+    x.clearRect(0, 0, innerWidth, innerHeight);
+    const base = G.rm ? .22 : .08, peak = .45;
+    for (const p of this.pts) {
+      let a = base;
+      if (this.fl && this.fl.p === p) {
+        const e = t - this.fl.t0;
+        a = e < 120 ? base + (peak - base) * (1 - Math.pow(1 - e / 120, 2)) : base + (peak - base) * (1 - Math.pow(Math.min(1, (e - 120) / 900), 2));
+      }
+      x.shadowBlur = 12; x.shadowColor = 'rgba(216,242,106,.25)';
+      x.fillStyle = `rgba(216,242,106,${a})`;
+      x.beginPath(); x.arc(p.x, p.y, 1.5, 0, 7); x.fill();
+    }
+  },
+  tick(t) {
+    if (!G.rm && this.pts.length) {
+      if (!this.fl && t > this.next) this.fl = { p: this.pts[Math.floor(Math.random() * this.pts.length)], t0: t };
+      if (this.fl && t - this.fl.t0 > 1020) { this.fl = null; this.next = t + 2400 + Math.random() * 1600; }
+      this.draw(t);
+    }
+    requestAnimationFrame(tt => this.tick(tt));
+  }
+};
+
+/* Type anywhere to find; arrows and Return per concept; Esc clears. */
+document.addEventListener('keydown', e => {
+  if (G.screen) { if (e.key === 'Escape' && !$('#back').hidden) G.home(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  if (Concept.onKey(e)) { e.preventDefault(); return; }
+  if (G.agents.length <= 1) return;
+  if (e.key === 'Escape') { if (G.q) G.setQ(''); return; }
+  if (e.key === 'Backspace') { if (G.q) { e.preventDefault(); G.setQ(G.q.slice(0, -1)); } return; }
+  if (e.key === ' ' && !G.q) return; // Space still presses the focused button until a find has started
+  if (e.key.length === 1) { e.preventDefault(); G.setQ(G.q + e.key); }
+});
+
+/* Drop a folder anywhere: the New agent door lights while you hold it, then New agent opens with it. */
+let depth = 0;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+addEventListener('dragenter', e => { if (!hasFiles(e)) return; depth++; Concept.door()?.classList.add('drop-on'); });
+addEventListener('dragleave', e => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) Concept.door()?.classList.remove('drop-on'); });
+addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); depth = 0; Concept.door()?.classList.remove('drop-on');
+  const it = e.dataTransfer.items && e.dataTransfer.items[0];
+  const ent = it && it.webkitGetAsEntry ? it.webkitGetAsEntry() : null;
+  const name = ent ? ent.name : (e.dataTransfer.files[0] || {}).name || 'Folder';
+  G.open('new', null, { folder: name, count: e.dataTransfer.files.length || 1, root: !G.agents.length });
+});
+
+(function boot() {
+  const p = new URLSearchParams(location.search);
+  G.rmForced = p.get('rm') === '1';
+  G.rm = G.rmForced || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.documentElement.classList.toggle('rm', G.rm);
+  $('#rmb').setAttribute('aria-pressed', String(G.rm));
+  $('#rmb').onclick = () => { G.rm = !G.rm; document.documentElement.classList.toggle('rm', G.rm); $('#rmb').setAttribute('aria-pressed', String(G.rm)); Sky.build(); };
+  document.querySelectorAll('.demo [data-n]').forEach(b => b.onclick = () => G.setN(+b.dataset.n));
+  $('#back').onclick = () => G.home();
+  Concept.door().onclick = () => G.open('new', null);
+  addEventListener('resize', () => Sky.build());
+  const n = +p.get('n');
+  G.setN(p.has('n') && [0, 1, 12, 50].includes(n) ? n : 12);
+  requestAnimationFrame(t => Sky.tick(t));
+})();
+</script>
+</body>
+</html>
