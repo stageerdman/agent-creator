@@ -71,6 +71,14 @@ Checks: `npm test` 119 pass, 0 fail, 1 skipped (live). I rebuilt and reinstalled
 2. **"First words" can never show for an agent you make.** `answerFor` always returns a `mock` reply for a real agent (`block-d.js:223`), and the First words mark needs `!reply.mock` (`block-d.js:210`). After two messages to a new agent, "First words" appeared 0 times. Imported demo agents still get First words through the first-open path (old walk F3 passes). Either wire Talk to a real answer, or decide that First words waits for live Talk and say so.
 3. **Talks with an agent you make are lost on reload.** They are kept only in memory (`realTalks`, `block-d.js:204`) and never saved (`block-d.js:203` saves only `!a.real`). After reopening, Past talks says "Your talks with Walk will be here." Fine if Talk is still a demo line, but it should be a known limit, not a surprise.
 
+## Sign-off (Columbo, 2026-11-26)
+
+- **Eraser's cuts, checked again:** no Palette view, menu item or export line is left. There's one `magic-card-settle`, one toast motion (`magic-fade-in`), no `.talk-views .dot`, and no `rs-knows` or `rs-sketch`. The only Palette code left is the C13 stand-in strip that shows while a study runs, which is a different thing. Clean.
+- **Big issue 1, stopgap:** `block-a.js:120` now returns `null` for an agent you made, so the menu shows the shared list (+ New agent, the other agents) instead of an empty box. Delete for an agent you made still needs a server route.
+- **Sent to Uncle Bob:** a delete route plus a Delete item for an agent you made, saving talks, and "First words" (to be fixed, or stated as a known limit). He's working on them on this branch.
+- **Checks:** `npm test` gives 119 pass, 0 fail, 1 skipped (live). I rebuilt and reinstalled the app with `npm run build:app`, and `check-mac-install.mjs` passes 9/9. The installed app serves the menu fix.
+- **Verdict:** **Signed off** for this brief. The 7 regressions are gone. Sketch has only Instructions plus the Profile and DNA switches. The Studying bar is gone. Files go into the DNA, not the chat. The magic pass is in place and the small issues are fixed. Uncle Bob's three logic items are follow-ups, and they don't block this sign-off.
+
 ## Not verified
 
 - **Real Finder drag** onto the window (only the file picker and synthetic drag events were tested; the code path for drops is `components.js:291-330` and then `block-b.js:481`).

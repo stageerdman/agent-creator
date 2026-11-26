@@ -117,7 +117,7 @@ $("mode-sketcher").addEventListener("click", () => setMode("sketcher"));
 
 hooks.menu = () => {
   const a = nav.current();
-  if (!a || a.real) return [];
+  if (!a || a.real) return null; // null = the shared switcher list (+ New agent, the other agents)
   const name = nameOf(a);
   const items = [];
   if (a.keptAt) items.push({ label: `Export ${name}…`, run: () => F.openExport(a) });
