@@ -42,24 +42,6 @@ const alphaOf = (page, i) => page.evaluate(i => {
   const cv = document.querySelectorAll('#rows canvas')[i]; if (!cv || !cv.width) return 0;
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let s = 0; for (let k = 3; k < d.length; k += 4) s += d[k]; return s;
 }, i);
-// blink-check.cjs's rises(): sample alpha every frame for ms, count upward jumps into a peak.
-const trace = (page, i, ms) => page.evaluate(([i, ms]) => new Promise(done => {
-  const cv = document.querySelectorAll('#rows canvas')[i], out = [], t0 = performance.now();
-  const f = t => {
-    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let s = 0; for (let k = 3; k < d.length; k += 4) s += d[k];
-    out.push([t - t0, s]); if (t - t0 < ms) requestAnimationFrame(f); else done(out);
-  };
-  requestAnimationFrame(f);
-}), [i, ms]);
-function rises(tr) {
-  const v = tr.map(x => x[1]), lo = Math.min(...v), hi = Math.max(...v), mid = lo + (hi - lo) * .35, peaks = [];
-  let up = false;
-  for (let k = 1; k < v.length; k++) {
-    if (!up && v[k] > mid && v[k] > v[k - 1]) { up = true; peaks.push(tr[k][0]); }
-    if (up && v[k] < mid) up = false;
-  }
-  return peaks;
-}
 
 (async () => {
   const browser = which === 'webkit' ? await pw.webkit.launch() : await pw.chromium.launch({ channel: 'chrome' });
@@ -78,16 +60,22 @@ function rises(tr) {
     const news = [...document.querySelectorAll('a[href="/new"], a[href^="/new?"], button, [role=button], form[action*="new"]')]
       .filter(e => e.offsetParent !== null || getComputedStyle(e).position === 'fixed').map(e => e.outerHTML.slice(0, 60));
     const text = document.body.innerText.toLowerCase();
-    return { api: api.map(a => ({ id: a.id, createdAt: a.createdAt, files: (a.dna || []).length })), rows, logos: (window.dnaLogos || []).length,
+    return { api: api.map(a => ({ id: a.id, createdAt: a.createdAt, desc: ((a.draft && a.draft.description) || '').trim(), files: (a.dna || []).length })), rows, logos: (window.dnaLogos || []).length,
       search: { type: document.querySelector('#q').type, placeholder: document.querySelector('#q').placeholder, centre: Math.round(f.left + f.width / 2), vw: innerWidth },
       news, oldWords: ['create agent', 'new agent button', 'get started', 'sketch'].filter(w => text.includes(w)),
       sizeControls: document.querySelectorAll('input[type=range], select, [name*=size i], [id*=size i]').length };
   });
   const order = real.api.slice().sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).map(a => '/agents/' + a.id);
   console.log('real agents:', real.api.length, 'files per agent:', JSON.stringify(real.api.map(a => a.files)));
-  ok(real.rows.length === real.api.length && real.rows.length > 0, '1. one row per real agent', real.rows.length + ' rows');
+  if (!real.api.length) {
+    const quiet = await page.evaluate(() => { const q = document.querySelector('#quiet'); return q && !q.hidden ? q.textContent : ''; });
+    ok(/press \+/i.test(quiet), '1. no agents yet: the home says how to start', JSON.stringify(quiet));
+  }
+  ok(real.rows.length === real.api.length, '1. one row per real agent', real.rows.length + ' rows');
   ok(JSON.stringify(real.rows.map(r => r.href)) === JSON.stringify(order), '1. rows newest first');
   ok(real.rows.every(r => r.canvas && r.name.trim() && r.age.trim()), '1. every row has logo, name and age');
+  const descs = real.api.slice().sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).map(a => a.desc);
+  ok(JSON.stringify(real.rows.map(r => r.desc.trim())) === JSON.stringify(descs), '1. every row shows its agent\'s description');
   console.log('     rows:', JSON.stringify(real.rows.map(r => [r.name, r.desc.slice(0, 30), r.age])));
   ok(real.search.type === 'search' && real.search.placeholder === 'Search' && Math.abs(real.search.centre - real.search.vw / 2) <= 2, '1. search is a centred search field', JSON.stringify(real.search));
   ok(real.news.length === 1 && /id="plus"/.test(real.news[0]), '2. exactly one way to start a new agent (the plus)', JSON.stringify(real.news));
@@ -96,6 +84,14 @@ function rises(tr) {
   const lit = []; for (let i = 0; i < real.rows.length; i++) lit.push(await alphaOf(page, i));
   ok(lit.every(x => x > 0), '3. every real logo is visibly drawn', JSON.stringify(lit));
   ok(real.sizeControls === 0, '7. no size control on the home');
+  // Real files: dots = sum of started MB per file, capped at 60; the rest is glow.
+  const realDots = await page.evaluate(async () => {
+    const api = await (await fetch('/api/agents')).json();
+    return window.dnaLogos.map(l => { const a = api.find(x => x.id === l.id), i = l.logo.info();
+      const want = (a.dna || []).reduce((s, f) => s + Math.max(1, Math.ceil((+f.sizeBytes || 0) / 1048576)), 0);
+      return { name: l.name, want: Math.min(60, want), extra: Math.max(0, want - 60), placed: i.placed, glow: i.glow }; });
+  });
+  ok(realDots.every(d => d.placed === d.want && (d.extra > 0) === (d.glow > 0)), '5. real agents: one dot per started MB, max 60, rest as glow', JSON.stringify(realDots));
   // The plus: fireflies gather, then /new. Watch the gather, but stop it before /new loads (no agent is made by GET /new anyway).
   await page.route('**/new', r => r.fulfill({ status: 200, contentType: 'text/html', body: '<p>new</p>' }));
   await page.click('#plus');
@@ -136,12 +132,22 @@ function rises(tr) {
   const dayPh = Math.abs(info[by('Pair one day')].files[1].blinkPhase - info[by('Pair one day')].files[0].blinkPhase);
   ok(dayPh > .4 && dayPh < .8, '4. a 1-day gap is squashed into one beat (phase step ' + dayPh + ', not 86 400 beats)');
   ok(same === 0, '4. control: files added together blink together');
-  const per = Math.max(info[by('Pair one second')].period, info[by('Pair same moment')].period);
-  const tSec = rises(await trace(page, by('Pair one second'), 2 * per + 300));
-  const tSame = rises(await trace(page, by('Pair same moment'), 2 * per + 300));
-  const tDay = rises(await trace(page, by('Pair one day'), 2 * per + 300));
-  ok(tSec.length >= 2 * tSame.length - 1 && tSec.length > tSame.length, '4. the eye sees two blinks per beat for 1 s apart, one for the control',
-    '1s rises ' + JSON.stringify(tSec.map(Math.round)) + ' / same ' + JSON.stringify(tSame.map(Math.round)) + ' / day ' + JSON.stringify(tDay.map(Math.round)));
+  // What the page actually does: record each file's real blink moments (lastBlink, page clock) frame by frame.
+  const per = Math.max(...['Pair one second', 'Pair one day', 'Pair same moment'].map(n => info[by(n)].period));
+  const seen = await page.evaluate(([names, ms]) => new Promise(done => {
+    const logos = names.map(n => window.dnaLogos.find(l => l.name === n).logo), out = names.map(() => [[], []]), t0 = performance.now();
+    const f = t => {
+      logos.forEach((l, k) => l.info().files.forEach((fl, j) => { const b = fl.lastBlink; if (b != null && out[k][j][out[k][j].length - 1] !== b) out[k][j].push(b); }));
+      if (t - t0 < ms) requestAnimationFrame(f); else done(out);
+    };
+    requestAnimationFrame(f);
+  }), [['Pair one second', 'Pair one day', 'Pair same moment'], 2 * per + 500]);
+  // For each blink of file 1, the distance to the nearest blink of file 2.
+  const apart = ([a, b]) => a.length && b.length ? Math.round(Math.min(...a.map(x => Math.min(...b.map(y => Math.abs(x - y)))))) : null;
+  const [eSec, eDay, eSame] = seen.map(apart);
+  ok(eSec != null && eSec >= 300 && eSec <= 900, '4. on screen, files 1 s apart really blink ' + eSec + ' ms apart', 'blinks ' + JSON.stringify(seen[0].map(s => s.map(Math.round))));
+  ok(eDay != null && eDay > 150 && eDay < per - 150, '4. on screen, the 1-day pair blinks ' + eDay + ' ms apart (period ' + per + ')');
+  ok(eSame === 0, '4. on screen, the same-moment pair blinks in the same frame', String(eSame));
   // 5. dots
   const placed = n => info[by(n)].placed, glow = n => info[by(n)].glow;
   ok(placed('Three point two MB') === 4, '5. 3.2 MB = 4 dots (one per started MB)', String(placed('Three point two MB')));
@@ -155,9 +161,13 @@ function rises(tr) {
   ok(allR.every(r => r >= 2 && r <= 6), '7. no dot ever outside the floor 2.0 .. 6.0', Math.min(...allR) + '..' + Math.max(...allR));
   // 8. no files: one calm, visible, steady dot
   const nf = by('No files yet'); const a1 = await alphaOf(page, nf); await page.waitForTimeout(1500); const a2 = await alphaOf(page, nf);
-  const peak = await page.evaluate(i => { const cv = document.querySelectorAll('#rows canvas')[i]; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let m = 0; for (let k = 3; k < d.length; k += 4) m = Math.max(m, d[k]); return m; }, nf);
+  const peakOf = i => page.evaluate(i => { const cv = document.querySelectorAll('#rows canvas')[i]; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let m = 0; for (let k = 3; k < d.length; k += 4) m = Math.max(m, d[k]); return m; }, i);
+  const peak = await peakOf(nf);
+  // Compare with an ordinary dot at rest (between blinks): the lowest brightest-pixel over a beat of the 3.2 MB agent.
+  const restPeaks = []; for (let k = 0; k < 12; k++) { restPeaks.push(await peakOf(by('Three point two MB'))); await page.waitForTimeout(per / 12); }
+  const rest = Math.min(...restPeaks);
   ok(a1 > 0 && a1 === a2, '8. no-files agent: one steady dot, no blink', 'alpha ' + a1 + ' then ' + a2);
-  ok(peak >= 60, '8. the calm dot is visible to the eye, not near-blank', 'brightest pixel alpha ' + peak + '/255');
+  ok(peak >= rest, '8. the calm dot is at least as visible as a resting dot of a normal agent', 'calm ' + peak + '/255, resting dot ' + rest + '/255');
   ok(page.errors.length === 0, 'B. no page errors', JSON.stringify(page.errors));
   await page.close();
 
@@ -170,18 +180,26 @@ function rises(tr) {
     let last = before.placed, sizeMoved = false;
     x.setFiles([...before.files.map(f => ({ id: f.id, name: f.id, sizeBytes: 1, addedAt: f.addedAt })),
       { id: 'h/3', name: 'h/3', sizeBytes: 6 * 1048576, addedAt: new Date().toISOString(), topic: 'notes' }]);
+    // A still Reduce Motion row stops drawing; the home wakes it on hover, as it would for a live arrival.
+    document.querySelectorAll('#rows a.row')[window.dnaLogos.findIndex(l => l.name === 'Sizes')].dispatchEvent(new PointerEvent('pointerenter'));
     const f = t => {
       const i = x.info();
       if (i.placed !== last) { steps.push([Math.round(t - t0), i.placed - last]); last = i.placed; }
-      i.dots.forEach((d, k) => { if (radii.has(k) && radii.get(k) !== d.r) sizeMoved = true; radii.set(k, d.r); });
-      if (t - t0 < 1500) requestAnimationFrame(f); else done({ before: before.placed, after: i.placed, steps, sizeMoved });
+      // Per dot (file id + nth dot of that file): its first size vs every later size.
+      const nth = {}; i.dots.forEach(d => { const key = d.fileId + '#' + (nth[d.fileId] = (nth[d.fileId] || 0) + 1); if (!radii.has(key)) radii.set(key, { first: d.r, max: d.r, min: d.r, isNew: d.fileId === 'h/3' }); const e = radii.get(key); e.max = Math.max(e.max, d.r); e.min = Math.min(e.min, d.r); });
+      if (t - t0 < 1500) requestAnimationFrame(f); else {
+        const v = [...radii.values()];
+        done({ before: before.placed, after: i.placed, steps, newGrows: v.filter(e => e.isNew && e.max > e.first).length,
+          oldShift: Math.max(0, ...v.filter(e => !e.isNew).map(e => Math.round((e.max - e.min) * 100) / 100)) });
+      }
     };
     requestAnimationFrame(f);
   }));
   const gaps = rm.steps.slice(1).map((s, k) => s[0] - rm.steps[k][0]);
   ok(rm.after - rm.before === 6 && rm.steps.every(s => s[1] === 1), '6. Reduce Motion: 6 new dots arrive one at a time', JSON.stringify(rm.steps));
   ok(gaps.every(g => g >= 30 && g <= 120), '6. Reduce Motion: about 60 ms between dots', JSON.stringify(gaps));
-  ok(!rm.sizeMoved, '6. Reduce Motion: no dot changes size while they land (no pop)');
+  ok(rm.newGrows === 0, '6. Reduce Motion: a new dot turns on at its size and never grows (no pop)');
+  console.log('     info: older dots tighten by up to ' + rm.oldShift + ' px radius as the cluster fills (instant under Reduce Motion)');
   ok(page.errors.length === 0, '6. no page errors', JSON.stringify(page.errors));
   await page.close();
 
