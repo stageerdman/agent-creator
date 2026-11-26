@@ -8,6 +8,10 @@ export function agentRoutes(agents) {
     "POST /api/agents": async (_req, res) => sendJson(res, 200, await agents.create()),
     "GET /api/agents": async (_req, res) => sendJson(res, 200, await agents.list()),
     "GET /api/agents/:id": async (_req, res, { params }) => sendJson(res, 200, await agents.get(params.id)),
+    "DELETE /api/agents/:id": async (_req, res, { params }) => {
+      await agents.remove(params.id);
+      sendJson(res, 200, { deleted: params.id });
+    },
 
     // SSE: delta* → draft { draft, changed } and/or files { files, changed }
     // (each only if something changed) → done { say, sessionId } | error.

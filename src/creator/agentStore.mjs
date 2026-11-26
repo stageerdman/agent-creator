@@ -6,7 +6,7 @@
 // `files` is the DNA file list (see files.mjs): paths and feeds, never content.
 
 import { randomBytes } from "node:crypto";
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { emptyDraft, markKept } from "./draft.mjs";
@@ -68,6 +68,13 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
     async markSaved(id) {
       const record = await loadAgent(id);
       return update(id, { draft: markKept(record.draft) });
+    },
+
+    // Removes the agent's whole folder. Only our own folder: the user's
+    // files are listed by path in the record, never copied in, so they stay.
+    async deleteAgent(id) {
+      await loadAgent(id); // unknown or odd id → AgentNotFound, never a path to follow
+      await rm(join(agentsDir, id), { recursive: true, force: true });
     },
 
     // Newest first. A broken file is logged and skipped so one bad agent

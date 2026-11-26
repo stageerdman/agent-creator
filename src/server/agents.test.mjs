@@ -106,6 +106,15 @@ test("Keep sets saved; a later hand edit sets it back to draft", async () => {
   assert.equal((await json("PUT", `/api/agents/${id}/draft`, { name: "Kept two" })).status, "draft");
 });
 
+test("DELETE removes the agent: gone from the list and a 404 after; a second delete is 404", async () => {
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Red Pen" });
+  assert.deepEqual(await json("DELETE", `/api/agents/${id}`), { deleted: id });
+  assert.ok((await json("GET", "/api/agents")).every((a) => a.id !== id));
+  assert.equal((await call("GET", `/api/agents/${id}`)).status, 404);
+  assert.equal((await call("DELETE", `/api/agents/${id}`)).status, 404);
+});
+
 test("the list hides empty agents and POST reuses the empty one", async () => {
   const empty = await newAgent();
   assert.equal(await newAgent(), empty);

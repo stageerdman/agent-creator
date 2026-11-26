@@ -59,6 +59,19 @@ test("store: markSaved sets saved; a missing or odd id is a clear not-found", as
   await assert.rejects(store.loadAgent("../../etc"), { kind: "not-found" });
 });
 
+test("store: deleteAgent removes only that agent's folder; a missing or odd id is not-found", async () => {
+  const dir = await mkdtemp(join(home, "h-"));
+  const store = createAgentStore({ home: dir, now: ticking() });
+  const gone = await store.createAgent();
+  const kept = await store.createAgent();
+  await store.deleteAgent(gone.id);
+  assert.deepEqual(await readdir(join(dir, "agents")), [kept.id]);
+  await assert.rejects(store.loadAgent(gone.id), { kind: "not-found" });
+  await assert.rejects(store.deleteAgent(gone.id), { kind: "not-found" });
+  await assert.rejects(store.deleteAgent(".."), { kind: "not-found" });
+  assert.deepEqual(await readdir(join(dir, "agents")), [kept.id]);
+});
+
 test("store: listAgents is newest first by updatedAt", async () => {
   const store = await freshStore();
   const first = await store.createAgent();
