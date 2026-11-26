@@ -89,7 +89,6 @@
   .lantern { position: absolute; left: 50%; width: 520px; margin-left: -260px; padding: 14px 16px 10px; display: flex; flex-direction: column; }
   body:not(.empty) .lantern { height: 300px; }
   .lantern .row { display: flex; align-items: center; gap: 10px; }
-  .lantern .ring-mark { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--quiet); flex: none; margin-left: 2px; }
   .lantern input { flex: 1; background: transparent; border: 0; font-size: 20px; padding: 6px 0; min-height: 44px; }
   .lantern input::placeholder { color: var(--quiet); }
   .lantern input:focus { outline: none; }
@@ -129,7 +128,6 @@
     <div id="agents"></div>
     <div class="lantern panel" id="lantern">
       <div class="row">
-        <span class="ring-mark" aria-hidden="true"></span>
         <label class="sr" for="line" id="lineLabel">Find someone, or describe someone new</label>
         <input id="line" autocomplete="off" spellcheck="false" aria-describedby="hint">
       </div>

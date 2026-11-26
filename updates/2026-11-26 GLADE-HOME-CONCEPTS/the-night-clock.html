@@ -92,10 +92,9 @@
   .agent.ring:focus { outline: 2px solid var(--fly); outline-offset: 3px; }
   .tk { position: absolute; padding: 4px 10px 5px; border-radius: 9px; font-size: 13px; line-height: 1.3; white-space: nowrap; transition: border-color .16s; }
   .tk .tm { color: var(--quiet); }
-  /* No clear room on a short window: just the time; the title opens on hover or focus. */
-  .tk.short .tt { display: none; }
-  .tk.short:hover, .tk.short:focus-visible, .tk.short.hot { z-index: 3; background: var(--panel); }
-  .tk.short:hover .tt, .tk.short:focus-visible .tt, .tk.short.hot .tt { display: inline; }
+  /* The title always shows. When room is tight it ends in an ellipsis; the time is never cut. */
+  .tk .tt { display: inline-block; vertical-align: bottom; overflow: hidden; text-overflow: ellipsis; }
+  .tk .sep { white-space: pre; }
   .tk:hover, .tk:focus-visible, .tk.hot { border-color: var(--line-on); }
   .tkdot { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 0; padding: 0; background: transparent; border-radius: 50%; }
   .hollow { position: absolute; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
@@ -124,7 +123,7 @@
     <p class="chip now" id="moon"></p>
     <p class="chip" id="chip" aria-live="polite" hidden></p>
     <div id="agents"></div>
-    <div id="track" aria-label="Talks from the last day"></div>
+    <div id="track" aria-label="Recent talks"></div>
     <div class="hollow panel" id="hollow">
       <label for="mk">New agent</label>
       <input class="field-input" id="mk" placeholder="Describe someone…" autocomplete="off" spellcheck="false" aria-describedby="mkHint">
@@ -391,7 +390,7 @@ function start() { markSet(); setReduced(); resize(); Concept.build(); requestAn
    A round glade that keeps time. Each agent stands at their hour;
    the moon sits on now, so the likely one is already focused under it.
    ============================================================ */
-const CK = { d: null, nowH: NOW_H, clusters: [], btns: [], talks: [], first: null, q: '', r: 0, cx: 0, cy: 0, moon: { x: 0, y: 0 }, worms: [] };
+const CK = { d: null, nowH: NOW_H, clusters: [], btns: [], talks: [], first: null, q: '', hits: [], r: 0, cx: 0, cy: 0, moon: { x: 0, y: 0 }, worms: [] };
 const mk = $('#mk'), mkHint = $('#mkHint'), chip = $('#chip'), moonEl = $('#moon');
 const deg = x => ((x % 360) + 360) % 360, deg180 = x => deg(x + 180) - 180;
 const fmt = h => { h = ((h % 24) + 24) % 24; const m = Math.round(h * 60) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
@@ -399,7 +398,6 @@ const easeIn = x => x * x;
 /* An agent's hour sits at (hour − now) × 15° clockwise from 12 (centre of the hour). */
 const rawAng = a => deg180((a.hour + .5 - CK.nowH) * 15);
 function talkHour(k) { const [day, hm] = k.when.split(' '), [h, m] = hm.split(':').map(Number); return { day, h: h + m / 60 }; }
-function inLastDay(k) { const { day, h } = talkHour(k); return (day === 'today' && h <= CK.nowH) || (day === 'yesterday' && h > CK.nowH); }
 
 /* Two agents can't share a spot: spread neighbours to a minimum gap, keeping the one under the moon where it is. */
 function spread(raws, g, keep) {
@@ -434,13 +432,16 @@ const Concept = {
       holdOn(b, c); b.addEventListener('blur', () => b.classList.remove('ring'));
       box.appendChild(b); CK.clusters.push(c); CK.btns.push(b);
     });
-    // The inner track: talks from the last 24 hours (at most 4), at the hour they happened.
+    // The inner track: the 4 most recent talks, from any day, at the hour they happened.
+    // Not today? The time carries its day word ("Mon 09:20"), so a Monday morning is never empty.
     const tr = $('#track'); tr.textContent = ''; CK.talks = [];
-    d.talks.filter(inLastDay).slice(0, 4).forEach(k => {
-      const a = byName(k.agent), h = talkHour(k).h;
-      const b = document.createElement('button'); b.className = 'tk panel';
-      const tt = document.createElement('span'); tt.className = 'tt'; tt.textContent = k.title + ' · ';
-      const s = document.createElement('span'); s.className = 'tm'; s.textContent = fmt(h); b.append(tt, s);
+    d.talks.slice(0, 4).forEach(k => {
+      const a = byName(k.agent), { day, h } = talkHour(k);
+      const b = document.createElement('button'); b.className = 'tk panel'; b.title = k.title;
+      const tt = document.createElement('span'); tt.className = 'tt'; tt.textContent = k.title;
+      const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = ' · ';
+      const s = document.createElement('span'); s.className = 'tm'; s.textContent = (day === 'today' ? '' : day + ' ') + fmt(h);
+      b.append(tt, sep, s);
       b.setAttribute('aria-label', `${k.title}, with ${k.agent}, ${k.when}. Open talk.`);
       const dotB = document.createElement('button'); dotB.className = 'tkdot'; dotB.tabIndex = -1; dotB.setAttribute('aria-hidden', 'true');
       [b, dotB].forEach(x => x.addEventListener('click', () => openTalk(a, k)));
@@ -478,7 +479,8 @@ const Concept = {
     hp.style.top = (cy - hp.offsetHeight / 2 - 48) + 'px';
     // The inner track at 62%. Each label takes the first side of its dot (inward first) that is clear
     // of the name tags, the hollow and the labels already placed; on a short window it may sit outward.
-    const ri = .62 * r, pad = 4;
+    // No side clear at full width? The title shortens with an ellipsis (never to just the time).
+    const ri = .62 * r, pad = 4, caps = ['none', 180, 160, 140, 120, 104, 88, 72].map(x => x === 'none' ? x : x + 'px');
     const taken = CK.btns.map(b => b.querySelector('.tag').getBoundingClientRect()).concat([hp.getBoundingClientRect()]);
     const clear = q => taken.every(o => q.right + pad <= o.left || q.left >= o.right + pad || q.bottom + pad <= o.top || q.top >= o.bottom + pad);
     CK.talks.forEach(t => {
@@ -492,9 +494,12 @@ const Concept = {
         const inH = at(s > 0 ? t.x - 16 - w : t.x + 16, t.y - h / 2), outH = at(s > 0 ? t.x + 16 : t.x - 16 - w, t.y - h / 2);
         return Math.abs(s) < .5 ? [inV, inH, outH, outV] : [inH, inV, outV, outH];
       };
-      t.b.classList.remove('short');
-      let tries = sides(), q = tries.find(clear);
-      if (!q) { t.b.classList.add('short'); tries = sides(); q = tries.find(clear) || tries[0]; }
+      const tt = t.b.querySelector('.tt'); let q = null, first = null;
+      for (const cap of caps) {
+        tt.style.maxWidth = cap; const tries = sides();
+        first = first || tries[0]; q = tries.find(clear); if (q) break;
+      }
+      if (!q) { tt.style.maxWidth = caps[0]; q = first; }
       taken.push(q);
       t.b.style.left = q.left + 'px'; t.b.style.top = (q.top - 48) + 'px';
     });
@@ -580,19 +585,25 @@ setInterval(() => { CK.nowH += 1 / 60; Concept.layout(); }, 60000);
 let chipT = 0;
 function hideChip() { chip.hidden = true; }
 function setFind(q) {
-  CK.q = q; const ql = q.toLowerCase();
-  const hits = ql ? CK.clusters.filter(c => c.a.name.toLowerCase().includes(ql)) : [];
+  CK.q = q; const ql = q.trim().toLowerCase();
+  CK.hits = ql ? CK.clusters.filter(c => c.a.name.toLowerCase().includes(ql)) : [];
+  const hits = CK.hits;
   CK.clusters.forEach((c, i) => {
     const off = !!ql && !hits.includes(c);
     c.dimTo = off ? 1 : 0; c.lit = !!ql && !off;
     CK.btns[i].classList.toggle('dim', off);
   });
   if (!ql) { hideChip(); return; }
-  const shown = q.charAt(0).toUpperCase() + q.slice(1);
-  chip.textContent = hits.length ? 'Find · ' + shown : `No one called “${shown}”`; chip.hidden = false;
+  chip.textContent = ''; chip.hidden = false;
   if (hits.length) {
+    chip.textContent = 'Find · ' + q.charAt(0).toUpperCase() + q.slice(1);
     const best = hits.find(c => c.a.name.toLowerCase().startsWith(ql)) || hits[0], b = CK.btns[CK.clusters.indexOf(best)];
     b.classList.add('ring'); b.focus({ preventScroll: true });
+  } else {
+    // No one by that name: they're likely describing someone. Return makes them from this line.
+    const ret = document.createElement('b'); ret.textContent = 'Return';
+    chip.append(`No one called “${q}” · `, ret, ' · make a new agent');
+    if (CK.btns.includes(document.activeElement)) document.activeElement.blur();
   }
 }
 addEventListener('keydown', e => {
@@ -600,7 +611,9 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if (e.key === 'Escape' && CK.q) { e.preventDefault(); setFind(''); return; }
   if (e.key === 'Backspace' && CK.q) { e.preventDefault(); setFind(CK.q.slice(0, -1)); return; }
-  if (e.key.length !== 1 || !/\S/.test(e.key)) return;
+  if (e.key === 'Enter' && CK.q.trim() && !CK.hits.length) { e.preventDefault(); openMake({ line: CK.q.trim() }); return; }
+  // Spaces count once a find has started (a description has them); before that, Space still presses the focused agent.
+  if (e.key.length !== 1 || (e.key === ' ' && !CK.q)) return;
   e.preventDefault(); setFind(CK.q + e.key);
 });
 
@@ -616,7 +629,7 @@ $('#home').addEventListener('keydown', e => {
 function updateMk() {
   const v = mk.value.trim();
   if (v) mkHint.innerHTML = '<b>Return</b> · make a new agent';
-  else mkHint.textContent = CK.d && !CK.d.agents.length ? 'They’ll keep the hours you keep.' : '';
+  else mkHint.textContent = '';
 }
 mk.addEventListener('input', updateMk);
 mk.addEventListener('keydown', e => {

@@ -93,9 +93,6 @@
             mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
   }
   .bank-in { position: relative; height: 100%; }
-  .posts { position: absolute; left: 0; top: 4px; width: 100%; height: 32px; }
-  .posts button { position: absolute; top: 0; width: 32px; height: 32px; margin-left: -16px; border: 0; background: transparent; color: var(--quiet); font-size: 13px; border-radius: 6px; }
-  .posts button:hover { color: var(--text); }
   #agents .agent { justify-content: flex-start; }
   #agents .tag .state { white-space: pre-line; }
   .moor { position: absolute; padding: 4px 10px 5px; border-radius: 9px; text-align: left; font-size: 13px; line-height: 1.3; white-space: nowrap; transition: border-color .16s; }
@@ -128,7 +125,6 @@
   <section id="home" class="view" aria-label="Home">
     <div class="bank" id="bank">
       <div class="bank-in" id="bankIn">
-        <nav class="posts" id="posts" aria-label="Jump to a letter" hidden></nav>
         <div id="agents"></div>
         <div id="moored" aria-label="Past talks"></div>
       </div>
@@ -429,14 +425,6 @@ const Concept = {
       b.addEventListener('click', () => openTalk(byName(k.agent), k));
       mo.appendChild(b); RV.moors.push({ k, i, b, row: 0, x: 0, y: 0 });
     });
-    // Letter posts: one per first letter (shown only when the bank is wider than the window).
-    const posts = $('#posts'); posts.textContent = ''; const seen = new Set();
-    sorted.forEach((a, i) => {
-      const ch = a.name[0].toUpperCase(); if (seen.has(ch)) return; seen.add(ch);
-      const b = document.createElement('button'); b.textContent = ch; b.dataset.i = i;
-      b.setAttribute('aria-label', `Go to ${ch}`); b.addEventListener('click', () => goTree(i, 'center'));
-      posts.appendChild(b);
-    });
     const sk = $('#sketches'); sk.hidden = !d.sketches.length; sk.querySelectorAll('.sketch').forEach(n => n.remove());
     d.sketches.forEach(n => sk.appendChild(sketchButton(n)));
     mk.value = ''; RV.torch = null; RV.prefix = ''; RV.lastTree = 0; hideChip();
@@ -450,7 +438,8 @@ const Concept = {
     const vh = H - 48, empty = !RV.d.agents.length, n = RV.trees.length;
     RV.top = 48 + vh * .45; RV.bot = 48 + vh * .70;
     const rh = RV.bot - RV.top;
-    const slot = n ? Math.max(96, Math.min(150, (W - 48) / n)) : 0, need = 48 + slot * n;
+    // 80 px minimum: 12 trees fit a 1024 px window (48 + 12·80 = 1008), so every agent is one click away.
+    const slot = n ? Math.max(80, Math.min(150, (W - 48) / n)) : 0, need = 48 + slot * n;
     RV.scrolls = need > W + .5;
     const off = RV.scrolls ? 24 : (W - slot * n) / 2, innerW = RV.scrolls ? need : W;
     bank.style.height = (RV.bot - 48) + 'px'; bank.classList.toggle('scrolls', RV.scrolls);
@@ -465,8 +454,6 @@ const Concept = {
       b.querySelector('.tag').style.marginTop = (tagY - top) + 'px';
     });
     RV.tagBottom = tagY + 62;
-    const posts = $('#posts'); posts.hidden = !RV.scrolls;
-    posts.querySelectorAll('button').forEach(b => { b.style.left = RV.trees[+b.dataset.i].x0 + 'px'; });
     // Moored talks: two rows in the water, each panel centred under its tree, greedy by measured width.
     const ph = RV.moors.length ? RV.moors[0].b.offsetHeight : 44;
     const y0 = RV.top + Math.max(10, (rh - (12 + ph + 14 + 12 + ph)) / 2), rowY = [y0, y0 + 12 + ph + 14], rows = [[], []];
