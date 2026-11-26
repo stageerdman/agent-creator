@@ -193,15 +193,29 @@ function refillSlots() { for (const d of lit().sort((a, b) => a.litAt - b.litAt)
 let look = null;
 function makeLook() {
   const r = rng(hash(S.name.trim() || 'Untitled'));
-  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r(), lastFlash: -1e9 };
-  look.master = 1 - .4 / look.period;   // the first beat lands 400 ms in, so a new look is seen lit, not dark
+  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r() };
+  look.time = 1 - .4 / look.period;     // running time in periods; the first file blinks 400 ms in, so a new look is seen lit
+}
+
+/* Each file blinks on its own beat, set by when it was added. Its phase is the previous file's
+   plus a step that grows with the real gap between the two adds, log-squashed: added together
+   → in step; 1 s apart → ~0.22 of a beat (~650 ms); 1 day → ~0.6; a year or more → 0.8.
+   The step never reaches a full beat, so files added apart never land back in step with their neighbour. */
+const YEAR_S = 365 * 86400;
+function phaseStep(gapMs) {
+  const s = Math.max(0, gapMs) / 1000;
+  return .2 * Math.min(1, s) + .6 * Math.min(1, Math.log(1 + s) / Math.log(1 + YEAR_S));
+}
+function placeBeat(f) {
+  const prev = files.reduce((p, g) => g !== f && (!p || g.addedAt >= p.addedAt) ? g : p, null);
+  f.phase = prev ? (prev.phase + phaseStep(f.addedAt - prev.addedAt)) % 1 : 0;
+  f.beatAt = null; f.quietUntil = -1e9;
 }
 
 /* ---------- the queue: files light in the order they were added ---------- */
 const queue = [];                     // files waiting, oldest first
 let cur = null;                       // { f, i, step, gap, at }: the file lighting now
 let nextStart = -1e9;                 // the earliest moment the next file may start (after the gap)
-let quietUntil = -1e9;                // the beat rests while files arrive, so the pace is all you see
 const litLog = [];                    // [{ fileId, litAt }] in the order dots lit
 function tick(now) {
   let changed = false;
@@ -217,7 +231,7 @@ function tick(now) {
     const f = cur.f;
     lightDot(f, f.dots[cur.i], cur.at); cur.i++;   // one dot at a time, in file order (Reduce Motion too)
     changed = true;
-    if (cur.i >= f.dots.length) { const end = f.dots[f.dots.length - 1].litAt; nextStart = end + cur.gap; quietUntil = end + 1500; cur = null; }
+    if (cur.i >= f.dots.length) { const end = f.dots[f.dots.length - 1].litAt; nextStart = end + cur.gap; f.quietUntil = end + 1500; cur = null; }   // a file rests its blink while it lands
     else cur.at += reduced ? STEP_REDUCED : cur.step;
   }
   if (changed) { relayout(); render(); }
@@ -295,9 +309,17 @@ function frame(t) {
   const ease = reduced ? 1 : Math.min(1, dt * 6);
   shown += (layout.scale - shown) * ease;                                    // a zoom, never a reshuffle
 
-  // The beat: all lit dots flash together, as in the home row. It rests while files arrive.
-  let beat = false;
-  if (!reduced) { look.master += dt / look.period; if (look.master >= 1) { look.master -= 1; if (queueIdle() && t >= quietUntil) { beat = true; look.lastFlash = t; } } }
+  // The beat: each file blinks on its own phase (see placeBeat), all its dots together.
+  // A file rests its blink while it is waiting or landing, and for 1.5 s after.
+  const beats = new Set();
+  if (!reduced) {
+    const before = look.time; look.time += dt / look.period;
+    for (const f of files) {
+      if (Math.floor(look.time + f.phase) === Math.floor(before + f.phase)) continue;
+      if ((cur && cur.f === f) || queue.includes(f) || t < f.quietUntil) continue;
+      beats.add(f); f.beatAt = t;
+    }
+  }
   const list = [];
   for (const g of layout.glow) list.push({ x: MID, y: MID, s: BOX - 4, a: g.a, img: spriteOf(g.color) });
   for (const [d, p] of layout.pts) {
@@ -308,7 +330,7 @@ function frame(t) {
       a = age < 1200 ? 1 : .75; s = 2 * d.rs;                                 // a new file simply appears, lit for a moment
     } else {
       if (age < 300) { const m = 1.25 - .25 * easeOut(age / 300); ux *= m; uy *= m; }   // a dot lands: from just outside, in 300 ms
-      else if (beat && age > 1200) d.flashT = t + d.seedA * 4;                // up to ~25 ms apart, like the real thing
+      else if (beats.has(d.f) && age > 1200) d.flashT = t + d.seedA * 4;                // up to ~25 ms apart, like the real thing
       ux += Math.sin(t / 8000 * 6.283 + d.seedA) * 1.5; uy += Math.cos(t / 8000 * 6.283 + d.seedB) * 1.5;
       const b = flash(t - d.flashT);
       a = .12 + .8 * b; s = 2 * d.rs * (1 + (GROW - 1) * b);
@@ -329,12 +351,12 @@ function makeFile(o, now) {
   const topic = String(o.topic == null || o.topic === '' ? topicFromName(name) : o.topic).trim().toLowerCase();
   const dots = fills(bytes).map((fill, k) => { const j = rng(hash('fly:' + id + ':' + k)); return { fill, slot: null, litAt: null, flashT: -1e9, seedA: j() * 6.28, seedB: j() * 6.28 }; });
   slotOf(topic);
-  return { id, name, bytes, topic, dots, queuedAt: now };
+  return { id, name, bytes, topic, dots, queuedAt: now, addedAt: isFinite(o.addedAt) ? +o.addedAt : Date.now() };
 }
 /* Files join the end of the queue, in the order given. The first dot of an idle queue lights at once. */
 function addFiles(list) {
   const now = clock(); let n = 0;
-  for (const o of [].concat(list || [])) { const f = makeFile(o, now); if (!f) continue; files.push(f); queue.push(f); n++; }
+  for (const o of [].concat(list || [])) { const f = makeFile(o, now); if (!f) continue; placeBeat(f); files.push(f); queue.push(f); n++; }
   if (n) { render(); tick(now); }
   return n;
 }
@@ -434,9 +456,12 @@ $('#agentName').addEventListener('input', e => { S.name = e.target.value; makeLo
 /* ---------- the test hook (Eraser) ---------- */
 const q2 = v => Math.round(v * 100) / 100;
 window.dna = {
-  getFiles: () => files.map(f => ({ id: f.id, name: f.name, bytes: f.bytes, topic: f.topic, dots: f.dots.length })),
+  // addedAt: wall-clock ms of the add; blinkPhase: 0…1, where in the shared period this file blinks;
+  // lastBlink: page-clock ms of its latest blink (null before the first). period: ms per beat.
+  getFiles: () => files.map(f => ({ id: f.id, name: f.name, bytes: f.bytes, topic: f.topic, dots: f.dots.length, addedAt: f.addedAt, blinkPhase: Math.round(f.phase * 1000) / 1000, lastBlink: f.beatAt })),
+  blinkPeriod: () => Math.round(look.period * 1000),
   addFile,                            // {name, bytes, topic?} -> true, or false for an empty or duplicate name
-  addFiles,                           // [{id, name, sizeBytes}] -> how many were queued (a duplicate id is skipped)
+  addFiles,                           // [{id, name, sizeBytes, addedAt?}] -> how many were queued (a duplicate id is skipped)
   removeFile,                         // by id or name
   setSizeRange,
   getSizeRange: () => ({ min: S.min, max: S.max }),
@@ -447,14 +472,16 @@ window.dna = {
   getDots: () => [...layout.pts.keys()].map(d => { const p = restingDot(d); return { fileId: d.f.id, x: q2(p.x), y: q2(p.y), r: q2(p.r), color: colorOf(d.f.topic), topic: d.f.topic }; })
 };
 
-/* ---------- start: a sample agent (about 12 MB, 12 dots), same on every reload, already lit ---------- */
+/* ---------- start: a sample agent (about 12 MB, 12 dots), same on every reload, already lit ----------
+   Each sample was "added" a while ago (hours to days apart), so each blinks on its own beat. */
 makeLook();
+const H = 3600e3, D = 24 * H, T0 = Date.now();
 [
-  ['recipes/plum-cake-draft.txt', 3200], ['recipes/grandmas-soup-scan.pdf', 2.4e6],
-  ['letters/to-aunt-ida.md', 6100], ['letters/postcards-1998.zip', 9e5],
-  ['garden/seed-list.csv', 900], ['garden/rose-bed-photos.zip', 2.8e6],
-  ['recipes/bread-notes.md', 14000], ['travel/rail-trip-notes.md', 12000]
-].forEach(([name, bytes]) => { const f = makeFile({ name, bytes }, -1e9); files.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = freeSlot(); }); });
+  ['recipes/plum-cake-draft.txt', 3200, 41 * D], ['recipes/grandmas-soup-scan.pdf', 2.4e6, 38 * D],
+  ['letters/to-aunt-ida.md', 6100, 20 * D], ['letters/postcards-1998.zip', 9e5, 19 * D + 20 * H],
+  ['garden/seed-list.csv', 900, 9 * D], ['garden/rose-bed-photos.zip', 2.8e6, 8 * D + 3 * H],
+  ['recipes/bread-notes.md', 14000, 2 * D], ['travel/rail-trip-notes.md', 12000, 5 * H]
+].forEach(([name, bytes, ago]) => { const f = makeFile({ name, bytes, addedAt: T0 - ago }, -1e9); placeBeat(f); files.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = freeSlot(); }); });
 relayout(); render();
 shown = layout.scale;
 syncSize(); suggest();

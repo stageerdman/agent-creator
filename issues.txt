@@ -49,6 +49,15 @@
       2–3 new dots can be counted in one frame. It fails about half the time
       on the old page too (5f3d08b, code not changed). A steadier count would
       compare frames 300 ms after each landing. (Jony, 2026-11-26)
+      Also seen once in WebKit, Reduce Motion off: "one max-size file shows
+      61 dots" (pass on rerun). Only one file is on screen, so it is a flash
+      (dots grow 30 %) splitting a blob in the pixel count, not a real dot.
+
+- [ ] Fireflies DNA: each file now blinks on its own beat, set by when it was
+      added (log-squashed gap: same moment → together, 1 s → ~650 ms apart,
+      1 day → ~0.6 of a beat). Test hook: dna.getFiles()[i].blinkPhase /
+      .lastBlink / .addedAt, dna.blinkPeriod(); addFiles accepts addedAt.
+      Eraser's eye-check doesn't check out-of-step blinking yet. (Jony)
 
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
