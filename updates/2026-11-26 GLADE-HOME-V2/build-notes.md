@@ -55,11 +55,19 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 - **Esc on a stub screen = Back to Home.**
 - **0 agents:** the New agent screen *is* Home, with no Back.
 - **Demo bar** also has `0` and a `Reduced motion` toggle (it also follows the OS setting).
-- **A's "They answer" flash** uses the Web Animations API, and plays after the chat screen is shown.
+- ~~**A's "They answer" flash**~~ removed by cut A1.
 - **Folder drop lights the door in all three** (concepts.md spells it out for A only).
 - **B guide words** use the first word of the name (`Untitled sketch` files under U). The third line on a card shows only for a state other than Ready, or for `today` / `yesterday`.
 - **C** shows a state line only when it isn't Ready. `Unsorted` sits under the shortest column. `Edit` sits on the name line (see fix 3).
 - **Fireflies** in B and C are off at 50, as the concept says. A keeps a few in the clearing.
 
 ## Eraser cuts
-*(filled in after eraser-review.md comes back)*
+From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: `node .tmp-test/cuts.cjs` covers the cuts, and `node .tmp-test/run.cjs` (the full click-through) still passes for all three concepts. Screenshots are in `.tmp-test/shots/cuts-c-*.png`.
+
+| ID | Page | What changed | Checked |
+|---|---|---|---|
+| **A1** | A · Path | Deleted `Concept.afterChat`, the "They answer" flash. The core's `if (kind === 'chat' && Concept.afterChat)` line stays as it was. `index.html` never mentioned the flash, so it's unchanged. A's only magic now is the trailhead lighting on a folder drop. | No animation on `#bigmark` when Chat opens by mouse, by `Return`, or with `?rm=1`. |
+| **C1** | C · Groves | Roles wrap to 2 lines (`.gr .rl` line-clamp 2, no `ell`). The door is **200 px** (it was 240). Two changes beyond the review: **(a)** names wrap to 2 lines as well, because with Edit on the name line, `Untitled sketch` was still cut to `Untitl…` at 200 px. **(b)** Spacing in the groves is tighter (groves padding 8/12, gaps 10→6, grove padding 4/2, row padding 2/3, line-height 1.25→1.2), because with only the wrap, C at 50 overflowed by about 99 px (the Learning column is 12 people, most on 2 lines). | At 50 there's no scroll, before or after Nell. `Contract lawyer`, `Startup board advisor`, `Imported from Lena` and `Untitled sketch` show in full. The door is 200 px at every count. Only Ines's role (`Her design course, week by…`) still needs a 3rd line, so it's clamped. Her button's screen-reader name has the full role. |
+| **C2** | C · Groves | The door is now `<div class="door solid" id="doorpanel">`. Inside it is `<button id="door">` (the pill and the hint) and, under the button, `<p id="planted">`. The whole panel still lights on a folder drop. Clicking empty space on the panel opens New agent. Clicking the planted line does nothing (`cursor: default`). | After Keep, the planted line shows, clicking it stays on Home, and the button's name is `New agent Drop a folder here, or anywhere.` with no Nell in it. |
+| **C3** | C · Groves | Removed `Who do you have in mind?` from the Home door. | Not on Home at 1, 12 or 50. Still on the New agent screen and at 0. |
+| **C4** | C · Groves | Removed `solid` from `#chip`: no panel and no border. C's fireflies now keep clear of the chip (`#chip` was added to their keep-out list, since it no longer counts as a panel). | The computed border is 0 and the background is transparent at 1, 12 and 50. |
