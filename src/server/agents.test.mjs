@@ -128,7 +128,12 @@ test("GET /api/agents items carry createdAt for the home's age and order", async
   await json("PUT", `/api/agents/${id}/draft`, { name: "Dated" });
   const row = (await json("GET", "/api/agents")).find((a) => a.id === id);
   assert.ok(row.createdAt && !Number.isNaN(Date.parse(row.createdAt)));
-  assert.deepEqual(Object.keys(row).sort(), ["createdAt", "draft", "id", "updatedAt"]);
+  assert.deepEqual(Object.keys(row).sort(), ["createdAt", "dna", "draft", "id", "updatedAt"]);
+  assert.deepEqual(row.dna, []);
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "notes/a.md", size: 7 }] });
+  const [file] = (await json("GET", "/api/agents")).find((a) => a.id === id).dna;
+  assert.deepEqual([file.id, file.sizeBytes, file.topic], ["notes/a.md", 7, "notes"]);
+  assert.ok(!Number.isNaN(Date.parse(file.addedAt)));
   assert.deepEqual(Object.keys(row.draft).sort(), ["description", "name", "status"]);
 });
 
@@ -148,6 +153,7 @@ test("the home's mock sets: 0, 1, 10, 50, in the API shape, always with createdA
     const list = await json("GET", `/mock/home/${n}`);
     assert.equal(list.length, n);
     assert.ok(list.every((a) => a.id && a.draft.name && a.createdAt && a.updatedAt && "description" in a.draft));
+    assert.ok(list.every((a) => Array.isArray(a.dna) && a.dna.every((f) => f.id && f.sizeBytes > 0 && f.topic && !Number.isNaN(Date.parse(f.addedAt)))));
   }
   const fifty = await json("GET", "/mock/home/50");
   assert.ok(fifty.some((a) => a.draft.status === "learning"));
