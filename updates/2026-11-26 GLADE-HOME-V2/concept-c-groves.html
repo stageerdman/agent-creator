@@ -58,35 +58,33 @@ button{background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:lef
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .rm *{transition:none!important;animation:none!important}
 /* ── C · The Groves ──────────────────────────────────────────────── */
-.c{display:grid;grid-template-columns:184px 1fr}
-.door{border-width:0 1px 0 0;height:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:14px;padding:32px 20px;text-align:left;cursor:pointer}
-.door .doorbtn{display:flex;flex-direction:column;align-items:flex-start;gap:14px;border-radius:10px}
-.door .planted{cursor:default;margin:0}
-.door:hover{border-color:var(--line-on)}
+.c{display:grid;grid-template-columns:200px 1fr}
+/* The panel lights on drop; only the button (pill + hint) opens New agent; Planted is plain text under it. */
+.door{border-width:0 1px 0 0;height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:14px;padding:32px 24px;text-align:left}
+.door .dbtn{display:flex;flex-direction:column;align-items:flex-start;gap:14px;border-radius:10px}
 .door .pill{background:var(--fly);color:var(--field);font-weight:600;border-radius:10px;padding:0 20px;height:44px;display:inline-flex;align-items:center;gap:8px}
 .door .pill .plus{font-size:20px;font-weight:400;line-height:1}
-.door:hover .pill{filter:brightness(1.07)}
+.door .dbtn:hover .pill{filter:brightness(1.07)}
 .door .hint{font-size:14px;color:var(--quiet);line-height:1.4}
-.door .planted{font-size:14px;line-height:1.4;color:var(--text);border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+.door .planted{font-size:14px;line-height:1.4;color:var(--text);border-top:1px solid var(--line);padding-top:14px;margin:4px 0 0}
 .door.drop-on{box-shadow:inset 0 0 0 1px var(--fly)!important}
-.groves{padding:8px 14px 10px;min-width:0;overflow:auto}
+.groves{padding:8px 12px 10px;min-width:0;overflow:auto}
 .c .chip{display:inline-flex;margin:0 0 2px;border-radius:8px}
-.cols{display:flex;gap:8px;align-items:flex-start}
-.gcol{flex:1 1 0;max-width:200px;min-width:0;display:flex;flex-direction:column;gap:10px}
-.grove{border-radius:12px;padding:4px 4px 4px}
-.grove h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--quiet);font-weight:500;margin:0;padding:3px 8px 2px;transition:opacity .18s ease}
+.cols{display:flex;gap:6px;align-items:flex-start}
+.gcol{flex:1 1 0;max-width:200px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.grove{border-radius:12px;padding:4px 2px 4px}
+.grove h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--quiet);font-weight:500;margin:0;padding:4px 8px 4px;transition:opacity .18s ease}
 .gr{position:relative;display:flex;align-items:flex-start;border-radius:8px;border:1px solid transparent;transition:opacity .18s ease}
 .gr:hover{border-color:var(--line-on)}
 .dim{opacity:.25}
-.gr .open{flex:1;min-width:0;display:flex;gap:8px;align-items:flex-start;padding:3px 8px 2px 8px;border-radius:8px}
-.gr .open .mark{margin-top:4px}
+.gr .open{flex:1;min-width:0;display:flex;gap:6px;align-items:flex-start;padding:2px 6px 3px 6px;border-radius:8px}
+.gr .open .mark{margin-top:5px}
 .gr .tx{flex:1;min-width:0}
-/* At 50 every role must be readable by eye (Eraser C1): role wraps to 2 lines, rows stay tight. */
-.gr .nm{font-weight:600;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
-.gr .rl{font-size:12px;color:var(--quiet);line-height:1.15;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.gr .st{font-size:12px;color:var(--quiet);line-height:1.2}
+.gr .nm{font-weight:600;line-height:1.2}
+.gr .rl{font-size:13px;color:var(--quiet);line-height:1.2;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.gr .st{font-size:12px;color:var(--quiet);line-height:1.25}
 /* Edit sits on the name line only (always visible), so the role line below gets the row's full width. */
-.gr .nm{padding-right:34px}
+.gr .nm{padding-right:34px;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .gr .ed{position:absolute;top:2px;right:2px;font-size:13px;color:var(--quiet);padding:4px 8px;border-radius:6px}
 .gr .ed:hover{color:var(--text)}
 </style>
@@ -101,8 +99,8 @@ button{background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:lef
 <canvas id="sky" aria-hidden="true"></canvas>
 
 <main id="home" class="view c">
-  <div class="door solid" id="doorp">
-    <button class="doorbtn" id="door">
+  <div class="door solid" id="doorpanel">
+    <button class="dbtn" id="door">
       <span class="pill"><span class="plus" aria-hidden="true">+</span>New agent</span>
       <span class="hint">Drop a folder here, or anywhere.</span>
     </button>
@@ -128,7 +126,7 @@ const Concept = {
     let h = `<div class="grove solid" role="group" aria-label="${esc(g)}"><h2>${esc(g)}</h2>`;
     for (const a of list) {
       const st = a.state === 'ready' ? '' : `<span class="st ell">${words(a)}</span>`;
-      h += `<div class="gr" data-name="${esc(a.name)}"><button class="open" aria-label="Chat with ${esc(a.name)}, ${esc(a.role)}, ${words(a)}">${mark(a.state)}<span class="tx"><span class="nm">${esc(a.name)}</span><span class="rl">${esc(a.role)}</span>${st}</span></button><button class="ed" aria-label="Edit ${esc(a.name)}">Edit</button></div>`;
+      h += `<div class="gr" data-name="${esc(a.name)}"><button class="open" aria-label="Chat with ${esc(a.name)}, ${esc(a.role)}, ${words(a)}">${mark(a.state)}<span class="tx"><span class="nm">${esc(a.name)}</span><span class="rl" title="${esc(a.role)}">${esc(a.role)}</span>${st}</span></button><button class="ed" aria-label="Edit ${esc(a.name)}">Edit</button></div>`;
     }
     return h + `</div>`;
   },
@@ -201,15 +199,7 @@ const Concept = {
     const el = rowOf(a.name); if (el) el.querySelector('.open').focus();
   },
   chip() { return $('#chip'); },
-  // The whole panel lights on drop and opens New agent; only the planted line is plain text.
-  door() {
-    const p = $('#doorp');
-    if (!p.dataset.wired) {
-      p.dataset.wired = '1';
-      p.addEventListener('click', e => { if (e.target.closest('#planted')) e.stopImmediatePropagation(); }, true);
-    }
-    return p;
-  },
+  door() { return $('#doorpanel'); },
   flyRegion() { return G.agents.length >= 50 ? null : $('#groves').getBoundingClientRect(); },
   editRows(a) { return `<dt>Grove</dt><dd>${esc(a.grove)}</dd>`; }
 };
@@ -370,7 +360,7 @@ const Sky = {
     this.pts = []; this.fl = null;
     const R = G.screen ? null : Concept.flyRegion();
     if (R && R.width > 40 && R.height > 40) {
-      const blocks = [...document.querySelectorAll('#home .solid, .demo')].filter(e => e.offsetParent || e.classList.contains('demo')).map(e => e.getBoundingClientRect());
+      const blocks = [...document.querySelectorAll('#home .solid, #chip, .demo')].filter(e => e.offsetParent || e.classList.contains('demo')).map(e => e.getBoundingClientRect());
       let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
       for (let tries = 0; tries < 600 && this.pts.length < 6; tries++) {
         const x = R.left + rnd() * R.width, y = R.top + rnd() * R.height;
@@ -443,7 +433,7 @@ addEventListener('drop', e => {
   $('#rmb').onclick = () => { G.rm = !G.rm; document.documentElement.classList.toggle('rm', G.rm); $('#rmb').setAttribute('aria-pressed', String(G.rm)); Sky.build(); };
   document.querySelectorAll('.demo [data-n]').forEach(b => b.onclick = () => G.setN(+b.dataset.n));
   $('#back').onclick = () => G.home();
-  Concept.door().onclick = () => G.open('new', null);
+  $('#door').onclick = () => G.open('new', null);
   addEventListener('resize', () => Sky.build());
   const n = +p.get('n');
   G.setN(p.has('n') && [0, 1, 12, 50].includes(n) ? n : 12);

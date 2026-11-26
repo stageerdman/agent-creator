@@ -8,6 +8,7 @@ package-lock.json
 # Live walkthrough scratch (agent home it creates, local probes)
 .walkthrough-home/
 .scratch/
+# Browser-check screenshots (scripts live in updates/*/checks/)
 .tmp-test/
 
 # The built macOS app (npm run build:app): staged code, Tauri build output,

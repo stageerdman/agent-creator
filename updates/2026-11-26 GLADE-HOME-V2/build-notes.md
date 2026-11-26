@@ -55,22 +55,19 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 - **Esc on a stub screen = Back to Home.**
 - **0 agents:** the New agent screen *is* Home, with no Back.
 - **Demo bar** also has `0` and a `Reduced motion` toggle (it also follows the OS setting).
-- ~~**A's "They answer" flash**~~ was removed by Eraser cut A1 (see below).
+- ~~**A's "They answer" flash**~~ removed by cut A1.
 - **Folder drop lights the door in all three** (concepts.md spells it out for A only).
 - **B guide words** use the first word of the name (`Untitled sketch` files under U). The third line on a card shows only for a state other than Ready, or for `today` / `yesterday`.
 - **C** shows a state line only when it isn't Ready. `Unsorted` sits under the shortest column. `Edit` sits on the name line (see fix 3).
 - **Fireflies** in B and C are off at 50, as the concept says. A keeps a few in the clearing.
 
 ## Eraser cuts
-*Applied by Columbo when integrating (Eraser's fixes were exact and small). Checked in Chrome at
-1024×768 with Jony's full suite (all three, 0/1/12/50, every check ok, no console errors) and a
-check for each cut.*
+From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: From the repo root, `node "updates/2026-11-26 GLADE-HOME-V2/checks/cuts.cjs"` covers the cuts, and `checks/run.cjs` (the full click-through) still passes for all three concepts. Both need `npm install --no-save playwright-core` and Chrome. Screenshots go to `.tmp-test/shots/`, which is now git-ignored (Eraser's T1 from the earlier review), and are no longer committed. A role that still needs a 3rd line (only Ines's) has a `title` tooltip with the full text.
 
-| Cut | What changed | Checked |
-|---|---|---|
-| A1 | `Concept.afterChat` deleted from A. No flash on the chat header. `index.html` never mentioned it. | No running animation after Chat, by click and by `Return`, with and without `?rm=1` ✓ |
-| C1 | Roles wrap to 2 lines (clamped). Names wrap instead of `…`. Door **184 px** (Eraser asked for 200, but at 200 a 51st agent made the Home & life grove scroll). Rows, grove panels and gaps a few px tighter. | At 50, and at 51 after making Nell: no scroll. `Contract lawyer`, `Startup board advisor`, `Imported from Lena` and `Untitled sketch` show in full. Only the longest roles still clamp after 2 lines (`Her design course, week by…`, `Japanese cooking,…`) ✓ |
-| C2 | Door is now a `<div class="door solid">` panel holding the `New agent` button (pill + hint) and `#planted` as a plain `<p>`. The whole panel lights on drop. Clicking empty panel space opens New agent, clicking the planted line does nothing. | Planted line is outside the button, the button's name is just `New agent` + hint, clicking the line stays on Home ✓ |
-| C3 | "Who do you have in mind?" removed from the Home door. | Gone from Home at 1/12/50, still on the New agent screen and at 0 ✓ |
-| C4 | `solid` removed from C's `#chip`. | No border, no background ✓ |
-| T1 | `.tmp-test/` removed from git and added to `.gitignore`. | `git ls-files .tmp-test` is empty ✓ |
+| ID | Page | What changed | Checked |
+|---|---|---|---|
+| **A1** | A · Path | Deleted `Concept.afterChat`, the "They answer" flash. The core's `if (kind === 'chat' && Concept.afterChat)` line stays as it was. `index.html` never mentioned the flash, so it's unchanged. A's only magic now is the trailhead lighting on a folder drop. | No animation on `#bigmark` when Chat opens by mouse, by `Return`, or with `?rm=1`. |
+| **C1** | C · Groves | Roles wrap to 2 lines (`.gr .rl` line-clamp 2, no `ell`). The door is **200 px** (it was 240). Two changes beyond the review: **(a)** names wrap to 2 lines as well, because with Edit on the name line, `Untitled sketch` was still cut to `Untitl…` at 200 px. **(b)** Spacing in the groves is tighter (groves padding 8/12, gaps 10→6, grove padding 4/2, row padding 2/3, line-height 1.25→1.2), because with only the wrap, C at 50 overflowed by about 99 px (the Learning column is 12 people, most on 2 lines). | At 50 there's no scroll, before or after Nell. `Contract lawyer`, `Startup board advisor`, `Imported from Lena` and `Untitled sketch` show in full. The door is 200 px at every count. Only Ines's role (`Her design course, week by…`) still needs a 3rd line, so it's clamped. Her button's screen-reader name has the full role. |
+| **C2** | C · Groves | The door is now `<div class="door solid" id="doorpanel">`. Inside it is `<button id="door">` (the pill and the hint) and, under the button, `<p id="planted">`. The whole panel still lights on a folder drop. **Only the button opens New agent.** Empty space on the panel and the planted line do nothing, so you never have to guess which part of the panel is clickable (agreed with Eraser). | After Keep, the planted line shows. Clicking it, or clicking empty space on the panel, stays on Home. And the button's name is `New agent Drop a folder here, or anywhere.` with no Nell in it. |
+| **C3** | C · Groves | Removed `Who do you have in mind?` from the Home door. | Not on Home at 1, 12 or 50. Still on the New agent screen and at 0. |
+| **C4** | C · Groves | Removed `solid` from `#chip`: no panel and no border. C's fireflies now keep clear of the chip (`#chip` was added to their keep-out list, since it no longer counts as a panel). | The computed border is 0 and the background is transparent at 1, 12 and 50. |
