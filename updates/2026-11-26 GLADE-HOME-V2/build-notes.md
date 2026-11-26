@@ -9,7 +9,7 @@ The URL accepts `?n=0|1|12|50` and `?rm=1` (reduced motion on). The bar belongs 
 
 | | A · The Path | B · The Field Guide | C · The Groves |
 |---|---|---|---|
-| **New agent** | `+ New agent`, the pinned first row of the left list | `+ New agent` in the gate along the bottom edge | Click anywhere on the tall door on the left |
+| **New agent** | `+ New agent`, the pinned first row of the left list | `+ New agent` in the gate along the bottom edge | `+ New agent` on the tall door on the left (only the button opens it) |
 | **Find by eye** | Click a name in the list (recent first, grouped by day). This only highlights it; the clearing on the right shows who it is | Guide words over each column (A–Z), then click the name | Grove heading (Work, Writing…), then click the name (recent first in each grove) |
 | **Find by typing** | Just type (`con`). The list filters, and the first match is highlighted | Just type. Non-matches dim where they stand; the first match gets focus | Just type. Non-matches and empty grove headings dim; the first match gets focus |
 | **Chat** | `Chat` in the clearing, or `Return` | Click the card, or `Return` | Click the row, or `Return` |
@@ -46,7 +46,7 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 ### Bugs found in the browser and fixed
 1. **Return in New agent opened Nell's chat.** The Enter that made Nell also "clicked" her row once focus moved to it (B, C). Fix: the who field now swallows that Enter (shared core, all three files).
 2. **Return on no match opened the wrong person.** Focus stayed on the last row you arrowed to (B, C). Fix: when nothing matches, the row lets go of focus.
-3. **C at 50 cut roles to two words** ("Career …"), which hurt finding by role. Fix: `Edit` stays always visible but sits on the name line only, so the role gets the full row width. Grove columns now share the space evenly (max 200px). The door stays at 240px.
+3. **C at 50 cut roles to two words** ("Career …"), which hurt finding by role. Fix: `Edit` stays always visible but sits on the name line only, so the role gets the full row width. Grove columns now share the space evenly (max 200px). (The door was later narrowed to 200px by cut C1.)
 
 ## Where the build differs from concepts.md
 - **Keep always makes Nell, Mum's recipes**, not Bea. Bea is already row 40 of the 50, so making her would create a duplicate. C's planted line reads `Nell is in Home & life. Move her in Edit.` and disappears on the next Home visit.
@@ -62,7 +62,7 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 - **Fireflies** in B and C are off at 50, as the concept says. A keeps a few in the clearing.
 
 ## Eraser cuts
-From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: From the repo root, `node "updates/2026-11-26 GLADE-HOME-V2/checks/cuts.cjs"` covers the cuts, and `checks/run.cjs` (the full click-through) still passes for all three concepts. Both need `npm install --no-save playwright-core` and Chrome. Screenshots go to `.tmp-test/shots/`, which is now git-ignored (Eraser's T1 from the earlier review), and are no longer committed. A role that still needs a 3rd line (only Ines's) has a `title` tooltip with the full text.
+From `eraser-review.md` (RETURNED, 6 cuts: A1, C1–C4, T1; B had none). All six are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: From the repo root, `node "updates/2026-11-26 GLADE-HOME-V2/checks/cuts.cjs"` covers the cuts, and `checks/run.cjs` (the full click-through) still passes for all three concepts. Both need `npm install --no-save playwright-core` and Chrome. Screenshots go to `.tmp-test/shots/`, which is git-ignored (T1). A role that still needs a 3rd line (only Ines's) has a `title` tooltip with the full text.
 
 | ID | Page | What changed | Checked |
 |---|---|---|---|
@@ -71,3 +71,4 @@ From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Check
 | **C2** | C · Groves | The door is now `<div class="door solid" id="doorpanel">`. Inside it is `<button id="door">` (the pill and the hint) and, under the button, `<p id="planted">`. The whole panel still lights on a folder drop. **Only the button opens New agent.** Empty space on the panel and the planted line do nothing, so you never have to guess which part of the panel is clickable (agreed with Eraser). | After Keep, the planted line shows. Clicking it, or clicking empty space on the panel, stays on Home. And the button's name is `New agent Drop a folder here, or anywhere.` with no Nell in it. |
 | **C3** | C · Groves | Removed `Who do you have in mind?` from the Home door. | Not on Home at 1, 12 or 50. Still on the New agent screen and at 0. |
 | **C4** | C · Groves | Removed `solid` from `#chip`: no panel and no border. C's fireflies now keep clear of the chip (`#chip` was added to their keep-out list, since it no longer counts as a panel). | The computed border is 0 and the background is transparent at 1, 12 and 50. |
+| **T1** | repo | `git rm -r .tmp-test` (the old `run.js` and 36 screenshots), and `.tmp-test/` added to `.gitignore`. The two check scripts moved to `checks/` beside the pages, so they stay in git. | `git ls-files .tmp-test` is empty. A fresh check run writes screenshots there and `git status` stays clean. |
