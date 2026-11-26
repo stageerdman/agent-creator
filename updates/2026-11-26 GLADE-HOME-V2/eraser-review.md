@@ -9,7 +9,7 @@ the pages is Jony's job.*
 Chat or Edit with the person they had in mind.
 
 **Verdict: RETURNED.** All three keep Home to two jobs, and the step counts meet the brief at
-1, 12 and 50. There are 5 cuts: 1 in A, 4 in C. **B passes as it is.** Each cut is small. I sign
+1, 12 and 50. There are 5 page cuts (1 in A, 4 in C) and 1 repo cleanup (T1). **B passes as it is.** Each cut is small. I sign
 when each one checks out in a browser.
 
 ---
@@ -80,16 +80,40 @@ Each one differs in layout (list + clearing / A–Z sheet + bottom gate / side d
 | **C3** | C · Groves | The door asks "Who do you have in mind?" but there's nowhere to type. Anyone who answers by typing gets the Find (groves dim, `No one called "a blunt…"`). It's also a copy of the New agent screen's question. | Remove `<span class="ask">Who do you have in mind?</span>` from the Home door. Keep `+ New agent` and `Drop a folder here, or anywhere.` The question stays on the New agent screen, where the field is. (At 0 agents nothing changes: Home *is* that screen.) |
 | **C4** | C · Groves | The `Type to find` chip has `solid` (panel and border), so it looks like a search box. Clicking it does nothing. That's the brief's "looks like a search box" fear, and dead UI. | Remove `solid` from `#chip` in C so it's plain quiet text like A and B. Keep its place, top-left of the groves. |
 
+| **T1** | repo | Commit `8fcb86a` added `.tmp-test/` (2 test scripts and 29 screenshots) to git. It's leftover build clutter next to the deliverable. | `git rm -r .tmp-test` and add `.tmp-test/` to `.gitignore`. |
+
 **B · Field Guide: no cuts.**
+
+*Re-check on branch `studio/review-only-two-actions-no-clutter-fast-86d44352`: `8fcb86a` (the team branch head) changed no page since `daf915f`, so every finding above still applies. That commit added only T1.*
 
 ## What I'll check in the browser
 
 | Cut | Check | Done? |
 |---|---|---|
-| A1 | Opening Chat (mouse and `Return`, with and without `?rm=1`) shows no flash or glow on the header mark | ☐ |
-| C1 | At 50, 1024×768: no scroll, roles readable (the four examples above in full), door fixed width | ☐ |
-| C2 | After Keep, the planted line shows on the door, clicking it does nothing, and the button's name is just `New agent…` | ☐ |
-| C3 | No "Who do you have in mind?" on Home at 1/12/50. It's still on the New agent screen and at 0 | ☐ |
-| C4 | The chip has no box or border. Clicking it does nothing, and it doesn't look like it would | ☐ |
+| A1 | Opening Chat (mouse and `Return`, with and without `?rm=1`) shows no flash or glow on the header mark | ☑ |
+| C1 | At 50, 1024×768: no scroll, roles readable (the four examples above in full), door fixed width | ☑ |
+| C2 | After Keep, the planted line shows on the door, clicking it does nothing, and the button's name is just `New agent…` | ☑ |
+| C3 | No "Who do you have in mind?" on Home at 1/12/50. It's still on the New agent screen and at 0 | ☑ |
+| C4 | The chip has no box or border. Clicking it does nothing, and it doesn't look like it would | ☑ |
+| T1 | `git ls-files .tmp-test` is empty and `.tmp-test/` is in `.gitignore` | ☑ |
+| index | `index.html` opens all three pages | ☑ |
 
-Jony: log each cut in `build-notes.md` under *Eraser cuts*. **Status: RETURNED to Jony.**
+~~Status: RETURNED to Jony.~~
+
+## Re-check after the cuts
+
+*Columbo (captain), on integration, 2026-11-26.* Jony made the cuts on main, and the merged pages
+are Jony's version. I re-ran both browser checks on the merged pages in Chrome at 1024×768:
+`checks/cuts.cjs` (every cut, at 0/1/12/50) and `checks/run.cjs` (all three concepts at
+0/1/12/50: find, Chat, Edit, Back, no-match, New agent, reduced motion). Everything passed with
+no console or page errors. The details are in `build-notes.md` under *Eraser cuts*.
+
+- **C1:** C's door is 200 px, as asked. Names and roles wrap to 2 lines, with tighter spacing,
+  so 50 fit with no scroll, and 51 still fit after making Nell. Only Ines's role still clamps
+  after 2 lines (`Her design course, week by…`), as C1 allows. It has a `title` with the full text.
+- **C2:** only the New agent button opens New agent. Empty space on the panel and the planted
+  line do nothing (agreed with Eraser).
+- **T1:** `.tmp-test/` is out of git. The check scripts live in `checks/`, and screenshots go to
+  the git-ignored `.tmp-test/shots/`.
+
+**Status: PASSED.** B passes unchanged. A and C pass with the cuts applied.
