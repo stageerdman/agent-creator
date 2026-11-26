@@ -355,7 +355,6 @@ export async function stream(node, text, { signal, onTick } = {}) {
 }
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// { error: true } marks an error toast: it appears at once and never moves (E1).
 export function toast(text, action, { error = false } = {}) {
   const host = document.getElementById("toast");
   const t = el("div", { class: error ? "toast is-error" : "toast", role: "status" }, text, action && " · ", action);

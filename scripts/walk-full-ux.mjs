@@ -73,51 +73,7 @@ await segment("1-home-talk", async ({ page, wait, shot, see, click, step }) => {
   await step("D search past talks", async () => { await page.fill("#talk-search", "zzzz"); await wait(300); await see('No talks with "zzzz"'); });
 });
 
-await segment("2-knows-grow", async ({ page, wait, shot, see, step, rexSketcher }) => {
-  await rexSketcher();
-  await step("C What Rex knows: map, Likeness, References", async () => { await page.click("#rs-knows"); await wait(200); await see("Only you see this"); await see("8 of 10"); await shot("07-knows"); });
-  await step("C refs expand → passage with Behind", async () => { await page.locator(".refs-toggle").first().click(); await page.locator(".map-refs .ref-link").first().click(); await wait(200); await see("Behind:"); await shot("08-passage"); await page.keyboard.press("Escape"); });
-  await step("E1 Add a reference for Money → studying → finished", async () => {
-    await page.locator('[data-line="rex-money"] .link-btn', { hasText: "Add a reference for this" }).click();
-    await page.locator(".picker-row").first().click(); await wait(600); await see("Studying Money Has Rules.pdf"); await shot("09-topup-studying"); await wait(3000);
-    await see("Finished studying · 1 reference studied");
-  });
-  await step("E2 map moved: was Blank, 9 of 10 · was 8, chat line", async () => { await see("was Blank"); await see("9 of 10 · was 8"); await see("Money is no longer Blank"); await shot("10-map-moved"); });
-  await step("E2 quiz → new talk, typed not sent → sourced answer", async () => {
-    await page.locator(".quiz").click(); await wait(500);
-    const v = await page.inputValue("#talk-msg"); if (!v.includes("first rule of money")) throw new Error(`composer: ${v}`);
-    await page.keyboard.press("Enter"); await wait(2600); await see("Money Has Rules.pdf · p. 12"); await shot("11-quiz-answer");
-  });
-});
-
-await segment("3-remove-face-palette", async ({ page, wait, shot, see, click, menu, step, rexSketcher }) => {
-  await rexSketcher();
-  await step("E3 remove Old seminar → Rough mark, then Undo", async () => {
-    await page.click("#rs-knows"); await wait(200);
-    await page.locator(".refs-row").click(); await wait(150);
-    await page.locator(".ref-row.group button", { hasText: "Extras" }).click(); await wait(150);
-    await page.locator(".ref-row", { hasText: "Old seminar 2009.mp4" }).getByRole("button", { name: "Remove" }).click(); await wait(200);
-    await see('Removed. Rex no longer uses "Old seminar 2009.mp4"'); await see("was Sharp · now Rough"); await see('References: removed "Old seminar 2009.mp4"'); await shot("12-removed");
-    await click("Undo", true); await wait(200); await see('References: put back "Old seminar 2009.mp4"');
-  });
-  await step("E3 remove a group (Live Q&A)", async () => {
-    if (!(await page.locator(".ref-row.group").count())) { await page.locator(".refs-row").click(); await wait(150); }
-    const row = page.locator(".ref-row.group", { hasText: "Live Q&A" }); await row.getByRole("button", { name: "Remove" }).click(); await wait(200);
-    await see('"Live Q&A" (18 recordings)'); await click("Undo", true);
-  });
-  await step("E4 face sheet: Draw three more, pick, Use", async () => {
-    await page.click("#rs-sketch"); await wait(150);
-    await page.locator("#face-slot button.face").click(); await wait(150); await see("Rex's face");
-    await click("Draw three more"); await wait(1000); await page.locator(".face-option").nth(1).click(); await shot("13-face");
-    await page.getByRole("button", { name: "Use", exact: true }).click(); await wait(300); await see("Face: new face");
-  });
-  await step("E5 Palette: change Directness 4 → 5", async () => {
-    await menu("Palette"); await wait(300); await see("Palette · what Rex is mixed from · 186 references, 4 traits"); await shot("14-palette");
-    await page.locator('input[name="trait-directness"][value="5"]').check({ force: true }); await wait(1600);
-    await see("Directness: 4 → 5"); await see("Sketch: persona updated"); await shot("15-palette-changed"); await page.keyboard.press("Escape"); await wait(100);
-    if (!(await page.locator("#right-switch").isVisible())) throw new Error("switch not back after Esc");
-  });
-});
+// Segments 2 (C, E1-E2) and 3 (E3-E5) are gone: the Sketch rework removed What Rex knows, the refs list and Palette.
 
 await segment("4-share", async ({ page, wait, shot, see, click, demo, menu, step }) => {
   await step("F1 Export Rex: list, Exporting…, Exported", async () => {
@@ -149,8 +105,8 @@ await segment("5-ines", async ({ page, wait, shot, see, click, menu, step }) => 
     await page.locator(".sketch-row", { hasText: "Untitled sketch" }).click(); await wait(600);
     await menu("Delete"); await wait(150); await see("This can't be undone."); await shot("21-delete"); await page.locator(".btn.danger").click(); await wait(300);
   });
-  await step("B3 Ines studying with first impressions", async () => {
-    await page.locator(".sketch-row", { hasText: "Ines" }).click(); await wait(700); await see(/Studying ·|Picked up where it left off/); await page.click("#rs-knows"); await wait(200); await see("first impressions"); await shot("22-ines-studying");
+  await step("B3 Ines studying", async () => {
+    await page.locator(".sketch-row", { hasText: "Ines" }).click(); await wait(700); await see(/Studying ·|Picked up where it left off/); await shot("22-ines-studying");
   });
   await step("B4 Skip time → finished, voice, faces", async () => {
     await page.click(".demo-pill");
@@ -162,7 +118,7 @@ await segment("5-ines", async ({ page, wait, shot, see, click, menu, step }) => 
     await page.mouse.click(400, 400);
     await wait(1200); await see("Finished studying"); await see("297 references studied"); await shot("23-ines-finished");
   });
-  await step("B6 Keep → card with C8 box → Talk to Ines", async () => { await page.click("#keep"); await wait(700); await see("only you see this"); await shot("24-ines-kept"); await click("Talk to Ines"); await wait(2000); await shot("25-ines-talk"); });
+  await step("B6 Keep → Talk to Ines", async () => { await page.click("#keep"); await wait(700); await shot("24-ines-kept"); await click("Talk to Ines"); await wait(2000); await shot("25-ines-talk"); });
 });
 
 await segment("6-fresh", async ({ page, wait, shot, see, click, demo, step }) => {

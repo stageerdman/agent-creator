@@ -1,6 +1,6 @@
 // Block E: grow and shape. One-pile top-up (E1), the map moves (E2), remove
-// a reference with Undo (E3), the face sheet (E4). The Palette (E5) is gone:
-// DNA is the one home for what an agent is made of (MAGIC-PASS X3).
+// a reference with Undo (E3), the face sheet (E4). The E5 Palette was cut
+// (MAGIC-PASS X3): DNA is the one home for what an agent is made of.
 // design-jony-block-E.md. Every change after Keep is live (X4).
 
 import {
@@ -281,4 +281,3 @@ function useFace(a) {
   logLine(a, o.kind === "photo" ? "Face: new photo" : "Face: new face");
   bus.emit("changed");
 }
-

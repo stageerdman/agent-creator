@@ -632,7 +632,7 @@ body.face-change .face img {
 }
 
 /* A toast arrives: rise 4 px and fade, 200 ms. It never moves again.
-   Errors stay still (E1): no magic on errors. */
+   Error toasts stay still (E1: no magic on errors). */
 .toast:not(.is-error) {
   animation: magic-arrive 200ms ease-out both;
 }

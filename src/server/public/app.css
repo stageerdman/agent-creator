@@ -608,7 +608,7 @@ body.dragging .door { border-style: solid; border-color: var(--accent); }
 .ref-row.hard .ref-why { color: var(--warm-text); opacity: 1; }
 .indent { padding-left: 16px; }
 
-/* ── E Face sheet ─────────────────────────────────────── */
+/* ── E Face sheet ─────────────────────────────── */
 
 .face-options { display: flex; justify-content: center; gap: 16px; padding: 8px 0; }
 .face-option {

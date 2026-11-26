@@ -3,7 +3,7 @@
 
 import {
   P2, hooks, el, btn, bus, store, loadStore, refreshReal, mockAgent, isMock, nameOf, shortName, when,
-  firstSentence, face, sheet, closeSheet, sheetOpen, demoPill, dropOverlay, nowIso, picker,
+  firstSentence, face, sheet, closeSheet, sheetOpen, demoPill, dropOverlay, nowIso, picker, toast,
 } from "/components.js";
 import { mergePersona } from "/sketch.js";
 import * as B from "/block-b.js";
@@ -117,13 +117,18 @@ $("mode-sketcher").addEventListener("click", () => setMode("sketcher"));
 
 hooks.menu = () => {
   const a = nav.current();
-  if (!a || a.real) return [];
+  if (!a || a.real) return null; // null = the shared switcher list (+ New agent, the other agents)
   const name = nameOf(a);
   const items = [];
   if (a.keptAt) items.push({ label: `Export ${name}…`, run: () => F.openExport(a) });
   if (items.length) items.push("-");
   items.push({ label: `Delete ${name || "this sketch"}…`, run: () => openDelete(a) });
   return items;
+};
+// An agent you made gets the shared list, then its own Delete under it.
+hooks.menuTail = () => {
+  const a = nav.current();
+  return a?.real ? ["-", { label: `Delete ${nameOf(a) || "this sketch"}…`, run: () => openDelete(a) }] : [];
 };
 
 // ── A1 Home ───────────────────────────────────────────────────────────────
@@ -201,14 +206,31 @@ function openDelete(a) {
     body: [el("p", "", `${counts}Your files on this Mac aren't touched.`), studying && el("p", "", "Studying stops."), el("p", "", "This can't be undone.")],
     actions: [
       btn("Cancel", () => closeSheet(), "btn", { "data-focus": "" }),
-      btn(`Delete ${name}`, () => {
-        B.stopTimers(a);
-        store.agents = store.agents.filter((x) => x !== a);
-        closeSheet();
-        goHome();
-      }, "btn danger"),
+      btn(`Delete ${name}`, () => (a.real ? deleteReal(a, name) : deleteDemo(a)), "btn danger"),
     ],
   });
+}
+
+function deleteDemo(a) {
+  B.stopTimers(a);
+  store.agents = store.agents.filter((x) => x !== a);
+  closeSheet();
+  goHome();
+}
+
+// An agent you made lives on the server: it goes there first, then here.
+async function deleteReal(a, name) {
+  try {
+    await P2.api(`/api/agents/${a.id}`, { method: "DELETE" });
+  } catch {
+    closeSheet();
+    toast(`Couldn't delete ${name}. Try again.`, null, { error: true });
+    return;
+  }
+  D.forget(a.id);
+  await refreshReal();
+  closeSheet();
+  goHome();
 }
 
 // ── The bridge from the P2 Sketcher to the demo agents ────────────────────
@@ -315,9 +337,11 @@ export async function boot() {
   $("demo-host").replaceChildren(demoPill(demoItems));
   dropOverlay({
     target: () => {
-      const a = nav.current();
-      if (store.screen === "home" || !a || !a.real) return "for a new agent"; // see B.onDrop
-      return nameOf(a) ? `into ${nameOf(a)}'s DNA` : "into the DNA";
+      // Same rule as B.onDrop: Home or a demo agent makes a new agent; else the open one gets the files.
+      const agent = P2.state.agent;
+      if (store.screen === "home" || !agent || mockAgent(agent.id)) return "for a new agent";
+      const name = P2.fields.name.input.value.trim();
+      return name ? `into ${name}'s DNA` : "into the DNA";
     },
     onDrop: (entries) => B.onDrop(entries),
   });

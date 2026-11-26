@@ -71,5 +71,7 @@ export function createAgents({ store, engine }) {
     },
 
     keep: async (id) => (await store.markSaved(id)).draft,
+
+    remove: (id) => store.deleteAgent(id),
   };
 }

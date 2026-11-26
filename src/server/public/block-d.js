@@ -22,7 +22,15 @@ let prefill = null; // startTalkWith
 let menuFor = null; // talk id whose ⋯ menu is open
 let renaming = null; // talk id being renamed
 let hit = null; // { talkId, text } to highlight after opening a search match
-const realTalks = new Map(); // real agent id → talk (memory only)
+// Known limit (issues.txt): Talk with an agent you made is one marked demo
+// line, so its talk is kept in memory only and First words waits for live Talk.
+const realTalks = new Map(); // real agent id → talk
+
+// A deleted agent leaves nothing behind here.
+export function forget(id) {
+  realTalks.delete(id);
+  try { localStorage.removeItem(`ac-first-words-${id}`); } catch {}
+}
 
 // ── Shell ─────────────────────────────────────────────────────────────────
 
@@ -439,8 +447,9 @@ function renderPast() {
   const head = el("div", "side-head", el("h2", "side-title", "Past talks"), el("span", "grow"), btn("New talk", newTalk, "link-btn"));
   const talks = [...(a.talks ?? [])].filter((t) => t.messages.length).sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
   const parts = [head];
+  if (a.real) parts.push(el("p", "side-empty", `Talk is a demo for now, so talks with ${shortName(a)} aren't kept after you close the app.`));
   if (!talks.length) {
-    parts.push(el("p", "side-empty", `Your talks with ${shortName(a)} will be here.`));
+    if (!a.real) parts.push(el("p", "side-empty", `Your talks with ${shortName(a)} will be here.`));
     host.replaceChildren(...parts);
     return;
   }

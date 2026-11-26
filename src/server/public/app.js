@@ -462,8 +462,6 @@ function addCustomLine(msg, { text, onClick }) {
   return line;
 }
 
-const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 function addChangeLine(msg, changed, isFirst = false) {
   // MAGIC-PASS beat 2: the first draft is named for where the portrait forms.
   const line = el("button", "change-line", `${isFirst ? "First sketch · Instructions" : changeLine(changed)} ↗`);
@@ -668,6 +666,8 @@ function onDraft(turn, data) {
   if (result.firstSketch) state.hint = `Ask how ${result.draft.name.trim() || "they"} would answer something real…`;
 }
 
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 // ── MAGIC-PASS: the first sketch (beats 2 and 3), once per agent ──────────
 
 // Beat 2: one warm wash on Instructions. Beat 3: the name settles in after the fill.
@@ -680,20 +680,20 @@ function firstSketch(draft, still) {
   if (!draft.name.trim()) return;
   const id = state.agent.id;
   els.switcherName.textContent = "New agent";
-  const arrive = (calm) => {
+  const arrive = (now = still) => {
     if (state.agent.id !== id) return;
     renderName();
-    if (calm) return;
+    if (now) return;
     els.switcherName.classList.add("name-arrive");
     setTimeout(() => els.switcherName.classList.remove("name-arrive"), 300);
   };
-  if (still) return arrive(true);
-  // W10: a click or key wins at once: the name shows now, with no motion.
-  const now = () => { clearTimeout(timer); stop(); arrive(true); };
-  const stop = () => { removeEventListener("pointerdown", now, true); removeEventListener("keydown", now, true); };
-  const timer = setTimeout(() => { stop(); arrive(false); }, 550); // the fill takes 400 ms; the name lands ~150 ms later
-  addEventListener("pointerdown", now, { capture: true, once: true });
-  addEventListener("keydown", now, { capture: true, once: true });
+  if (still) return arrive();
+  // X5 click wins: any click or key during the wash lands the name at once, still.
+  const skip = () => { clearTimeout(timer); stop(); wrap.classList.remove("first-sketch"); arrive(true); };
+  const stop = () => { removeEventListener("pointerdown", skip, true); removeEventListener("keydown", skip, true); };
+  const timer = setTimeout(() => { stop(); arrive(); }, 550); // the fill takes 400 ms; the name lands ~150 ms later
+  addEventListener("pointerdown", skip, { capture: true, once: true });
+  addEventListener("keydown", skip, { capture: true, once: true });
 }
 
 // ── C1: a still dot on the switch that holds a change you can't see ───────
@@ -783,10 +783,13 @@ function menuItem(onChoose, ...children) {
   return item;
 }
 
+// Menu entries from the blocks: { label, run } or "-" for a rule.
+const hookItems = (list) => list.map((it) => (it === "-" ? el("hr") : menuItem(it.run, el("span", "row-name", it.label))));
+
 async function openMenu() {
   const custom = hooks.menu?.();
   if (custom) {
-    els.menu.replaceChildren(...custom.map((it) => (it === "-" ? el("hr") : menuItem(it.run, el("span", "row-name", it.label)))));
+    els.menu.replaceChildren(...hookItems(custom));
     els.menu.hidden = false;
     els.switcherBtn.setAttribute("aria-expanded", "true");
     return menuItems()[0]?.focus();
@@ -797,6 +800,7 @@ async function openMenu() {
     items.push(menuItem(() => chooseAgent(row.id), el("span", "row-name", row.name), el("span", "row-meta", `${row.status} · ${row.when}`)));
   }
   if (items.length === 2) items.pop();
+  items.push(...hookItems(hooks.menuTail?.() ?? [])); // e.g. Delete for the open agent
   els.menu.replaceChildren(...items);
   els.menu.hidden = false;
   els.switcherBtn.setAttribute("aria-expanded", "true");
