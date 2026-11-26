@@ -4,11 +4,12 @@
 //   node "updates/2026-11-26 AGENT-SELECTION-HOME/checks/check-eraser.mjs"
 // Exit code 1 if any check fails. Screenshots go to checks/shots/ (git-ignored).
 import { mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { webkit } from "playwright-core";
 import { ageLabel, sortAgents } from "../../../src/server/public/agent-list.js";
 
 const BASE = `http://localhost:${process.env.CHECK_PORT || 3505}`;
-const SHOTS = new URL("./shots/", import.meta.url).pathname;
+const SHOTS = fileURLToPath(new URL("./shots/", import.meta.url));
 await mkdir(SHOTS, { recursive: true });
 const out = [];
 const ok = (name, pass, extra = "") => out.push(`${pass ? "ok  " : "FAIL"} ${name}${extra !== "" ? ` (${extra})` : ""}`);
