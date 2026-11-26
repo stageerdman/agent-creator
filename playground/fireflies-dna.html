@@ -174,7 +174,8 @@ function radiusOf(f) { return S.min + (S.max - S.min) * sizeT(f.bytes); }
 let look = null;
 function makeLook() {
   const r = rng(hash(S.name.trim() || 'Untitled'));
-  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r(), master: r(), lastFlash: -1e9 };
+  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r(), lastFlash: -1e9 };
+  look.master = 1 - .4 / look.period;   // the first beat lands 400 ms in, so a new look is seen lit, not dark
 }
 
 /* Where every dot rests, in avatar px. Fits the whole cluster, glow and flash included, inside the box. */
