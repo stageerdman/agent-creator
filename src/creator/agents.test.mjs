@@ -4,7 +4,7 @@ import { mkdtemp, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
-import { createAgents } from "./agents.mjs";
+import { createAgents, shortDescription } from "./agents.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { emptyDraft } from "./draft.mjs";
 import { ClaudeCliError } from "../engine/index.mjs";
@@ -174,5 +174,24 @@ test("agents: empty agents are hidden from the list and reused by create (R8)", 
   const fresh = await agents.create();
   assert.notEqual(fresh.id, empty.id);
   const list = await agents.list();
-  assert.deepEqual(list.map((a) => a.draft), [{ name: "Tony", status: "draft" }]);
+  assert.deepEqual(list.map((a) => a.draft), [{ name: "Tony", status: "draft", description: "" }]);
+});
+
+test("agents: the list carries a short description from persona, else instructions", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]) });
+  const { id } = await agents.create();
+  await agents.edit(id, { name: "Rex", instructions: "Coach hard calls. Ask one question." });
+  assert.equal((await agents.list())[0].draft.description, "Coach hard calls.");
+  await agents.edit(id, { persona: "A tough-love coach. Blunt." });
+  assert.equal((await agents.list())[0].draft.description, "A tough-love coach.");
+});
+
+test("shortDescription: first sentence, cut near 80 characters", () => {
+  assert.equal(shortDescription({}), "");
+  assert.equal(shortDescription({ persona: "  ", instructions: "" }), "");
+  assert.equal(shortDescription({ persona: "Calm, slow to answer" }), "Calm, slow to answer");
+  assert.equal(shortDescription({ persona: "Version 2.5 of Rex. Second." }), "Version 2.5 of Rex.");
+  const long = shortDescription({ persona: "word ".repeat(40) });
+  assert.ok(long.length <= 80 && long.endsWith("…"));
 });

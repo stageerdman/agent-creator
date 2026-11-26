@@ -5,7 +5,16 @@ import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs
 import { addFiles, routeFiles } from "./files.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
-const summary = ({ id, draft, updatedAt }) => ({ id, draft: { name: draft.name, status: draft.status }, updatedAt });
+// The home's one-line description: the first sentence of persona, else of
+// instructions, cut to about 80 characters. Empty when neither has text.
+export function shortDescription({ persona = "", instructions = "" } = {}) {
+  const text = (persona.trim() || instructions.trim()).replace(/\s+/g, " ");
+  const first = text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
+  return first.length > 80 ? `${first.slice(0, 79).trimEnd()}…` : first;
+}
+const summary = ({ id, draft, updatedAt }) => ({
+  id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) }, updatedAt,
+});
 const view = ({ id, draft, sessionId, files = [] }) => ({ id, draft, sessionId, files });
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
