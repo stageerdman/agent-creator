@@ -62,7 +62,7 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 - **Fireflies** in B and C are off at 50, as the concept says. A keeps a few in the clearing.
 
 ## Eraser cuts
-From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: `node .tmp-test/cuts.cjs` covers the cuts, and `node .tmp-test/run.cjs` (the full click-through) still passes for all three concepts. Screenshots are in `.tmp-test/shots/cuts-c-*.png`.
+From `eraser-review.md` (RETURNED, 5 cuts; B had none). All five are made. Checked in Chrome at 1024×768 with 0, 1, 12 and 50 agents: From the repo root, `node "updates/2026-11-26 GLADE-HOME-V2/checks/cuts.cjs"` covers the cuts, and `checks/run.cjs` (the full click-through) still passes for all three concepts. Both need `npm install --no-save playwright-core` and Chrome. Screenshots go to `.tmp-test/shots/`, which is now git-ignored (Eraser's T1 from the earlier review), and are no longer committed. A role that still needs a 3rd line (only Ines's) has a `title` tooltip with the full text.
 
 | ID | Page | What changed | Checked |
 |---|---|---|---|

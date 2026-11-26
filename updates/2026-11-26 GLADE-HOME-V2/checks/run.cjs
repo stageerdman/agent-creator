@@ -1,6 +1,9 @@
 const { chromium } = require('playwright-core');
 const path = require('path');
-const dir = path.resolve(__dirname, '../updates/2026-11-26 GLADE-HOME-V2');
+// Run from the repo root: node "updates/2026-11-26 GLADE-HOME-V2/checks/run.cjs" (needs playwright-core; screenshots go to .tmp-test/shots, git-ignored).
+const dir = path.resolve(__dirname, '..');
+const SHOTS = path.resolve(__dirname, '../../../.tmp-test/shots');
+require('fs').mkdirSync(SHOTS, { recursive: true });
 const url = (f, q = '') => 'file://' + path.join(dir, f) + q;
 const C = [['a', 'concept-a-path.html'], ['b', 'concept-b-field-guide.html'], ['c', 'concept-c-groves.html']];
 const out = [];
@@ -17,13 +20,13 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
 
   await pg.goto(url('index.html'));
   ok((await pg.locator('a[href^="concept-"]').count()) === 3, 'index has 3 links');
-  await pg.screenshot({ path: __dirname + '/shots/index.png' });
+  await pg.screenshot({ path: SHOTS + '/index.png' });
 
   for (const [k, f] of C) {
     for (const n of [0, 1, 12, 50]) {
       await pg.goto(url(f, '?n=' + n));
       await pg.waitForTimeout(150);
-      await pg.screenshot({ path: `${__dirname}/shots/${k}-${n}.png` });
+      await pg.screenshot({ path: `${SHOTS}/${k}-${n}.png` });
       const t = `${k}@${n}`;
       if (n === 0) {
         await step(t, async () => {
@@ -50,7 +53,7 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
         if (n > 1) {
           await pg.keyboard.type('con');
           await pg.waitForTimeout(250);
-          await pg.screenshot({ path: `${__dirname}/shots/${k}-${n}-find.png` });
+          await pg.screenshot({ path: `${SHOTS}/${k}-${n}-find.png` });
           if (k !== 'a') ok(await pg.evaluate(() => document.activeElement.closest('[data-name]')?.dataset.name) === target, `${t} typing focuses ${target}`);
           await pg.keyboard.press('Enter');
         } else {
@@ -96,14 +99,14 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
         ok(await pg.locator('[data-name="Nell"]').count() === 1, `${t} Nell on Home`);
         if (k === 'c') {
           ok(await pg.isVisible('#planted') && (await pg.textContent('#planted')) === 'Nell is in Home & life. Move her in Edit.', `${t} planted line`);
-          await pg.screenshot({ path: `${__dirname}/shots/${k}-${n}-planted.png` });
+          await pg.screenshot({ path: `${SHOTS}/${k}-${n}-planted.png` });
           await pg.click('[data-name="Nell"] .ed'); await pg.click('#back');
           ok(await pg.isHidden('#planted'), `${t} planted gone next visit`);
         }
         if (k === 'b' || k === 'c') {
           const fit = await pg.evaluate(k => { const el = document.querySelector(k === 'b' ? '#sheet' : '#groves'); return el.scrollHeight <= el.clientHeight + 1; }, k);
           ok(fit, `${t} still fits after Nell`);
-          await pg.screenshot({ path: `${__dirname}/shots/${k}-${n}-nell.png` });
+          await pg.screenshot({ path: `${SHOTS}/${k}-${n}-nell.png` });
         }
       });
     }

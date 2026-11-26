@@ -127,7 +127,7 @@ const Concept = {
     let h = `<div class="grove solid" role="group" aria-label="${esc(g)}"><h2>${esc(g)}</h2>`;
     for (const a of list) {
       const st = a.state === 'ready' ? '' : `<span class="st ell">${words(a)}</span>`;
-      h += `<div class="gr" data-name="${esc(a.name)}"><button class="open" aria-label="Chat with ${esc(a.name)}, ${esc(a.role)}, ${words(a)}">${mark(a.state)}<span class="tx"><span class="nm">${esc(a.name)}</span><span class="rl">${esc(a.role)}</span>${st}</span></button><button class="ed" aria-label="Edit ${esc(a.name)}">Edit</button></div>`;
+      h += `<div class="gr" data-name="${esc(a.name)}"><button class="open" aria-label="Chat with ${esc(a.name)}, ${esc(a.role)}, ${words(a)}">${mark(a.state)}<span class="tx"><span class="nm">${esc(a.name)}</span><span class="rl" title="${esc(a.role)}">${esc(a.role)}</span>${st}</span></button><button class="ed" aria-label="Edit ${esc(a.name)}">Edit</button></div>`;
     }
     return h + `</div>`;
   },

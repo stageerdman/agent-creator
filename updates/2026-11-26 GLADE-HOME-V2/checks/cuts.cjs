@@ -1,7 +1,10 @@
 // Checks for Eraser's Glade Home v2 cuts (A1, C1-C4) at 1024x768.
 const { chromium } = require('playwright-core');
 const path = require('path');
-const dir = path.resolve(__dirname, '../updates/2026-11-26 GLADE-HOME-V2');
+// Run from the repo root: node "updates/2026-11-26 GLADE-HOME-V2/checks/cuts.cjs" (needs playwright-core; screenshots go to .tmp-test/shots, git-ignored).
+const dir = path.resolve(__dirname, '..');
+const SHOTS = path.resolve(__dirname, '../../../.tmp-test/shots');
+require('fs').mkdirSync(SHOTS, { recursive: true });
 const url = (f, q = '') => 'file://' + path.join(dir, f) + q;
 const out = [];
 const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
@@ -56,7 +59,7 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
     ok(!r.ask, `${t} C3 no "Who do you have in mind?" on Home`);
     ok(r.chipBorder === '0px' && r.chipBg === 'rgba(0, 0, 0, 0)', `${t} C4 chip has no box (${r.chipBorder}, ${r.chipBg})`);
     ok(!r.plantedInBtn, `${t} C2 #planted not inside the button`);
-    await pg.screenshot({ path: `${__dirname}/shots/cuts-c-${n}.png` });
+    await pg.screenshot({ path: `${SHOTS}/cuts-c-${n}.png` });
 
     // C2: after Keep, planted shows, clicking it does nothing, button name is just New agent.
     await pg.click('#door');
@@ -70,7 +73,7 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
     ok(!name.includes('Nell'), `${t} C2 button name is "${name}"`);
     const fit = await pg.evaluate(() => { const g = document.querySelector('#groves'); return g.scrollHeight <= g.clientHeight + 1; });
     ok(fit, `${t} still fits after Nell`);
-    await pg.screenshot({ path: `${__dirname}/shots/cuts-c-${n}-planted.png` });
+    await pg.screenshot({ path: `${SHOTS}/cuts-c-${n}-planted.png` });
   }
   // C at 0: Home is the New agent screen, the question is there.
   await pg.goto(url('concept-c-groves.html', '?n=0'));
