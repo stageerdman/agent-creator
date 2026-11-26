@@ -1,5 +1,93 @@
 # 04 · Eraser — clutter check and sign-off: the 56 px cluster playground
 
+## Update 2 (2026-11-26): pace lighting, 1 dot per MB, density at 56 px
+
+File checked: `playground/fireflies-dna.html` (Jony, commits 2a8e86f + 5f3d08b).
+Checks: the same `checks/run.cjs`. It now runs **120 checks**: the 45 earlier ones,
+plus 2 code checks and 73 Update 2 checks. Four of the earlier checks were rewritten
+because Update 2 changed the rule they tested (as Jony's notes asked):
+"one dot per file" became "dots = sum of ceil(MB)"; "bigger file → bigger dot" became
+"bigger file → more dots, full dots one size, last dot no bigger"; "radius within
+min–max" became "radius between the 2 px floor and max"; and the 7-topics check now
+waits for the queue first. Everything goes through `window.dna` (`addFiles`,
+`queueIdle`, `dotCount`, `litOrder`, `getDots`). The pixel checks use a probe that
+copies the avatar every frame and counts how many old dots are bright at once.
+
+### Goal
+Watch an agent's cluster grow as files arrive: each file lights as its own burst,
+in the order it was added, and how much a file holds can be read at 56 px.
+
+### Step count (most common path)
+
+| # | Step | Mark | Why |
+|---|------|------|-----|
+| 0 | Open: the cluster is already lit, and the first beat comes at 400 ms | Keep | Zero steps |
+| 1 | Add a file (**Add**, or `addFiles` for many) | Keep | One step. The pace, order and dot count all come from the files themselves |
+| — | Watch it light | — | Takes no step. There's no play button, speed control or replay, and none is needed |
+
+Current: **1 step per change, 0 to first view.** Target: the same. Update 2 added
+no control, no choice and no setting. It took one away: the hover flash.
+
+### Clutter
+- **One way to trigger the animation.** Only two things in the code start a flash: a dot
+  landing and the idle beat. The page listens only to `change`, `input`, `submit` and `click`.
+  There are no hover, pointer or focus triggers. In pixels: hovering the row and focusing
+  the name lit **0 %** of the dots.
+- **No full-cluster flash while files arrive.** When 4 files were added, **0 %** of the old
+  dots were bright at the same time across 140 frames. When idle, the beat lights
+  **100 %**, which shows the probe really sees flashes. The beat comes back after the queue.
+- **No glow hiding the pace.** At 60 dots or fewer, empty space stays at alpha **0/255**
+  while files arrive. Glow only starts past 60 dots, and the note says so.
+- **Nothing is double.** `addFile` (the UI) and `addFiles` (a drop of many) use the
+  same queue, so there's one pace and not two.
+
+### Results: Chrome and WebKit, 120/120 each
+
+| Check | Chrome | WebKit |
+|---|---|---|
+| All 45 earlier checks (4 rewritten for 1 dot per MB, see above) | ok | ok |
+| Code: no hover/pointer/focus trigger; only 2 places start a flash | ok | ok |
+| Dot count = sum of max(1, ceil(bytes/1 MiB)): 20 MB→20, 300 KB→1, 0 B→1, 1 MiB→1, 1 MiB+1 B→2, 3.2 MB→4; total 12 + 29 = 41; a duplicate id is skipped (normal + reduced) | ok | ok |
+| Lit grouped by file, in added order, litAt strictly increasing, never two files at once (smallest gap 125 ms in a 6-file drop) (normal + reduced) | ok | ok |
+| Normal pace, 2-file drop: 90 ms between dots, 250 ms between files | 90 / 250.0 | 90 / 250.0 |
+| 40 MB file: 40 dots in | 2400 ms | 2400 ms |
+| 15 files queued: all lit, in order (normal / reduced) | 2.31 s / 1.59 s | 2.31 s / 1.59 s |
+| Reduced: each file in one step (span 0.002 ms), 250 ms kept between files | ok | ok |
+| Density, no overlap, r ≥ 2 px, inside 0–56 with flash growth: 12 dots (r 2.37–4.94, gap 0.25 px), 20 (2.00–3.94, 0.48), 40 (2.00–2.89, 0.27) (normal + reduced) | ok | ok |
+| Past 60: 61 and 90 dots → 60 placed, no overlap, the glow note shows; at 40 or fewer, no note | ok | ok |
+| No full-cluster flash on add (0 %); idle beat 100 %; empty space alpha 0 | ok | ok |
+| First beat on open lights the cluster (ms after navigation, load included) | 518 | 857 |
+| First beat after rename (400 ms beat + 120 ms rise) | 481 ms | 461 ms |
+| Hover and focus on the row: no flash | 0 % | 0 % |
+| Console clean, every page | ok | ok |
+| Start: `npm test` 147 pass, 0 fail (1 live test skipped); the app server answers `GET /` 200 "Agent Creator" (no app code changed in Update 2) | ok | — |
+
+Findings for Jony: **none.** No F items, so there was nothing to recheck.
+
+Note on Chrome: in this environment the whole headless Chrome browser sometimes
+quits mid-run (seen again today). The script now reruns a block whose browser
+dropped, up to 3 times, in a fresh browser, and throws away that block's partial
+results. The final Chrome run passed 120/120.
+
+### Watch later (when this moves into agent-home.html)
+- **Hurry starts at 4+ waiting files.** A 6-file drop runs at half pace (45 ms steps,
+  125 ms gaps). It still reads file by file. Don't lower the threshold again.
+- **The "Past 60 dots…" note** is playground text. In the real home row, the glow
+  has to explain itself or say nothing. Don't add a caption under a 56 px avatar.
+- **Partial last dots** go to glow once past 60, so a 1.5 MB file can show only one
+  spot. That's fine, but don't add a counter to "fix" it.
+- Keep `addFile` and `addFiles` on the one queue. A second path with its own timing
+  would be a second way to animate.
+
+### Sign-off (Update 2)
+**APPROVED**: Eraser, 2026-11-26. Chrome and WebKit, normal and reduced motion,
+**120/120** each. One step per change and nothing to cut. The pace is the only
+animation you see when files arrive.
+
+---
+
+## Earlier round
+
 File checked: `playground/fireflies-dna.html` (Jony, commit 03ae8fd).
 Checks: `checks/run.cjs` (run from the repo root:
 `node "updates/2026-11-26 FIREFLIES-DNA-CLUSTER/checks/run.cjs" chrome|webkit`,
