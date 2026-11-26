@@ -783,10 +783,13 @@ function menuItem(onChoose, ...children) {
   return item;
 }
 
+// Menu entries from the blocks: { label, run } or "-" for a rule.
+const hookItems = (list) => list.map((it) => (it === "-" ? el("hr") : menuItem(it.run, el("span", "row-name", it.label))));
+
 async function openMenu() {
   const custom = hooks.menu?.();
   if (custom) {
-    els.menu.replaceChildren(...custom.map((it) => (it === "-" ? el("hr") : menuItem(it.run, el("span", "row-name", it.label)))));
+    els.menu.replaceChildren(...hookItems(custom));
     els.menu.hidden = false;
     els.switcherBtn.setAttribute("aria-expanded", "true");
     return menuItems()[0]?.focus();
@@ -797,6 +800,7 @@ async function openMenu() {
     items.push(menuItem(() => chooseAgent(row.id), el("span", "row-name", row.name), el("span", "row-meta", `${row.status} · ${row.when}`)));
   }
   if (items.length === 2) items.pop();
+  items.push(...hookItems(hooks.menuTail?.() ?? [])); // e.g. Delete for the open agent
   els.menu.replaceChildren(...items);
   els.menu.hidden = false;
   els.switcherBtn.setAttribute("aria-expanded", "true");

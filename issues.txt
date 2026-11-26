@@ -32,6 +32,17 @@
       agent or only that chat (journeys §10 Q1), and how the P10 persona
       rating avoids being a fake number (Q2).
 
+- [ ] Known limit (final walk 2026-11-26, big issues 2 and 3): Talk with
+      an agent you made is still one marked demo line ("(Demo) [Name] would
+      answer here."), not a real answer. Two things follow, both on purpose
+      until live Talk is built: (a) "First words" never shows for an agent
+      you made, because the mark only goes on a real answer
+      (block-d.js send(), `!reply.mock`); (b) that talk lives in memory only
+      (block-d.js `realTalks`) and is gone on reload — saving demo lines to
+      disk would keep nothing of value. When live Talk lands it needs a
+      talks store next to agent.json (agentStore.mjs) and a route for it;
+      then drop the demo line and First words works as written.
+
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
