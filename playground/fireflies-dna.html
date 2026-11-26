@@ -425,7 +425,7 @@ function place(it) {
   // Find a spot in the unit square that keeps seed heads apart (field is resized later; positions stay relative).
   const W = Math.max(300, view.w - 2 * PAD), H = Math.max(200, view.h - 2 * PAD);
   const rad = headRadius(it.dots) + 10;
-  let best = null, bestGap = -1;
+  let best = null, bestGap = -Infinity;   // crowded field: take the roomiest spot found
   for (let k = 0; k < 60; k++) {
     const nx = layoutRand(), ny = layoutRand();
     let gap = Infinity;
@@ -768,6 +768,7 @@ const redots = () => {
     it.dots = nd.map((d, k) => Object.assign(it.dots[k] || { sparkAt: -1e9, sparkPow: 0, x: 0, y: 0 }, { r: d.r, dx: d.dx, dy: d.dy }));
     it.dots.length = nd.length;
   }
+  refreshFoot();
 };
 bindSlider('minR', 'minR', v => v.toFixed(2) + ' px', redots);
 bindSlider('maxR', 'maxR', v => v.toFixed(1) + ' px', redots);
