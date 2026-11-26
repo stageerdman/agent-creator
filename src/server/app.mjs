@@ -18,7 +18,7 @@ const log = createLogger("server");
 const PUBLIC = new URL("./public/", import.meta.url);
 // Every script the page imports; a module missing here 404s and the page stays blank.
 const PAGE_MODULES = ["app", "sketch", "tab-focus", "components",
-  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f", "agent-list", "firefly-gather"];
+  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f", "agent-list", "firefly-gather", "fireflies-dna"];
 
 function staticFile(name, contentType) {
   return async (_req, res) => {
