@@ -45,3 +45,15 @@ With reduced motion, birth completes at once (so Skip is hidden).
 - State label is "Studying · n of m" (the concept said "Learning"): plainer and closer to what is happening.
 - Neon has no day version; the concept lives at night.
 - Index fireflies blink on their own; a synced blink looked like a jump, so it was dropped.
+
+## Restore: Fireflies home is Start again (2026-11-26, Jony)
+
+Glade Home v2 is no longer the direction. Start now opens this page, unchanged.
+
+- **Source commit:** `c83a7b3^` (= `ecdafbe`, the last change to this file: Eraser's MAGIC-CONCEPTS cuts d037be7 + the ecdafbe re-check). `concepts.md` (Concept A, Glade fireflies, Home moment) describes the same page, so no other commit is a candidate.
+- **`glade-fireflies.html` here:** never changed after the source commit. `git diff c83a7b3^ -- "updates/2026-11-25 MAGIC-CONCEPTS/glade-fireflies.html"` is empty.
+- **Restored file:** `src/server/public/glade-fireflies.html`, a byte-for-byte copy, so the built Mac app bundles it (the app only ships `src/`). `git diff --no-index` against the source shows nothing. It is self-contained (inline CSS, JS and mock data, no shared core, no assets), so it needs no other files. I made no path fixes.
+- **The one line repointed:** `src/server/app.mjs`, `"GET /": staticFile("index.html", …)` → `"GET /": staticFile("glade-fireflies.html", …)`. Start opens the Tauri app, which opens the server's `/`, so `/` now serves Fireflies. The page opens on Home (no hash → `home`).
+- **Glade Home v2:** Start never linked to it. `updates/2026-11-26 GLADE-HOME-V2/` and `GLADE-HOME-CONCEPTS/` stay untouched. No app code points at them.
+- **Known, left as before:** the page's "← All concepts" link goes to `index.html`, which the app doesn't serve, so it 404s inside the app. Fixing it would change the file. The old app screen (`public/index.html`) is still in the repo but Start no longer shows it.
+- **Checked:** `npm test` passes (121 pass, 1 live skip). The server on PORT 3505 serves `/` identical to the source file (40418 chars).

@@ -27,7 +27,7 @@ function staticFile(name, contentType) {
 
 export function createApp(engine, { store = createAgentStore() } = {}) {
   const routes = {
-    "GET /": staticFile("index.html", "text/html; charset=utf-8"),
+    "GET /": staticFile("glade-fireflies.html", "text/html; charset=utf-8"),
     "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
     "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
     ...Object.fromEntries(PAGE_MODULES
