@@ -78,6 +78,8 @@
   .slide + .slide { margin-top: 6px; }
   .slide input { width: 100%; margin: 0; height: 24px; accent-color: var(--fly); }
   .slide output { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .note { margin-top: -28px; text-align: center; min-height: 0; }
+  .note:empty { display: none; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -93,6 +95,7 @@
     </div>
     <canvas class="preview" id="preview" data-role="preview" role="img"></canvas>
     <ul class="topics" id="topics" aria-label="Topic colours"></ul>
+    <p class="quiet note" id="note"></p>
   </section>
 
   <aside class="panel">
@@ -109,8 +112,8 @@
 
     <section aria-labelledby="hSize">
       <h2 id="hSize">Dot size</h2>
-      <div class="slide"><label for="minR">Smallest</label><input id="minR" type="range" min="1" max="9" step="0.25"><output for="minR"></output></div>
-      <div class="slide"><label for="maxR">Largest</label><input id="maxR" type="range" min="1" max="9" step="0.25"><output for="maxR"></output></div>
+      <div class="slide"><label for="minR">Smallest</label><input id="minR" type="range" min="2" max="9" step="0.25"><output for="minR"></output></div>
+      <div class="slide"><label for="maxR">Largest</label><input id="maxR" type="range" min="2" max="9" step="0.25"><output for="maxR"></output></div>
     </section>
   </aside>
 </main>
@@ -139,11 +142,17 @@ function fmtSize(b) {
 }
 
 /* ---------- the cluster's rules ---------- */
-const BOX = 56, MID = BOX / 2, LIMIT = [1, 9], GROW = 1.3;   // a flash grows a dot by up to 30 %
+const BOX = 56, MID = BOX / 2, LIMIT = [2, 9], GROW = 1.3;   // a flash grows a dot by up to 30 %
+const MB = 1048576;            // one dot holds one MB
+const FLOOR = 2;               // no dot is ever smaller than a 2 px radius
+const PLACED = 60;             // up to 60 dots get their own spot; past that, a dot only adds glow
+const TOUCH = .25;             // px of dark kept between two neighbouring dots at rest
+/* The pace. A file's dots land one by one; the next file waits for the last dot of the one before. */
+const STEP = 90, GAP = 250, PER_FILE = 2500;
 /* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
 function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
-/* The golden-angle spiral. Unlike the home row, a slot's place doesn't depend on how
-   many dots there are, so adding a file never moves the others (Columbo W1). */
+/* The golden-angle spiral. A slot's place doesn't depend on how many dots there are,
+   so a new dot never moves the others (Columbo W1); only the zoom changes. */
 function slot(i, seed) { const r = 10 * Math.sqrt(i + .5), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r]; }
 
 /* Fixed topic hue slots from the last FIREFLIES-DNA round, on its cool arc (110-280 deg). */
@@ -158,17 +167,26 @@ function hslHex(h, s, l) {
   const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
   return '#' + f(0) + f(8) + f(4);
 }
-/* File size → radius, on one fixed log scale (100 B … 3 GB), so a new big file never shrinks the others. */
-function sizeT(bytes) { return clamp((Math.log10(Math.max(1, bytes)) - 2) / 7.5, 0, 1); }
+/* 1 dot per MB: dots = max(1, ceil(bytes / MB)). Every full dot holds 1 MB; the last one
+   holds what is left, and its size says how full it is (area follows the bytes). */
+const dotsFor = bytes => Math.max(1, Math.ceil(bytes / MB));
+function fills(bytes) {
+  const n = dotsFor(bytes), out = new Array(n).fill(1);
+  out[n - 1] = bytes <= 0 ? 0 : Math.sqrt((bytes - (n - 1) * MB) / MB);
+  return out;
+}
 
 /* ---------- state ---------- */
 const S = { name: 'Juniper', min: 2.5, max: 6 };
-let files = [];                       // { name, bytes, topic, slot, bornT, flashT, seedA, seedB }
+let files = [];                       // { id, name, bytes, topic, dots: [{ fill, slot, litAt, flashT, seedA, seedB, rs }] }
 const topicSlot = new Map();          // topic → hue slot, in order of first appearance; never reassigned
 function slotOf(topic) { if (!topicSlot.has(topic)) topicSlot.set(topic, topicSlot.size); return topicSlot.get(topic); }
 function colorOf(topic) { return topicColor(slotOf(topic)); }
-function freeSlot() { const used = new Set(files.map(f => f.slot)); let i = 0; while (used.has(i)) i++; return i; }
-function radiusOf(f) { return S.min + (S.max - S.min) * sizeT(f.bytes); }
+const allDots = () => files.flatMap(f => f.dots.map(d => (d.f = f, d)));
+const lit = () => allDots().filter(d => d.litAt != null);
+function freeSlot() { const used = new Set(allDots().map(d => d.slot)); let i = 0; while (used.has(i)) i++; return i < PLACED ? i : null; }
+/* After a removal, glow-only dots take the freed spots, oldest first. */
+function refillSlots() { for (const d of lit().sort((a, b) => a.litAt - b.litAt)) if (d.slot == null) { const s = freeSlot(); if (s == null) break; d.slot = s; } }
 
 /* The agent's own look, from its name only: spiral turn, outline, tilt and beat. */
 let look = null;
@@ -178,27 +196,72 @@ function makeLook() {
   look.master = 1 - .4 / look.period;   // the first beat lands 400 ms in, so a new look is seen lit, not dark
 }
 
-/* Where every dot rests, in avatar px. Fits the whole cluster, glow and flash included, inside the box. */
-let layout = { scale: .6, pts: new Map() };
-function relayout() {
-  const pts = new Map(); let far = 0, big = 0;
-  const cs = Math.cos(look.tilt), sn = Math.sin(look.tilt);
-  for (const f of files) {
-    const j = rng(hash(S.name + '|' + f.name));
-    let [u, v] = slot(f.slot, look.seed);
-    const k = 1 + (j() - .5) * .3, w = (j() - .5) * 3;          // a little of the name in each dot
-    u = u * k + w; v = (v * k + w) * look.squash;
-    const x = u * cs - v * sn, y = u * sn + v * cs;
-    pts.set(f, { ux: x, uy: y });
-    far = Math.max(far, Math.hypot(x, y)); big = Math.max(big, radiusOf(f));
+/* ---------- the queue: files light in the order they were added ---------- */
+const queue = [];                     // files waiting, oldest first
+let cur = null;                       // { f, i, step, gap, at }: the file lighting now
+let nextStart = -1e9;                 // the earliest moment the next file may start (after the gap)
+let quietUntil = -1e9;                // the beat rests while files arrive, so the pace is all you see
+const litLog = [];                    // [{ fileId, litAt }] in the order dots lit
+function tick(now) {
+  let changed = false;
+  for (;;) {
+    if (!cur) {
+      if (!queue.length) break;
+      const f = queue.shift(), n = f.dots.length;
+      // A long queue hurries (shorter steps and gaps), but every file still lights, in order.
+      const hurry = Math.max(.12, 1 / (1 + queue.length / 2));
+      cur = { f, i: 0, step: Math.min(STEP, (PER_FILE - 100) / Math.max(1, n - 1)) * hurry, gap: Math.max(24, GAP * hurry), at: Math.max(nextStart, f.queuedAt) };
+    }
+    if (cur.at > now) break;
+    const f = cur.f;
+    if (reduced) {                    // one quiet step per file: every dot in the same frame
+      f.dots.forEach((d, k) => lightDot(f, d, cur.at + k * 1e-3));
+      cur.i = f.dots.length;
+    } else { lightDot(f, f.dots[cur.i], cur.at); cur.i++; }
+    changed = true;
+    if (cur.i >= f.dots.length) { const end = f.dots[f.dots.length - 1].litAt; nextStart = end + cur.gap; quietUntil = end + 1500; cur = null; }
+    else cur.at += cur.step;
   }
-  const room = MID - 1 - GROW * big;
-  layout = { scale: far > 0 ? Math.min(.62, room / far) : .62, pts };
+  if (changed) { relayout(); render(); }
 }
-function restingDot(f) {
-  const p = layout.pts.get(f);
-  return { x: MID + p.ux * layout.scale, y: MID + p.uy * layout.scale, r: radiusOf(f) };
+function lightDot(f, d, at) { d.litAt = at; d.flashT = at; d.slot = freeSlot(); litLog.push({ fileId: f.id, litAt: at }); }
+const queueIdle = () => !cur && !queue.length;
+
+/* ---------- where every dot rests ----------
+   Up to 12 dots: the user's size range. Above 12: size × sqrt(12 / N). Then, if neighbours
+   would touch or the cluster would leave the 56 px box, every dot shrinks toward the 2 px
+   floor together (big stays bigger). Up to 60 dots keep a spot; more only add glow. */
+let layout = { scale: .6, pts: new Map(), glow: [] };
+function baseR(d) { return S.min + (S.max - S.min) * d.fill; }
+function relayout() {
+  const placed = lit().filter(d => d.slot != null), N = placed.length;
+  const sq = 1 - (1 - look.squash) * Math.min(1, Math.pow(12 / Math.max(1, N), 2));   // dense clusters round out to keep their spacing
+  const cs = Math.cos(look.tilt), sn = Math.sin(look.tilt), k = N > 12 ? Math.sqrt(12 / N) : 1;
+  const P = placed.map(d => {
+    const [u, v0] = slot(d.slot, look.seed), v = v0 * sq;
+    return { d, ux: u * cs - v * sn, uy: u * sn + v * cs, r0: Math.max(FLOOR, baseR(d) * k) };
+  });
+  let scale = .62, q = 1;
+  for (let it = 0; it < 80; it++) {
+    const r = p => FLOOR + (p.r0 - FLOOR) * q;
+    let sBox = Infinity, sNeed = 0;
+    for (const p of P) { const far = Math.hypot(p.ux, p.uy); if (far > 0) sBox = Math.min(sBox, (MID - 1 - GROW * r(p)) / far); }
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+      const du = Math.hypot(P[i].ux - P[j].ux, P[i].uy - P[j].uy);
+      sNeed = Math.max(sNeed, (r(P[i]) + r(P[j]) + TOUCH) / du);
+    }
+    if (sNeed <= sBox || q === 0) { scale = Math.max(sNeed, Math.min(.62, sBox)); if (sNeed > sBox) scale = sBox; break; }
+    q = q < .02 ? 0 : q * .94;
+  }
+  const pts = new Map();
+  for (const p of P) pts.set(p.d, { ux: p.ux, uy: p.uy, r: FLOOR + (p.r0 - FLOOR) * q });
+  // Glow: one soft light per topic, by how many extra MB it holds. Steady, capped, never a pulse.
+  const extra = new Map(); let E = 0;
+  for (const d of lit()) if (d.slot == null) { E++; extra.set(d.f.topic, (extra.get(d.f.topic) || 0) + 1); }
+  const level = E ? Math.min(.3, .06 * Math.log2(1 + E)) : 0;
+  layout = { scale, pts, glow: [...extra].map(([tp, n]) => ({ color: colorOf(tp), a: level * n / E })), extra: E };
 }
+function restingDot(d) { const p = layout.pts.get(d); return { x: MID + p.ux * layout.scale, y: MID + p.uy * layout.scale, r: p.r }; }
 
 /* ---------- drawing ---------- */
 const sprites = new Map();
@@ -227,51 +290,64 @@ function draw(ctx, k, list) {
 
 let last = clock();
 function frame(t) {
+  tick(t);
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   DPR = Math.min(2, window.devicePixelRatio || 1);
   fitCanvas(avatar, BOX); fitCanvas(preview, BOX * 4);
-  shown = reduced ? layout.scale : shown + (layout.scale - shown) * Math.min(1, dt * 6);   // a zoom, never a reshuffle
+  const ease = reduced ? 1 : Math.min(1, dt * 6);
+  shown += (layout.scale - shown) * ease;                                    // a zoom, never a reshuffle
 
+  // The beat: all lit dots flash together, as in the home row. It rests while files arrive.
   let beat = false;
-  if (!reduced) { look.master += dt / look.period; if (look.master >= 1) { look.master -= 1; beat = true; look.lastFlash = t; } }
+  if (!reduced) { look.master += dt / look.period; if (look.master >= 1) { look.master -= 1; if (queueIdle() && t >= quietUntil) { beat = true; look.lastFlash = t; } } }
   const list = [];
-  for (const f of files) {
-    const p = layout.pts.get(f), r = radiusOf(f), age = t - f.bornT;
+  for (const g of layout.glow) list.push({ x: MID, y: MID, s: BOX - 4, a: g.a, img: spriteOf(g.color) });
+  for (const [d, p] of layout.pts) {
+    d.rs = d.rs == null ? p.r : d.rs + (p.r - d.rs) * ease;
+    const age = t - d.litAt;
     let ux = p.ux, uy = p.uy, a, s;
     if (reduced) {
-      a = age < 1200 ? 1 : .75; s = 2 * r;                                     // a new file simply appears, lit for a moment
+      a = age < 1200 ? 1 : .75; s = 2 * d.rs;                                 // a new file simply appears, lit for a moment
     } else {
-      if (age < 900) {                                                       // arrival: loose just outside, then joins (the learning loop)
-        const q = easeInOut(age / 900), out = 1.35 + .15 * Math.sin(f.seedA);
-        ux = p.ux * (out + (1 - out) * q); uy = p.uy * (out + (1 - out) * q);
-      } else if (beat) f.flashT = t + f.seedA * 4;                            // up to ~25 ms apart, like the real thing
-      ux += Math.sin(t / 8000 * 6.283 + f.seedA) * 1.5; uy += Math.cos(t / 8000 * 6.283 + f.seedB) * 1.5;
-      const b = flash(t - f.flashT);
-      a = .12 + .8 * b; s = 2 * r * (1 + (GROW - 1) * b);
+      if (age < 300) { const m = 1.25 - .25 * easeOut(age / 300); ux *= m; uy *= m; }   // a dot lands: from just outside, in 300 ms
+      else if (beat && age > 1200) d.flashT = t + d.seedA * 4;                // up to ~25 ms apart, like the real thing
+      ux += Math.sin(t / 8000 * 6.283 + d.seedA) * 1.5; uy += Math.cos(t / 8000 * 6.283 + d.seedB) * 1.5;
+      const b = flash(t - d.flashT);
+      a = .12 + .8 * b; s = 2 * d.rs * (1 + (GROW - 1) * b);
     }
-    list.push({ x: MID + ux * shown, y: MID + uy * shown, s, a, img: spriteOf(colorOf(f.topic)) });
+    list.push({ x: MID + ux * shown, y: MID + uy * shown, s, a, img: spriteOf(colorOf(d.f.topic)) });
   }
   draw(actx, 1, list); draw(pctx, 4, list);
   requestAnimationFrame(frame);
 }
-function notice() { const t = clock(); if (reduced || t - look.lastFlash < 700) return; files.forEach(f => { f.flashT = t; }); look.lastFlash = t; }
 
 /* ---------- files ---------- */
 function topicFromName(name) { const i = name.indexOf('/'); return i > 0 ? name.slice(0, i).trim().toLowerCase() : 'other'; }
-function addFile(o, born) {
-  const name = String(o && o.name || '').trim(), bytes = Math.max(0, +(o && o.bytes) || 0);
-  if (!name || files.some(f => f.name === name)) return false;
+function makeFile(o, now) {
+  const name = String(o && o.name || '').trim();
+  const bytes = Math.max(0, +(o && (o.sizeBytes != null ? o.sizeBytes : o.bytes)) || 0);
+  const id = String(o && o.id != null && o.id !== '' ? o.id : name);
+  if (!name || files.some(f => f.id === id)) return null;
   const topic = String(o.topic == null || o.topic === '' ? topicFromName(name) : o.topic).trim().toLowerCase();
-  const j = rng(hash('fly:' + name));
-  const f = { name, bytes, topic, slot: freeSlot(), bornT: born ? clock() : -1e9, flashT: born ? clock() + 700 : -1e9, seedA: j() * 6.28, seedB: j() * 6.28 };
-  slotOf(topic); files.push(f);
-  relayout(); render();
-  return true;
+  const dots = fills(bytes).map((fill, k) => { const j = rng(hash('fly:' + id + ':' + k)); return { fill, slot: null, litAt: null, flashT: -1e9, seedA: j() * 6.28, seedB: j() * 6.28 }; });
+  slotOf(topic);
+  return { id, name, bytes, topic, dots, queuedAt: now };
 }
-function removeFile(name) {
-  const i = files.findIndex(f => f.name === name); if (i < 0) return false;
+/* Files join the end of the queue, in the order given. The first dot of an idle queue lights at once. */
+function addFiles(list) {
+  const now = clock(); let n = 0;
+  for (const o of [].concat(list || [])) { const f = makeFile(o, now); if (!f) continue; files.push(f); queue.push(f); n++; }
+  if (n) { render(); tick(now); }
+  return n;
+}
+function addFile(o) { if (!o || files.some(f => f.name === String(o.name || '').trim())) return false; return addFiles([o]) === 1; }
+function removeFile(key) {
+  const i = files.findIndex(f => f.id === key || f.name === key); if (i < 0) return false;
+  const f = files[i];
   files.splice(i, 1);                                                         // goes at once: no magic on deletion
-  relayout(); render();
+  const qi = queue.indexOf(f); if (qi >= 0) queue.splice(qi, 1);
+  if (cur && cur.f === f) { const done = f.dots.filter(d => d.litAt != null); nextStart = done.length ? done[done.length - 1].litAt + cur.gap : nextStart; cur = null; }
+  refillSlots(); relayout(); render();
   return true;
 }
 function setSizeRange(a, b) {
@@ -296,7 +372,7 @@ function render() {
     x.setAttribute('aria-label', 'Remove ' + f.name);
     x.addEventListener('click', () => {
       const i = [...ul.children].indexOf(li);
-      removeFile(f.name); say('Removed ' + f.name);
+      removeFile(f.id); say('Removed ' + f.name);
       const b = ul.children[Math.min(i, ul.children.length - 1)];           // keep the keyboard in the list
       (b ? b.querySelector('.x') : $('#fname')).focus();
     });
@@ -309,21 +385,23 @@ function render() {
     sw.className = 'sw'; sw.style.background = colorOf(tp);
     li.append(sw, tp + ' ' + counts.get(tp)); tl.appendChild(li);
   });
-  const nf = files.length, nt = counts.size;
+  const nf = files.length, nt = counts.size, nd = lit().length;
   $('#desc').textContent = nf ? `${nf} file${nf === 1 ? '' : 's'} · ${nt} topic${nt === 1 ? '' : 's'}` : 'No files yet';
-  preview.setAttribute('aria-label', `${S.name.trim() || 'Untitled'}’s cluster: ${nf ? `${nf} lights in ${nt} topic colours` : 'no lights yet'}`);
+  $('#note').textContent = layout.extra ? `Past ${PLACED} dots, each extra MB adds glow instead of a dot.` : '';
+  preview.setAttribute('aria-label', `${S.name.trim() || 'Untitled'}’s cluster: ${nd ? `${nd} light${nd === 1 ? '' : 's'} in ${nt} topic colour${nt === 1 ? '' : 's'}` : 'no lights yet'}`);
 }
 let sayTimer = 0;
 function say(s) { const p = $('#said'); p.textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => { p.textContent = ''; }, 4000); }
 
-/* Add: the name field always holds a suggestion, so Add works on the first press. */
+/* Add: the name field always holds a suggestion, so Add works on the first press.
+   Size slider: 100 B … 100 MB on a log scale (100 MB = 96 dots, enough to see the glow rule). */
 const IDEAS = [
-  ['travel/packing-list.txt', 54], ['recipes/pear-tart-notes.md', 30], ['garden/orchard-photos.zip', 88],
-  ['letters/birthday-cards.pdf', 64], ['travel/map-scans.pdf', 72], ['recipes/spice-list.csv', 18],
-  ['garden/pond-plan.pdf', 58], ['letters/pen-pal-1984.txt', 36]
+  ['travel/packing-list.txt', 30], ['recipes/pear-tart-notes.md', 20], ['garden/orchard-photos.zip', 80],
+  ['letters/birthday-cards.pdf', 60], ['travel/map-scans.pdf', 72], ['recipes/spice-list.csv', 15],
+  ['garden/pond-plan.pdf', 64], ['letters/pen-pal-1984.txt', 25]
 ];
 let ideaN = 0;
-const bytesOf = v => Math.round(Math.pow(10, 2 + v / 100 * 7.5));
+const bytesOf = v => Math.round(Math.pow(10, 2 + v / 100 * 6));
 function showBytes() { $('#fsizeV').textContent = fmtSize(bytesOf(+$('#fsize').value)); }
 function suggest() {
   for (let k = 0; k < IDEAS.length; k++) {
@@ -337,7 +415,7 @@ $('#add').addEventListener('submit', e => {
   e.preventDefault();
   const name = $('#fname').value.trim();
   if (!name) { $('#fname').focus(); return; }
-  if (!addFile({ name, bytes: bytesOf(+$('#fsize').value) }, true)) { say(name + ' is already here'); return; }
+  if (!addFile({ name, bytes: bytesOf(+$('#fsize').value) })) { say(name + ' is already here'); return; }
   say('Added ' + name); suggest();
 });
 
@@ -353,30 +431,32 @@ maxEl.addEventListener('input', () => { const v = +maxEl.value; setSizeRange(Mat
 
 /* The name is the seed: each agent's cluster looks like its own. */
 $('#agentName').addEventListener('input', e => { S.name = e.target.value; makeLook(); relayout(); render(); });
-$('#row').addEventListener('pointerenter', notice);
-$('#agentName').addEventListener('focus', notice);
 
 /* ---------- the test hook (Eraser) ---------- */
+const q2 = v => Math.round(v * 100) / 100;
 window.dna = {
-  getFiles: () => files.map(f => ({ name: f.name, bytes: f.bytes, topic: f.topic })),
-  addFile: o => addFile(o, true),
-  removeFile,
+  getFiles: () => files.map(f => ({ id: f.id, name: f.name, bytes: f.bytes, topic: f.topic, dots: f.dots.length })),
+  addFile,                            // {name, bytes, topic?} -> true, or false for an empty or duplicate name
+  addFiles,                           // [{id, name, sizeBytes}] -> how many were queued (a duplicate id is skipped)
+  removeFile,                         // by id or name
   setSizeRange,
   getSizeRange: () => ({ min: S.min, max: S.max }),
-  getDots: () => files.map(f => { const d = restingDot(f), q = v => Math.round(v * 100) / 100; return { x: q(d.x), y: q(d.y), r: q(d.r), color: colorOf(f.topic), topic: f.topic }; })
+  dotCount: () => files.reduce((s, f) => s + f.dots.length, 0),
+  litOrder: () => litLog.map(e => ({ fileId: e.fileId, litAt: e.litAt })),
+  queueIdle: () => { tick(clock()); return queueIdle(); },
+  // Lit dots that have a spot (at most 60), resting positions in avatar px.
+  getDots: () => [...layout.pts.keys()].map(d => { const p = restingDot(d); return { fileId: d.f.id, x: q2(p.x), y: q2(p.y), r: q2(p.r), color: colorOf(d.f.topic), topic: d.f.topic }; })
 };
 
-/* ---------- start: a sample agent, same on every reload ---------- */
+/* ---------- start: a sample agent (about 12 MB, 12 dots), same on every reload, already lit ---------- */
 makeLook();
 [
-  ['recipes/plum-cake-draft.txt', 3200], ['recipes/grandmas-soup-scan.pdf', 48e6],
-  ['letters/to-aunt-ida.md', 6100], ['letters/postcards-1998.zip', 220e6],
-  ['garden/seed-list.csv', 900], ['garden/rose-bed-photos.zip', 1.4e9],
-  ['recipes/bread-notes.md', 14000], ['letters/thank-you-notes.txt', 31000],
-  ['garden/frost-dates.txt', 2100], ['recipes/menu-planner.xlsx', 2.6e6],
-  ['letters/old-diary-1971.pdf', 18e6], ['garden/compost-how-to.md', 9000],
-  ['travel/rail-trip-notes.md', 12000], ['travel/lake-photos.zip', 640e6]
-].forEach(([name, bytes]) => addFile({ name, bytes }, false));
+  ['recipes/plum-cake-draft.txt', 3200], ['recipes/grandmas-soup-scan.pdf', 2.4e6],
+  ['letters/to-aunt-ida.md', 6100], ['letters/postcards-1998.zip', 9e5],
+  ['garden/seed-list.csv', 900], ['garden/rose-bed-photos.zip', 2.8e6],
+  ['recipes/bread-notes.md', 14000], ['travel/rail-trip-notes.md', 12000]
+].forEach(([name, bytes]) => { const f = makeFile({ name, bytes }, -1e9); files.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = freeSlot(); }); });
+relayout(); render();
 shown = layout.scale;
 syncSize(); suggest();
 requestAnimationFrame(t => { last = t; frame(t); });
