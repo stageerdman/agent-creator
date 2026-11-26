@@ -12,8 +12,11 @@ export function shortDescription({ persona = "", instructions = "" } = {}) {
   const first = text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
   return first.length > 80 ? `${first.slice(0, 79).trimEnd()}…` : first;
 }
-const summary = ({ id, draft, updatedAt }) => ({
-  id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) }, updatedAt,
+// The home sorts and ages rows by createdAt. Records written before the store
+// kept it fall back to updatedAt: never undefined, never "now".
+export const summary = ({ id, draft, createdAt, updatedAt }) => ({
+  id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) },
+  createdAt: createdAt || updatedAt, updatedAt,
 });
 const view = ({ id, draft, sessionId, files = [] }) => ({ id, draft, sessionId, files });
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;

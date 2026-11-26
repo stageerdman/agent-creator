@@ -707,5 +707,47 @@ export const imports = {
 
 export const demoAgents = [rex, marcus, edie, ines, untitled, juno];
 
+// ── The agent-selection home (AGENT-SELECTION-HOME): 0, 1, 10 and 50 agents ──
+// Store-shaped records ({ id, draft, createdAt, updatedAt }); the route turns
+// them into the real API summary. Ages run from minutes to months, measured
+// back from `now`. Some learn; some have no description; one old record has
+// no createdAt (it must fall back to updatedAt); long names with and without spaces.
+const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
+const HOME_PEOPLE = [
+  ["Marcus", "A stoic mentor who helps founders make hard calls.", 40e3, "saved"],
+  ["Ines Duarte", "Calm, slow to answer, never names a number first.", 5 * MIN, "learning"],
+  ["Rex Hart", "A tough-love coach who gets you off the Ladder of Excuses.", 3 * HOUR, "saved"],
+  ["Edie", "A blunt newsletter editor.", 2 * DAY, "saved"],
+  ["Doctor Professor Maximilian Augustin von Hohenberg-Lichtenstein the Third", "A very long name with spaces, to check the ellipsis.", 3 * DAY, "saved"],
+  ["Supercalifragilisticexpialidociousandthensomemorelettersuntilitneverfitsonasinglelineatall", "A very long name with no spaces at all.", 4 * DAY, "learning"],
+  ["Juno", "A plain-language contract reader.", 9 * DAY, "saved"],
+  ["Maya", "", 3 * 7 * DAY, "draft"],
+  ["Old Tony", "Made before the store kept createdAt.", 40 * DAY, "saved", { noCreatedAt: true }],
+  ["Ada", "Thinks in small, safe steps when old code needs changing.", 4 * 30 * DAY + DAY, "saved"],
+];
+const MORE_NAMES = ["Theo", "Sol", "Lena", "Priya", "Omar", "Kofi", "Hana", "Bruno", "Clara", "Dev", "Elif", "Farah", "Gus", "Ivo", "Jade", "Kai", "Lior", "Mina", "Nils", "Odile"];
+const MORE_ROLES = ["Contract lawyer", "Startup board advisor", "Piano teacher who explains one thing at a time", "", "Running coach", "Tax explainer, not advice", "Imported from Lena", "Chess sparring partner"];
+
+export function homeAgents(count, now = Date.now()) {
+  const n = Math.max(0, Math.min(50, Math.floor(Number(count) || 0)));
+  const at = (ms) => new Date(now - ms).toISOString();
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    let row = HOME_PEOPLE[i];
+    if (!row) {
+      const k = i - HOME_PEOPLE.length;
+      const base = MORE_NAMES[k % MORE_NAMES.length];
+      row = [k < MORE_NAMES.length ? base : `${base} ${Math.floor(k / MORE_NAMES.length) + 1}`,
+        MORE_ROLES[k % MORE_ROLES.length], 5 * DAY + k * 3 * DAY + (k % 5) * HOUR, k % 7 === 3 ? "learning" : "saved"];
+    }
+    const [name, persona, age, status, { noCreatedAt } = {}] = row;
+    const record = { id: `home-${String(i + 1).padStart(2, "0")}`, draft: { name, persona, instructions: "", status },
+      createdAt: at(age), updatedAt: at(Math.max(0, age - HOUR)) };
+    if (noCreatedAt) { delete record.createdAt; record.updatedAt = at(age); }
+    out.push(record);
+  }
+  return out;
+}
+
 export const demo = { today: TODAY, agents: demoAgents, scripts, fixes, sketcherLines, pickerFiles, imports,
   extras: { moneyFile, moneyRef, rexMoneyAfter } };

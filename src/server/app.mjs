@@ -10,13 +10,15 @@ import { agentRoutes } from "./routes/agents.mjs";
 import { askRoute } from "./routes/ask.mjs";
 import { mockRoutes } from "./routes/mock.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
+import { summary } from "../creator/agents.mjs";
+import { homeAgents } from "./mock/demoAgents.mjs";
 import { createLogger, newTraceId } from "../log/logger.mjs";
 
 const log = createLogger("server");
 const PUBLIC = new URL("./public/", import.meta.url);
 // Every script the page imports; a module missing here 404s and the page stays blank.
 const PAGE_MODULES = ["app", "sketch", "tab-focus", "components",
-  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f"];
+  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f", "agent-list", "firefly-gather"];
 
 function staticFile(name, contentType) {
   return async (_req, res) => {
@@ -29,8 +31,10 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
   const routes = {
     "GET /": staticFile("agent-home.html", "text/html; charset=utf-8"),
     "GET /new": staticFile("new-agent.html", "text/html; charset=utf-8"),
-    // A home row opens here; blank on the Fireflies background until the real agent page lands.
+    // A home row opens here: the agent's own page on the Fireflies background.
     "GET /agents/:id": staticFile("agent-page.html", "text/html; charset=utf-8"),
+    // The home's mock sets (0, 1, 10, 50), in the real /api/agents shape: `/?demo=50`.
+    "GET /mock/home/:count": async (_req, res, { params }) => sendJson(res, 200, homeAgents(params.count).map(summary)),
     "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
     "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
     ...Object.fromEntries(PAGE_MODULES

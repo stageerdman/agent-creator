@@ -114,6 +114,52 @@ test("the list hides empty agents and POST reuses the empty one", async () => {
   assert.deepEqual(list.map((a) => a.updatedAt), [...list.map((a) => a.updatedAt)].sort().reverse());
 });
 
+test("GET /api/agents items carry createdAt for the home's age and order", async () => {
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Dated" });
+  const row = (await json("GET", "/api/agents")).find((a) => a.id === id);
+  assert.ok(row.createdAt && !Number.isNaN(Date.parse(row.createdAt)));
+  assert.deepEqual(Object.keys(row).sort(), ["createdAt", "draft", "id", "updatedAt"]);
+  assert.deepEqual(Object.keys(row.draft).sort(), ["description", "name", "status"]);
+});
+
+test("a home row opens a real page: /agents/:id is HTML, never raw JSON, even for an unknown id", async () => {
+  const id = await newAgent();
+  for (const path of [`/agents/${id}`, "/agents/nope", "/agents/home-01?demo=10"]) {
+    const page = await call("GET", path);
+    assert.equal(page.status, 200, path);
+    assert.match(page.type, /text\/html/, path);
+    assert.match(page.text, /<main/, path);
+    assert.match(page.text, /isn’t here/, path);   // the calm unknown-agent line ships with the page
+  }
+});
+
+test("the home's mock sets: 0, 1, 10, 50, in the API shape, always with createdAt", async () => {
+  for (const n of [0, 1, 10, 50]) {
+    const list = await json("GET", `/mock/home/${n}`);
+    assert.equal(list.length, n);
+    assert.ok(list.every((a) => a.id && a.draft.name && a.createdAt && a.updatedAt && "description" in a.draft));
+  }
+  const fifty = await json("GET", "/mock/home/50");
+  assert.ok(fifty.some((a) => a.draft.status === "learning"));
+  assert.ok(fifty.some((a) => a.draft.description === ""));
+  assert.ok(fifty.some((a) => a.draft.name.length > 60 && !a.draft.name.includes(" ")));
+  assert.ok(fifty.some((a) => a.draft.name.length > 60 && a.draft.name.includes(" ")));
+  const old = fifty.find((a) => a.draft.name === "Old Tony");
+  assert.equal(old.createdAt, old.updatedAt);             // no createdAt on the record: falls back
+});
+
+test("the home loads its modules: agent-list.js and firefly-gather.js", async () => {
+  for (const name of ["agent-list", "firefly-gather"]) {
+    const file = await call("GET", `/${name}.js`);
+    assert.equal(file.status, 200);
+    assert.match(file.type, /javascript/);
+  }
+  const home = await call("GET", "/");
+  assert.match(home.text, /from '\.\/firefly-gather\.js'/);
+  assert.match(home.text, /from '\.\/agent-list\.js'/);
+});
+
 test("a bad id is 404, an empty message is 400", async () => {
   assert.equal((await call("GET", "/api/agents/nope")).status, 404);
   assert.equal((await call("POST", "/api/agents/0123456789ab/chat", { message: "hi" })).status, 404);

@@ -4,7 +4,7 @@ import { mkdtemp, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
-import { createAgents, shortDescription } from "./agents.mjs";
+import { createAgents, shortDescription, summary } from "./agents.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { emptyDraft } from "./draft.mjs";
 import { ClaudeCliError } from "../engine/index.mjs";
@@ -194,4 +194,24 @@ test("shortDescription: first sentence, cut near 80 characters", () => {
   assert.equal(shortDescription({ persona: "Version 2.5 of Rex. Second." }), "Version 2.5 of Rex.");
   const long = shortDescription({ persona: "word ".repeat(40) });
   assert.ok(long.length <= 80 && long.endsWith("…"));
+});
+
+test("summary() returns createdAt; an old record without it gets updatedAt", () => {
+  const draft = { ...emptyDraft(), name: "Ada" };
+  const fresh = summary({ id: "a", draft, createdAt: "2026-11-01T10:00:00.000Z", updatedAt: "2026-11-20T10:00:00.000Z" });
+  assert.equal(fresh.createdAt, "2026-11-01T10:00:00.000Z");
+  assert.equal(fresh.updatedAt, "2026-11-20T10:00:00.000Z");
+  const old = summary({ id: "b", draft, updatedAt: "2026-10-02T09:00:00.000Z" });
+  assert.equal(old.createdAt, "2026-10-02T09:00:00.000Z");
+});
+
+test("the list carries createdAt from the store", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]) });
+  const { id } = await agents.create();
+  await agents.edit(id, { name: "Ada" });
+  const [row] = await agents.list();
+  const record = await store.loadAgent(id);
+  assert.equal(row.createdAt, record.createdAt);
+  assert.ok(row.createdAt < row.updatedAt);
 });
