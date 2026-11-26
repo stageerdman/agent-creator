@@ -173,13 +173,6 @@ const Concept = {
   },
   restoreFocus() { const r = this.rowOf(S.sel); if (r) { r.focus(); r.scrollIntoView({ block: 'nearest' }); } },
   afterKeep(a) { S.sel = a.name; this.render(); this.restoreFocus(); },
-  afterChat() {
-    // Quiet magic 1 · They answer: one flash on the chat header mark, after the screen has changed.
-    const m = $('#bigmark'); if (!m) return;
-    const off = 'drop-shadow(0 0 0px rgba(216,242,106,0))', on = 'drop-shadow(0 0 8px rgba(216,242,106,.75))';
-    if (G.rm) m.animate([{ filter: on }, { filter: on }], { duration: 1000 });
-    else m.animate([{ filter: off, opacity: .75, easing: 'ease-out' }, { filter: on, opacity: 1, offset: 120 / 1020, easing: 'ease-in' }, { filter: off, opacity: 1 }], { duration: 1020 });
-  },
   chip() { return $('#chip'); },
   door() { return $('#door'); },
   flyRegion() { return $('#clearing').getBoundingClientRect(); },

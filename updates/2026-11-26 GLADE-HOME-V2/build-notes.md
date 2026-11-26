@@ -55,11 +55,22 @@ Chrome via Playwright, 1024×768, at 0, 1, 12 and 50 agents in each concept (scr
 - **Esc on a stub screen = Back to Home.**
 - **0 agents:** the New agent screen *is* Home, with no Back.
 - **Demo bar** also has `0` and a `Reduced motion` toggle (it also follows the OS setting).
-- **A's "They answer" flash** uses the Web Animations API, and plays after the chat screen is shown.
+- ~~**A's "They answer" flash**~~ was removed by Eraser cut A1 (see below).
 - **Folder drop lights the door in all three** (concepts.md spells it out for A only).
 - **B guide words** use the first word of the name (`Untitled sketch` files under U). The third line on a card shows only for a state other than Ready, or for `today` / `yesterday`.
 - **C** shows a state line only when it isn't Ready. `Unsorted` sits under the shortest column. `Edit` sits on the name line (see fix 3).
 - **Fireflies** in B and C are off at 50, as the concept says. A keeps a few in the clearing.
 
 ## Eraser cuts
-*(filled in after eraser-review.md comes back)*
+*Applied by Columbo when integrating (Eraser's fixes were exact and small). Checked in Chrome at
+1024×768 with Jony's full suite (all three, 0/1/12/50, every check ok, no console errors) and a
+check for each cut.*
+
+| Cut | What changed | Checked |
+|---|---|---|
+| A1 | `Concept.afterChat` deleted from A. No flash on the chat header. `index.html` never mentioned it. | No running animation after Chat, by click and by `Return`, with and without `?rm=1` ✓ |
+| C1 | Roles wrap to 2 lines (clamped). Names wrap instead of `…`. Door **184 px** (Eraser asked for 200, but at 200 a 51st agent made the Home & life grove scroll). Rows, grove panels and gaps a few px tighter. | At 50, and at 51 after making Nell: no scroll. `Contract lawyer`, `Startup board advisor`, `Imported from Lena` and `Untitled sketch` show in full. Only the longest roles still clamp after 2 lines (`Her design course, week by…`, `Japanese cooking,…`) ✓ |
+| C2 | Door is now a `<div class="door solid">` panel holding the `New agent` button (pill + hint) and `#planted` as a plain `<p>`. The whole panel lights on drop. Clicking empty panel space opens New agent, clicking the planted line does nothing. | Planted line is outside the button, the button's name is just `New agent` + hint, clicking the line stays on Home ✓ |
+| C3 | "Who do you have in mind?" removed from the Home door. | Gone from Home at 1/12/50, still on the New agent screen and at 0 ✓ |
+| C4 | `solid` removed from C's `#chip`. | No border, no background ✓ |
+| T1 | `.tmp-test/` removed from git and added to `.gitignore`. | `git ls-files .tmp-test` is empty ✓ |

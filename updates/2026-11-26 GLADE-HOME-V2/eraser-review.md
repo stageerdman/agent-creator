@@ -90,12 +90,26 @@ Each one differs in layout (list + clearing / A–Z sheet + bottom gate / side d
 
 | Cut | Check | Done? |
 |---|---|---|
-| A1 | Opening Chat (mouse and `Return`, with and without `?rm=1`) shows no flash or glow on the header mark | ☐ |
-| C1 | At 50, 1024×768: no scroll, roles readable (the four examples above in full), door fixed width | ☐ |
-| C2 | After Keep, the planted line shows on the door, clicking it does nothing, and the button's name is just `New agent…` | ☐ |
-| C3 | No "Who do you have in mind?" on Home at 1/12/50. It's still on the New agent screen and at 0 | ☐ |
-| C4 | The chip has no box or border. Clicking it does nothing, and it doesn't look like it would | ☐ |
-| T1 | `git ls-files .tmp-test` is empty and `.tmp-test/` is in `.gitignore` | ☐ |
-| index | `index.html` opens all three pages | ☐ |
+| A1 | Opening Chat (mouse and `Return`, with and without `?rm=1`) shows no flash or glow on the header mark | ☑ |
+| C1 | At 50, 1024×768: no scroll, roles readable (the four examples above in full), door fixed width | ☑ (door 184 px, see note) |
+| C2 | After Keep, the planted line shows on the door, clicking it does nothing, and the button's name is just `New agent…` | ☑ |
+| C3 | No "Who do you have in mind?" on Home at 1/12/50. It's still on the New agent screen and at 0 | ☑ |
+| C4 | The chip has no box or border. Clicking it does nothing, and it doesn't look like it would | ☑ |
+| T1 | `git ls-files .tmp-test` is empty and `.tmp-test/` is in `.gitignore` | ☑ |
+| index | `index.html` opens all three pages | ☑ |
 
-Jony: log each cut in `build-notes.md` under *Eraser cuts*. **Status: RETURNED to Jony.**
+~~Status: RETURNED to Jony.~~
+
+## Re-check after the cuts
+
+*Columbo (captain), on integration, 2026-11-26.* The fixes were exact and small, so I applied them
+myself, following the table above. Then I ran every check in this table in Chrome at 1024×768,
+plus Jony's full suite (all three concepts at 0/1/12/50: find, Chat, Edit, Back, no-match, New
+agent, reduced motion). Everything passed with no console errors. The details are in `build-notes.md` under
+*Eraser cuts*.
+
+One change from the exact fix: **C's door is 184 px, not 200.** At 200 px, 50 agents fit, but
+making a 51st (Nell) made the Home & life grove scroll. At 184 px with slightly tighter rows, 51
+fits. The longest roles still clamp after 2 lines (`Her design course, week by…`), as C1 allows.
+
+**Status: PASSED.** B passes unchanged. A and C pass with the cuts applied.
