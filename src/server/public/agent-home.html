@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent Creator</title>
 <style>
-  /* The Fireflies look, copied from glade-fireflies.html (left untouched). */
+  /* The Fireflies look. */
   :root {
     --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
     --text: #E6EEE8; --quiet: #8C9A90;
@@ -105,25 +105,19 @@
 
 <script type="module">
 import { gatherToPlus, isGathering } from './firefly-gather.js';
-import { ageLabel, sortAgents, filterAgents, nameOf, descOf, isLearning } from './agent-list.js';
+import { ageLabel, sortAgents, filterAgents, nameOf, descOf } from './agent-list.js';
+import { createDna } from './fireflies-dna.js';
 
 const $ = s => document.querySelector(s);
 const clock = () => performance.now();
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = mq.matches;
-const onMq = e => { reduced = e.matches; };
+const onMq = e => { reduced = e.matches; rows.forEach(r => { r.busy = true; }); };
 mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
 
 // Keyboard users get the clear search ring once they press Tab; a pointer puts it back to soft.
 addEventListener('keydown', e => { if (e.key === 'Tab') document.body.classList.add('kbd'); }, true);
 addEventListener('pointerdown', () => document.body.classList.remove('kbd'), true);
-
-function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const easeOut = x => 1 - (1 - x) * (1 - x);
-const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
-const wrap = d => d - Math.round(d);   // phase difference in (-.5, .5]
 
 /* ---------- Where the agents come from: the API, or a mock set (/?demo=0|1|10|50) ---------- */
 const demo = new URLSearchParams(location.search).get('demo');
@@ -146,11 +140,13 @@ function build() {
     if (descOf(a)) { const d = document.createElement('span'); d.className = 'desc'; d.textContent = descOf(a); text.appendChild(d); }
     const age = document.createElement('span'); age.className = 'age'; age.title = fullDate(a.createdAt);
     row.append(cv, text, age); li.appendChild(row); ol.appendChild(li);
-    const r = { a, li, cv, age, c: cluster(a, cv), seen: false };
-    row.addEventListener('pointerenter', () => notice(r.c));
-    row.addEventListener('focus', () => notice(r.c));
+    const r = { a, li, cv, age, c: createDna(cv, { name: nameOf(a), files: a.dna || [] }), seen: false, busy: true };
+    const notice = () => { r.c.notice(reduced); r.busy = true; };
+    row.addEventListener('pointerenter', notice);
+    row.addEventListener('focus', notice);
     return r;
   });
+  window.dnaLogos = rows.map(r => ({ id: r.a.id, name: nameOf(r.a), logo: r.c }));   // read-only, for checks
   ages();
   rows.forEach(r => seer.observe(r.li));
 }
@@ -179,92 +175,16 @@ async function load() {
   render();
 }
 
-/* ============================================================
-   Constellations: each row's firefly cluster, from glade-fireflies.html
-   (cluster, slot, radius, flash), drawn small on the row's own canvas.
-   Learning rows: warm loose fireflies drift in and join, again and again.
-   ============================================================ */
-function sprite(rgb, core) {
-  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, core); gr.addColorStop(.12, `rgba(${rgb},.85)`); gr.addColorStop(.32, `rgba(${rgb},.25)`); gr.addColorStop(1, `rgba(${rgb},0)`);
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
-}
-const FLY = sprite('216,242,106', 'rgba(246,255,214,1)');
-const WARM = sprite('196,232,96', 'rgba(236,250,190,1)');  // a softer, warmer green so it never reads as a terminal
-
-/* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
-function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
-function slot(i, n, R, seed) { const r = R * Math.sqrt((i + .5) / n), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r * .86]; }
-function radius(n) { return 22 + 8 * Math.sqrt(n); }
-
-const BOX = 56;
-function cluster(a, cv) {
-  const r = rng(hash(nameOf(a) + a.id)), learning = isLearning(a);
-  const c = { a, cv, ctx: cv.getContext('2d'), learning, period: 2.4 + r(), master: r(), lastFlash: -1e9, seed: r() * 6.28, pts: [] };
-  const n = 14 + Math.floor(r() * 16), R = radius(n);
-  c.scale = (BOX / 2 - 4) / R;
-  for (let i = 0; i < n; i++) {
-    const [sx, sy] = slot(i, n, R, c.seed);
-    // About half of a learning cluster is still studying: each of those loops loose → joining → joined.
-    const loops = learning && r() < .5;
-    const ang = r() * 6.283;
-    c.pts.push({ sx, sy, ox: sx, oy: sy, flashT: -1e9, seedA: r() * 6.28, seedB: r() * 6.28,
-      loops, cycle: 5 + r() * 5, offset: r(), phase: r(), ownPeriod: 1.6 + r() * 2.2,
-      lx: Math.cos(ang) * R * (1.05 + r() * .25), ly: Math.sin(ang) * R * .86 * (1.05 + r() * .25), glow: .15 + r() * .25 });
-  }
-  return c;
-}
-function notice(c) { const t = clock(); if (reduced || t - c.lastFlash < 700) return; c.pts.forEach(p => { p.flashT = t; }); c.lastFlash = t; }
-
-let DPR = 1;
-function sizeCanvas(c) {
-  const px = Math.round(BOX * DPR); if (c.cv.width !== px) { c.cv.width = c.cv.height = px; }
-}
-
-function drawCluster(c, t, dt) {
-  sizeCanvas(c);
-  const ctx = c.ctx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, BOX, BOX);
-  ctx.globalCompositeOperation = 'lighter';
-  c.master += dt / c.period;
-  let beat = false; if (c.master >= 1) { c.master -= 1; beat = true; c.lastFlash = t; }
-  for (const p of c.pts) {
-    let tx = p.sx, ty = p.sy, joined = true;
-    if (p.loops) {
-      const u = ((t / 1000) / p.cycle + p.offset) % 1;           // where it is in its own loop
-      if (u < .5) { joined = false; tx = p.lx; ty = p.ly; }      // loose, just outside the cluster
-      else if (u < .72) { joined = false; const k = easeInOut((u - .5) / .22); tx = p.lx + (p.sx - p.lx) * k; ty = p.ly + (p.sy - p.ly) * k; }
-      // else: joined, flashing with the cluster
-      if (!joined && !reduced) {
-        if (u >= .5) { const d = wrap(c.master - p.phase); p.phase += d * Math.min(1, dt * 1.4); }   // finding the beat
-        p.phase += dt / p.ownPeriod; if (p.phase >= 1) { p.phase -= 1; p.flashT = t; }
-      } else p.phase = c.master;
-    }
-    if (joined && !reduced && beat) p.flashT = t + (p.seedA * 4);   // up to ~25 ms apart, like the real thing
-    if (!reduced) {
-      tx += Math.sin(t / 8000 * 6.283 + p.seedA) * (joined ? 1.5 : 6); ty += Math.cos(t / 8000 * 6.283 + p.seedB) * (joined ? 1.5 : 6);
-      const k = Math.min(1, dt * 6); p.ox += (tx - p.ox) * k; p.oy += (ty - p.oy) * k;
-    } else { p.ox = tx; p.oy = ty; }
-    let b, alpha, size, img = FLY;
-    if (reduced) { b = 0; alpha = joined ? .85 : p.glow + .3; size = joined ? 24 : 18; if (!joined) img = WARM; }
-    else { b = flash(t - p.flashT); alpha = (joined ? .1 : .14) + .8 * b; size = 18 + 12 * b; if (!joined) img = WARM; }
-    const s = size * Math.max(.42, c.scale);
-    ctx.globalAlpha = alpha; ctx.drawImage(img, BOX / 2 + p.ox * c.scale - s / 2, BOX / 2 + p.oy * c.scale - s / 2, s, s);
-  }
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-}
-
 // Only rows on screen are drawn, so 50 agents cost what 8 do.
 const seer = new IntersectionObserver(es => es.forEach(e => {
   const r = rows.find(x => x.li === e.target); if (r) r.seen = e.isIntersecting;
 }), { root: $('#list') });
 
-let last = clock(), drewStill = false;
+// Each logo is the Fireflies DNA cluster (fireflies-dna.js). Under Reduce Motion a logo stops drawing once its dots have landed.
+let last = clock();
 function frame(t) {
   const dt = Math.min(.05, (t - last) / 1000); last = t;
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  for (const r of rows) if (r.seen && !r.li.hidden && (!reduced || !r.drawn)) { drawCluster(r.c, t, dt); r.drawn = reduced; }
-  if (!reduced) rows.forEach(r => { r.drawn = false; });
+  for (const r of rows) if (r.seen && !r.li.hidden && (!reduced || r.busy)) r.busy = r.c.draw(t, dt, reduced);
   requestAnimationFrame(frame);
 }
 

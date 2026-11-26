@@ -73,21 +73,21 @@ test("GET /agents/:id serves a page, not raw JSON", async () => {
   assert.match(html, /html \{ background: var\(--field\); \}/);
 });
 
-test("GET serves the screen's scripts and styles", async () => {
-  for (const [path, type] of [["/app.js", "javascript"], ["/sketch.js", "javascript"], ["/app.css", "css"], ["/magic.css", "css"]]) {
+test("GET serves the screens' scripts", async () => {
+  for (const [path, type] of [["/agent-list.js", "javascript"], ["/firefly-gather.js", "javascript"], ["/fireflies-dna.js", "javascript"]]) {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-type"), new RegExp(type), path);
   }
 });
 
-// Regression: tab-focus.js was imported but not routed, so the page booted blank.
-test("GET serves every script the page imports", async () => {
+// Regression: a module was imported but not routed, so the page booted blank.
+test("GET serves every script the pages import", async () => {
   const dir = new URL("./public/", import.meta.url);
   const sources = await Promise.all((await readdir(dir))
-    .filter((f) => f.endsWith(".js"))
+    .filter((f) => /\.(js|html)$/.test(f) && !f.includes(".test."))
     .map((f) => readFile(new URL(f, dir), "utf8")));
-  const imported = new Set(sources.flatMap((src) => [...src.matchAll(/from\s+"(\/[\w-]+\.js)"/g)].map((m) => m[1])));
+  const imported = new Set(sources.flatMap((src) => [...src.matchAll(/from\s+["']\.?(\/[\w-]+\.js)["']/g)].map((m) => m[1])));
   assert.ok(imported.size > 0);
   for (const path of imported) {
     assert.equal((await fetch(`${base}${path}`)).status, 200, path);
