@@ -1,5 +1,99 @@
 # 00 · Roadmap — Fireflies DNA, rebuilt around the small cluster
 
+## Update 2: lights up at the pace files are added + 1 dot per MB
+
+*2026-11-26. This section comes first. Where it differs from the older
+sections below, this one wins. "One dot per file" and "dot size follows
+file size" are replaced by "one dot per MB" (Phase 2 here).*
+
+**What the user said:** "better, but it's all shining at once, not at the
+rate of added files"
+
+**The user's job:** I want to see my agent's knowledge grow as I feed it.
+
+File: `playground/fireflies-dna.html` (Jony builds, Eraser checks). Jony can
+build from this section alone.
+
+### Phase 1 — pace: the cluster grows file by file
+
+- Files light up **in the order they were added**. Keep a queue.
+- A file's dots arrive **one by one**. The next file starts only after the
+  last dot of the file before it is lit.
+- Pace numbers:
+  - each dot lands **about 90 ms** after the one before it;
+  - **250 ms gap** between files;
+  - **at most about 2.5 s per file**: if a file has many dots, shorten the
+    step between its dots so the whole file fits in 2.5 s. One big file can't
+    stall the queue.
+- **Nothing in the cluster flashes all at once.** Dots that are already lit
+  stay steady when new files arrive. No global flash, no pulse of the whole
+  cluster.
+- The **400 ms first beat on open/rename stays** as it is today.
+- **Reduced motion:** each file appears in **one quiet step**, in order, with
+  no movement (no fly-in, no growing, no pulse). The 250 ms gap between files
+  stays so the order is still readable.
+- Hook for Eraser (extend the existing `window.dna`):
+  - `window.dna.addFiles([{id, name, sizeBytes}])`: queue files;
+  - `window.dna.queueIdle()`: `true` when the queue is empty;
+  - `window.dna.dotCount()`: total number of dots;
+  - `window.dna.litOrder()`: array of `{fileId, litAt}` in the order dots lit.
+- **Done when:** adding 3 files at once lights file 1's dots, then file 2's,
+  then file 3's; `litOrder()` is grouped by file, in added order, `litAt`
+  strictly increasing, no two files lit at the same time; no full-cluster
+  flash; one 40 MB file takes ≤ about 2.5 s; first beat still fires 400 ms
+  after open/rename; reduced motion shows one step per file, in order.
+
+### Phase 2 — sizing: 1 dot per MB
+
+- Dots per file = `max(1, ceil(sizeBytes / 1048576))`.
+  - 20 MB file → 20 dots. 300 KB file → 1 dot. Empty file → 1 dot.
+- Expected total for a normal agent: about **12 MB, so about 12 dots**. But
+  **20+ dots must still read well** (see Phase 3).
+- Topic colours stay as they are: all dots of a file share its topic hue.
+- **Done when:** `dotCount()` equals the sum of the formula over all files
+  (checked with a 20 MB, a 300 KB and a mixed sample set).
+
+### Phase 3 — density at 56 px
+
+A starting rule. **Jony confirms or changes it** and writes down what was
+chosen and why in `03-jony-build.md`.
+
+- **Up to 12 dots:** keep today's size range.
+- **Above 12 dots:** dot size × `sqrt(12 / N)` (N = total dots), **never
+  below a 2 px floor**.
+- **Dots never overlap.**
+- **No dot is dropped up to 60 dots.**
+- **Above 60 dots:** extra dots don't get their own spot; they only add glow
+  to the cluster. This is written into `03-jony-build.md` and shown as a
+  plain note in the playground.
+- **Done when:** at 56 px with 12, 20 and 40 dots, no dots overlap and none
+  is smaller than 2 px; at 61+ dots the cluster still reads as the same
+  agent and the glow does not hide the pace.
+
+### In scope
+
+- The pace queue, 1 dot per MB, the density rule, reduced motion, the
+  `window.dna` hook additions above. All in `playground/fireflies-dna.html`.
+
+### Out of scope
+
+- The **big map, replay and timeline stay removed** (see "Removed for good").
+- Bringing this into `agent-home.html` or the profile (later phases below).
+- Removing files with animation, re-ordering files, any second way to start
+  the animation (no "replay" button).
+
+### Checks (Eraser)
+
+- **Chrome + WebKit**, each in **normal + reduced motion**.
+- All existing 45 checks still pass.
+- **Start still works** (the project's Start button opens the app).
+
+### Watch out
+
+- If the user adds **many files quickly**, the queue must not feel laggy:
+  **speed it up** (shorter dot steps and gaps while the queue is long), but
+  **never skip a file**. Every file still lights, in order.
+
 **Why this round:** the last playground (`updates/2026-11-26 FIREFLIES-DNA/`)
 grew into a big map with a replay and a timeline. People never see an agent
 that way. They see it as a **56 px firefly cluster** in a home row and on the
