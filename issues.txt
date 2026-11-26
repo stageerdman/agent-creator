@@ -43,6 +43,13 @@
       talks store next to agent.json (agentStore.mjs) and a route for it;
       then drop the demo line and First words works as written.
 
+- [ ] Eraser's eye-check.cjs (e435071), Reduce Motion off: the "dots appear
+      one at a time" line is flaky in Chrome. Peaks are counted on pixels, and
+      a landing dot flies in from just outside and overlaps a neighbour, so
+      2–3 new dots can be counted in one frame. It fails about half the time
+      on the old page too (5f3d08b, code not changed). A steadier count would
+      compare frames 300 ms after each landing. (Jony, 2026-11-26)
+
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
