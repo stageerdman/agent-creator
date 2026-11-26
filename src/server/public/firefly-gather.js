@@ -36,6 +36,9 @@ const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 /* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
 function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+/* The plus's answer: the same flash shape, squeezed into the last fifth of
+ * the run so it is fully out by the end (nothing pops when the canvas goes). */
+function glowPulse(k) { const x = (k - .8) / .2; if (x <= 0 || x >= 1) return 0; return x < .3 ? easeOut(x / .3) : 1 - Math.pow((x - .3) / .7, 2); }
 
 let sprites = null;
 function sprite(doc, rgb, core) {
@@ -225,7 +228,7 @@ export function gatherToPlus(rootEl, plusEl, options = {}) {
       const flies = pts.map(([x, y], i) => {
         const dx = px - x, dy = py - y, dist = Math.hypot(dx, dy), k = dist / far, j = Math.random();
         const spawn = D * (.03 + .19 * k + .03 * j);                     // 36–300 ms at 1.2 s
-        const arrive = D * clamp(.52 + .30 * Math.pow(k, .8) + .04 * (Math.random() - .5), .48, .84);
+        const arrive = D * clamp(.56 + .28 * Math.pow(k, .8) + .04 * (Math.random() - .5), .52, .86);
         // one shared turn for every path, so the streams swirl in together
         const bend = dist * (.16 + .2 * Math.random());
         const nx = dist ? -dy / dist : 0, ny = dist ? dx / dist : 0;
@@ -244,9 +247,9 @@ export function gatherToPlus(rootEl, plusEl, options = {}) {
         const off = 'drop-shadow(0 0 0 rgba(216,242,106,0))';
         plusEl.animate([
           { filter: off, transform: 'scale(1)', offset: 0 },
-          { filter: 'drop-shadow(0 0 6px rgba(216,242,106,.55))', transform: 'scale(1)', offset: .62 },
-          { filter: 'drop-shadow(0 0 14px rgba(246,255,214,.9))', transform: 'scale(1.08)', offset: .82 },
-          { filter: 'drop-shadow(0 0 4px rgba(216,242,106,.35))', transform: 'scale(1)', offset: 1 },
+          { filter: 'drop-shadow(0 0 6px rgba(216,242,106,.55))', transform: 'scale(1)', offset: .8 },
+          { filter: 'drop-shadow(0 0 14px rgba(246,255,214,.9))', transform: 'scale(1.08)', offset: .87 },
+          { filter: off, transform: 'scale(1)', offset: 1 },
         ], { duration: D, easing: 'linear' });
       }
 
@@ -278,7 +281,7 @@ export function gatherToPlus(rootEl, plusEl, options = {}) {
           }
           // the light gathering at the plus
           const fill = flies.length ? landed / flies.length : clamp(t / D, 0, 1);
-          const pulse = flash(t - D * .82);
+          const pulse = glowPulse(t / D);
           const halo = 28 + 26 * fill + 30 * pulse;
           ctx.globalAlpha = clamp(.15 * fill + .55 * pulse, 0, .8);
           if (ctx.globalAlpha > .01) ctx.drawImage(FLY, px - halo / 2, py - halo / 2, halo, halo);
