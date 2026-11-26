@@ -111,8 +111,8 @@ section{display:flex;flex-direction:column;gap:10px}
 
     <section aria-labelledby="hTune">
       <h2 class="k" id="hTune">Tune</h2>
-      <div class="row"><label for="minR">Min dot size</label><input id="minR" type="range" min="0.75" max="4" step="0.05" value="1.5"><output for="minR"></output></div>
-      <div class="row"><label for="maxR">Max dot size</label><input id="maxR" type="range" min="2" max="9" step="0.1" value="4.5"><output for="maxR"></output></div>
+      <div class="row"><label for="minR">Min dot size</label><input id="minR" type="range" min="0.75" max="2.5" step="0.05" value="1.5"><output for="minR"></output></div>
+      <div class="row"><label for="maxR">Max dot size</label><input id="maxR" type="range" min="2.5" max="9" step="0.1" value="4.5"><output for="maxR"></output></div>
       <div class="row"><label for="speed">Blink speed</label><input id="speed" type="range" min="0.25" max="4" step="0.05" value="1"><output for="speed"></output></div>
       <div class="row"><label for="rnd">Randomness</label><input id="rnd" type="range" min="0" max="1" step="0.01" value="0.35"><output for="rnd"></output></div>
       <div class="row"><label for="chain">Chain strength</label><input id="chain" type="range" min="0" max="1" step="0.01" value="0.5"><output for="chain"></output></div>
@@ -229,10 +229,11 @@ section{display:flex;flex-direction:column;gap:10px}
     l = Math.min(80, l + 6 * blue);
     return { h: Math.round(h * 10) / 10, s: Math.round(sat), l: Math.round(l) };
   }
-  // Fake topics are placed on purpose: the k-th topic seen lands at a golden-ratio
-  // spaced spot on the hue arc, so 2-6 topics are always far apart. (Real vectors
-  // would land wherever the projection puts them; embeddingToColor stays honest.)
-  var topicSlots = {}, topicCount = 0;
+  // Fake topics are placed on purpose: the first five topics seen take fixed spots
+  // on the hue arc, at least 35 degrees apart (about 196/120/269/156/233); later
+  // ones step on by the golden ratio. (Real vectors would land wherever the
+  // projection puts them; embeddingToColor stays honest.)
+  var topicSlots = {}, topicCount = 0, FIRST_SLOTS = [0.5, 0, 1, 0.27, 0.75];
   function probit(q) { return Math.log(q / (1 - q)) / 1.702; } // inverse of phi
   function topicBase(t, named) {
     var g = normalize(gaussVec(hashStr('topic:' + t), 64));
@@ -241,7 +242,7 @@ section{display:flex;flex-direction:column;gap:10px}
     var rn = Math.sqrt(rr), q;
     if (named) {
       if (!(t in topicSlots)) topicSlots[t] = topicCount++;
-      var k = topicSlots[t], fr = (0.15 + k * 0.6180339887) % 1;
+      var k = topicSlots[t], fr = k < 5 ? FIRST_SLOTS[k] : (0.5 + k * 0.6180339887) % 1;
       q = 0.06 + 0.88 * fr;
     } else {
       q = 0.06 + 0.88 * ((hashStr('own:' + t) % 10007) / 10007);
@@ -522,15 +523,22 @@ function resize() {
 new ResizeObserver(resize).observe(field);
 resize();
 
-/* one glow sprite per colour, made only when an item's colour changes */
+/* one glow sprite per colour, made only when an item's colour changes.
+   Fades pass through many in-between colours, so the cache is capped and the
+   oldest canvas is repainted instead of making new ones (Chrome crashed on the churn). */
 const sprites = new Map();
 function sprite(c) {
   const key = Math.round(c.h) + ',' + Math.round(c.s) + ',' + Math.round(c.l);
   let s = sprites.get(key);
-  if (s) return s;
-  if (sprites.size > 400) sprites.clear();
-  s = document.createElement('canvas'); s.width = s.height = 64;
+  if (s) { sprites.delete(key); sprites.set(key, s); return s; }  // keep recent ones
+  if (sprites.size >= 400) {
+    const oldest = sprites.keys().next().value;
+    s = sprites.get(oldest); sprites.delete(oldest);
+  } else {
+    s = document.createElement('canvas'); s.width = s.height = 64;
+  }
   const g = s.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.clearRect(0, 0, 64, 64);
   gr.addColorStop(0, hsl(c, 0.9)); gr.addColorStop(0.25, hsl(c, 0.35)); gr.addColorStop(1, hsl(c, 0));
   g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   sprites.set(key, s);
