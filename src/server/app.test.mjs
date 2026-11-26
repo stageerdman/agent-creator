@@ -64,6 +64,13 @@ test("GET /new serves the blank new-agent page", async () => {
   assert.match(await response.text(), /New agent · Agent Creator/);
 });
 
+test("GET /agents/:id serves a page, not raw JSON", async () => {
+  const response = await fetch(`${base}/agents/some-id`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /text\/html/);
+  assert.match(await response.text(), /Agent · Agent Creator/);
+});
+
 test("GET serves the screen's scripts and styles", async () => {
   for (const [path, type] of [["/app.js", "javascript"], ["/sketch.js", "javascript"], ["/app.css", "css"], ["/magic.css", "css"]]) {
     const response = await fetch(`${base}${path}`);

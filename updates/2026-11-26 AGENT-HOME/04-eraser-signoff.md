@@ -86,4 +86,16 @@ sign below.
 
 ## Sign-off
 
-_Pending round 1 fixes._
+Round 1 fixes landed at integration (Columbo, since Jony's fix branch never
+moved past 59b7d34):
+
+1. `GET /agents/:id` now serves `agent-page.html`: blank, on the same
+   Fireflies background (`rgb(11,20,16)`), no new design. Test added in
+   `app.test.mjs`.
+2. `body.leaving .plus { pointer-events: auto; }`: a second press skips
+   (measured 87 ms).
+3. `03-jony-build.md` now says WebKit's own clear-x appears and stays.
+
+Re-run in WebKit: `checks/check-eraser.mjs` all ok (23/23) and
+`checks/check-agent-home.mjs` all ok (31/31); `npm test` 125 pass, 1 skip.
+Nothing the user asked for was cut. **APPROVED.**

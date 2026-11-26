@@ -21,7 +21,7 @@ Open the app, see every agent at once, find one by typing, or start a new one. N
 
 ## Removed or left out, and why
 
-- No header, title, count, sort control, filter chips or clear button. The list *is* the page, and the order is always newest first.
+- No header, title, count, sort control, filter chips or clear button of our own (WebKit shows its own clear-x inside the search field once you type; it stays, it is the platform's default). The list *is* the page, and the order is always newest first.
 - No "New agent" text button and no empty-state call to action. The plus is the one way to create an agent, so there are no two ways to do the same thing.
 - No lone firefly when there are no agents (Merlin cut it). An empty glade is the calm state.
 - No sound and no extra motion beyond Merlin's spec.

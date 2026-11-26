@@ -58,6 +58,7 @@
   .plus:focus-visible { border-radius: 10px; }
   .plus svg { width: 18px; height: 18px; }
   body.leaving { pointer-events: none; }
+  body.leaving .plus { pointer-events: auto; }   /* a second press skips the call */
   body.calling .plus { color: #F6FFD6; border-color: #F6FFD6; box-shadow: 0 0 18px rgba(216, 242, 106, .45); }
 </style>
 </head>
