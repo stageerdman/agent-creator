@@ -57,3 +57,15 @@ Glade Home v2 is no longer the direction. Start now opens this page, unchanged.
 - **Glade Home v2:** Start never linked to it. `updates/2026-11-26 GLADE-HOME-V2/` and `GLADE-HOME-CONCEPTS/` stay untouched. No app code points at them.
 - **Known, left as before:** the page's "← All concepts" link goes to `index.html`, which the app doesn't serve, so it 404s inside the app. Fixing it would change the file. The old app screen (`public/index.html`) is still in the repo but Start no longer shows it.
 - **Checked:** `npm test` passes (121 pass, 1 live skip). The server on PORT 3505 serves `/` identical to the source file (40418 chars).
+
+### Eraser sign-off: APPROVED (2026-11-26)
+
+This was a check that nothing changed, not a cut review. No steps were counted or cut, because the brief asks for the page exactly as it was.
+
+- **Code, same git object:** the file at `c83a7b3^`, at `ecdafbe` and at `src/server/public/glade-fireflies.html` all have blob `6459222`. They are the same bytes. (A small fix to the note above: `c83a7b3^` is `7aa30a2`, not `ecdafbe`. The file is the same in both, so nothing changes.)
+- **Code, what is actually served:** `GET /` on the running server returns 40502 bytes, and they match the old file byte for byte. There is nothing extra in front of the page.
+- **Code, the rest of the commit:** `b309ffd` only adds the copied file and this note, and changes one line in `app.mjs` (`GET /` → `glade-fireflies.html`). The page loads nothing from outside. Its only outside link is `← All concepts` → `index.html`, which was already there before.
+- **Browser, side by side:** I opened both pages in WebKit (the same engine as the Mac window) at 1280×820, with the same random seed and a frozen clock. Old over `file://`, old over http, and the app's `/`. The title, every visible control (Home / Birth / Files / Talk, Sound off) and the three agents (Tony Ready, Marcus Studying · 18 of 30, Ada Ready) match. Over the same http origin, the first frame of `/` is identical pixel for pixel. Later frames vary from run to run even when the old page is compared with itself, so that is animation timing, not a difference. Compared by eye, fireflies count, size, glow, colour, cluster shapes and layout are all the same. There are no page errors in either.
+- **Movement (paths, speed, easing, delays):** this lives in the inline JS and CSS, which are byte-identical, so it can't differ.
+- **Start opens no Glade Home v2:** `.project` `run:` → `start-mac-app.sh` → the Tauri window opens `http://localhost:<port>/` (`src-tauri/src/server.rs`), and the server now serves the Fireflies page at `/`. Nothing in `src/` or `src-tauri/` refers to GLADE-HOME-V2 or GLADE-HOME-CONCEPTS.
+- **Watch for later:** `← All concepts` 404s inside the app. That is the old behaviour and stays as it is on purpose. Fix it in the new-home work, not here.
