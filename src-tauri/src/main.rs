@@ -63,15 +63,13 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
         .visible(false)
         .center()
         .build()?;
-    // Paint the page's own canvas first, so a dark launch never flashes white.
+    // Paint the home's Fireflies field first, so a launch never flashes white.
     window.set_background_color(Some(canvas(window.theme()?)))?;
     window.show()
 }
 
-/// The page's --canvas (app.css), per theme.
-fn canvas(theme: Theme) -> Color {
-    match theme {
-        Theme::Dark => Color(0x12, 0x12, 0x12, 0xff),
-        _ => Color(0xff, 0xff, 0xff, 0xff),
-    }
+/// The home's Fireflies field (#0B1410). It is dark in both themes, so the
+/// native window is too: a light-mode Mac must not show a white first frame.
+fn canvas(_theme: Theme) -> Color {
+    Color(0x0B, 0x14, 0x10, 0xff)
 }
