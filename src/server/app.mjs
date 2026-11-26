@@ -29,6 +29,8 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
   const routes = {
     "GET /": staticFile("agent-home.html", "text/html; charset=utf-8"),
     "GET /new": staticFile("new-agent.html", "text/html; charset=utf-8"),
+    // A home row opens here; blank on the Fireflies background until the real agent page lands.
+    "GET /agents/:id": staticFile("agent-page.html", "text/html; charset=utf-8"),
     "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
     "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
     ...Object.fromEntries(PAGE_MODULES
