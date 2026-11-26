@@ -90,7 +90,7 @@
 </head>
 <body>
 <main id="root">
-  <form class="find" role="search" onsubmit="return false">
+  <form class="find" id="find" role="search">
     <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     <input id="q" type="search" placeholder="Search" aria-label="Search agents" autocomplete="off" spellcheck="false" autofocus>
   </form>
@@ -158,11 +158,17 @@ function render() {
   rows.forEach(r => { r.li.hidden = !shown.has(r.a); });
   const quiet = $('#quiet');
   const empty = loaded && !failed && !agents.length && !q.trim();
-  quiet.textContent = !loaded ? '' : failed ? 'Couldn’t load your agents' : empty ? 'No agents yet' : !shown.size ? `Nothing matches “${q.trim()}”` : '';
+  quiet.textContent = !loaded ? '' : failed ? 'Couldn’t load your agents' : empty ? 'Press + to make your first agent' : !shown.size ? `Nothing matches “${q.trim()}”` : '';
   quiet.className = 'quiet-line ' + (empty || failed ? 'empty' : 'nomatch');
   quiet.hidden = !quiet.textContent;
 }
 $('#q').addEventListener('input', render);
+// Type, then Enter: the top visible match opens (like Spotlight).
+$('#find').addEventListener('submit', e => {
+  e.preventDefault();
+  const top = rows.find(r => !r.li.hidden);
+  if (top && $('#q').value.trim()) location.href = pageOf(top.a);
+});
 
 async function load() {
   try {
@@ -193,8 +199,12 @@ const plus = $('#plus');
 plus.addEventListener('click', async e => {
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;   // a new tab: no motion
   e.preventDefault();
-  if (isGathering()) return;                                                         // a second press is ignored
+  if (isGathering()) { location.href = '/new'; return; }                             // a second press skips the wait
   try { await gatherToPlus($('#root'), plus); } finally { location.href = '/new'; }
+});
+// ⌘N (Ctrl+N elsewhere): New agent, the usual Mac shortcut.
+addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); plus.click(); }
 });
 
 /* ---------- Start ---------- */
