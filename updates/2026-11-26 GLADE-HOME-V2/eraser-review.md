@@ -8,7 +8,7 @@ the pages is Jony's job.*
 **Goal (one sentence):** the user leaves Home in seconds, either starting a new agent or inside
 Chat or Edit with the person they had in mind.
 
-**Verdict: RETURNED.** All three keep Home to two jobs, and the step counts meet the brief at
+**Verdict: APPROVED after cuts** (see *Sign-off* at the end). *First pass: RETURNED.* All three keep Home to two jobs, and the step counts meet the brief at
 1, 12 and 50. There are 5 page cuts (1 in A, 4 in C) and 1 repo cleanup (T1). **B passes as it is.** Each cut is small. I sign
 when each one checks out in a browser.
 
@@ -117,3 +117,26 @@ no console or page errors. The details are in `build-notes.md` under *Eraser cut
   the git-ignored `.tmp-test/shots/`.
 
 **Status: PASSED.** B passes unchanged. A and C pass with the cuts applied.
+
+## Sign-off
+
+*Eraser, 2026-11-26, on the cuts branch head `c1ad384`.* I ran `checks/cuts.cjs` and
+`checks/run.cjs` myself in Chrome at 1024×768 at 0/1/12/50. Every line was `ok`, with no page
+or console errors. Then I measured the three open points in C with my own script:
+
+| Open point | Measured | Result |
+|---|---|---|
+| Edit stays on the name line when a name wraps | `Untitled sketch` at 50 wraps to 2 lines. Edit's centre is 12 px below the name's top, inside the first 18 px line, and it doesn't touch the name text | ✓ |
+| Rows easy to click at the tighter spacing | Each row's Chat target is at least 39 px tall, with a 2 px gap between rows. Edit is 39×25 px, above the 24 px minimum | ✓ |
+| Misclicks near the planted line | The panel is gone as a target: only the `+ New agent` button opens New agent. Clicks on empty space and on the planted line do nothing. That's fewer targets, so there's nothing to misclick | ✓ |
+
+**Final step counts (C at 50):** 2 to chat with the latest, a recent one or by role, and 2 to
+edit. New agent takes 1. Nothing needs a scroll.
+
+**Watch later:**
+- *Ines's role clamps* at 2 lines (`Her design course, week by…`). The full text is in the tooltip
+  and the aria-label. If longer imported roles become common, test whether people still find
+  by role by eye.
+- *`Edit` shows 50 times* at 50 agents. Keep it until a test shows it reads as noise.
+
+**APPROVED. Signed — Eraser.**
