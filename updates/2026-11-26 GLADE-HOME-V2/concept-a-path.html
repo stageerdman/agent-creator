@@ -313,7 +313,7 @@ const G = {
         + (opt.folder ? `<p class="folder">Folder in: <b>${esc(opt.folder)}</b> · ${opt.count} ${opt.count === 1 ? 'item' : 'items'}</p>` : '')
         + `<button class="primary" id="keep">Keep</button><p class="note">Demo: Keep always makes Nell, Mum’s recipes.</p>`;
       $('#keep').onclick = () => this.keep();
-      $('#who').onkeydown = e => { if (e.key === 'Enter') this.keep(); };
+      $('#who').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); this.keep(); } };
     }
     Sky.build();
     (kind === 'new' ? $('#who') : (opt.root ? null : $('#back')))?.focus();

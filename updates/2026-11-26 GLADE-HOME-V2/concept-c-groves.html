@@ -71,19 +71,21 @@ button{background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:lef
 .groves{padding:12px 20px 16px;min-width:0;overflow:auto}
 .c .chip{display:inline-flex;margin:0 0 6px;border-radius:8px}
 .cols{display:flex;gap:10px;align-items:flex-start}
-.gcol{flex:0 1 180px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.gcol{flex:1 1 0;max-width:200px;min-width:0;display:flex;flex-direction:column;gap:10px}
 .grove{border-radius:12px;padding:6px 4px 6px}
 .grove h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--quiet);font-weight:500;margin:0;padding:4px 8px 4px;transition:opacity .18s ease}
-.gr{display:flex;align-items:flex-start;border-radius:8px;border:1px solid transparent;transition:opacity .18s ease}
+.gr{position:relative;display:flex;align-items:flex-start;border-radius:8px;border:1px solid transparent;transition:opacity .18s ease}
 .gr:hover{border-color:var(--line-on)}
 .dim{opacity:.25}
-.gr .open{flex:1;min-width:0;display:flex;gap:8px;align-items:flex-start;padding:4px 0 5px 8px;border-radius:8px}
+.gr .open{flex:1;min-width:0;display:flex;gap:8px;align-items:flex-start;padding:4px 8px 5px 8px;border-radius:8px}
 .gr .open .mark{margin-top:5px}
 .gr .tx{flex:1;min-width:0}
 .gr .nm{font-weight:600;line-height:1.25}
 .gr .rl{font-size:13px;color:var(--quiet);line-height:1.25}
 .gr .st{font-size:12px;color:var(--quiet);line-height:1.25}
-.gr .ed{font-size:13px;color:var(--quiet);padding:4px 8px;margin:2px 2px 0 0;border-radius:6px;flex:none}
+/* Edit sits on the name line only (always visible), so the role line below gets the row's full width. */
+.gr .nm{padding-right:34px}
+.gr .ed{position:absolute;top:2px;right:2px;font-size:13px;color:var(--quiet);padding:4px 8px;border-radius:6px}
 .gr .ed:hover{color:var(--text)}
 </style>
 </head>
@@ -158,6 +160,8 @@ const Concept = {
       gv.querySelector('h2').classList.toggle('dim', !any);
     });
     if (firstLit) firstLit.querySelector('.open').focus();
+    // No match: let go of the last row, so Return can't open someone you didn't ask for.
+    else if (q && document.activeElement?.closest?.('.gr')) document.activeElement.blur();
   },
   // ↑ ↓ within the lit rows of a column, ← → to the next column that has a lit row.
   onKey(e) {
@@ -326,7 +330,7 @@ const G = {
         + (opt.folder ? `<p class="folder">Folder in: <b>${esc(opt.folder)}</b> · ${opt.count} ${opt.count === 1 ? 'item' : 'items'}</p>` : '')
         + `<button class="primary" id="keep">Keep</button><p class="note">Demo: Keep always makes Nell, Mum’s recipes.</p>`;
       $('#keep').onclick = () => this.keep();
-      $('#who').onkeydown = e => { if (e.key === 'Enter') this.keep(); };
+      $('#who').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); this.keep(); } };
     }
     Sky.build();
     (kind === 'new' ? $('#who') : (opt.root ? null : $('#back')))?.focus();
