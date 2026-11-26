@@ -137,7 +137,7 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 function fmtSize(b) {
   if (b < 1000) return Math.round(b) + ' B';
   const u = ['KB', 'MB', 'GB', 'TB']; let i = -1;
-  do { b /= 1000; i++; } while (b >= 1000 && i < u.length - 1);
+  do { b /= 1024; i++; } while (b >= 1024 && i < u.length - 1);   // 1 MB = 1,048,576 B, the same MB one dot holds
   return (b < 10 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
 }
 
@@ -149,6 +149,7 @@ const PLACED = 60;             // up to 60 dots get their own spot; past that, a
 const TOUCH = .25;             // px of dark kept between two neighbouring dots at rest
 /* The pace. A file's dots land one by one; the next file waits for the last dot of the one before. */
 const STEP = 90, GAP = 250, PER_FILE = 2500;
+const STEP_REDUCED = 60;       // Reduce Motion: dots still light one by one, 60 ms apart; each just turns on
 /* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
 function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
 /* The golden-angle spiral. A slot's place doesn't depend on how many dots there are,
@@ -214,13 +215,10 @@ function tick(now) {
     }
     if (cur.at > now) break;
     const f = cur.f;
-    if (reduced) {                    // one quiet step per file: every dot in the same frame
-      f.dots.forEach((d, k) => lightDot(f, d, cur.at + k * 1e-3));
-      cur.i = f.dots.length;
-    } else { lightDot(f, f.dots[cur.i], cur.at); cur.i++; }
+    lightDot(f, f.dots[cur.i], cur.at); cur.i++;   // one dot at a time, in file order (Reduce Motion too)
     changed = true;
     if (cur.i >= f.dots.length) { const end = f.dots[f.dots.length - 1].litAt; nextStart = end + cur.gap; quietUntil = end + 1500; cur = null; }
-    else cur.at += cur.step;
+    else cur.at += reduced ? STEP_REDUCED : cur.step;
   }
   if (changed) { relayout(); render(); }
 }
@@ -394,14 +392,15 @@ let sayTimer = 0;
 function say(s) { const p = $('#said'); p.textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => { p.textContent = ''; }, 4000); }
 
 /* Add: the name field always holds a suggestion, so Add works on the first press.
-   Size slider: 100 B … 100 MB on a log scale (100 MB = 96 dots, enough to see the glow rule). */
+   Size slider: 100 B … 60 MB on a log scale. Its top is one file at the 60-dot cap; more MB
+   only come from more files, and past 60 dots they add glow, never a dot. */
 const IDEAS = [
   ['travel/packing-list.txt', 30], ['recipes/pear-tart-notes.md', 20], ['garden/orchard-photos.zip', 80],
   ['letters/birthday-cards.pdf', 60], ['travel/map-scans.pdf', 72], ['recipes/spice-list.csv', 15],
   ['garden/pond-plan.pdf', 64], ['letters/pen-pal-1984.txt', 25]
 ];
 let ideaN = 0;
-const bytesOf = v => Math.round(Math.pow(10, 2 + v / 100 * 6));
+const bytesOf = v => Math.min(PLACED * MB, Math.round(100 * Math.pow(PLACED * MB / 100, v / 100)));
 function showBytes() { $('#fsizeV').textContent = fmtSize(bytesOf(+$('#fsize').value)); }
 function suggest() {
   for (let k = 0; k < IDEAS.length; k++) {
