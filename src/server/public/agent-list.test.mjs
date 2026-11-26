@@ -39,6 +39,14 @@ test("sortAgents: an old record without createdAt sorts by updatedAt", () => {
   assert.deepEqual(sortAgents([old, A("x", ago(3 * D)), A("y", ago(D))]).map((a) => a.id), ["y", "old", "x"]);
 });
 
+test("sortAgents: an old record's updatedAt that ties another's createdAt falls back to id, either order", () => {
+  const t = ago(2 * D);
+  const old = { id: "m-old", draft: { name: "Old" }, updatedAt: t };
+  const list = [old, A("z", t), A("a", t), A("n", ago(H))];
+  assert.deepEqual(sortAgents(list).map((a) => a.id), ["n", "a", "m-old", "z"]);
+  assert.deepEqual(sortAgents(list.slice().reverse()).map((a) => a.id), ["n", "a", "m-old", "z"]);
+});
+
 test("filterAgents: one letter, full name, case, description words, no match, empty", () => {
   const list = [A("1", ago(M), "Marcus", "A stoic mentor"), A("2", ago(H), "Maya", "Design teacher"), A("3", ago(D), "Rex Hart", "Tough-love coach"), A("4", ago(2 * D), "Inès", "")];
   const ids = (q) => filterAgents(list, q).map((a) => a.id);

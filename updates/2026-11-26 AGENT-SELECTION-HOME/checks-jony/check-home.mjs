@@ -76,6 +76,22 @@ for (const n of [0, 1, 10, 50]) {
   await page.close();
 }
 
+// Search focus ring: soft on load (autofocus), clear once the user arrives by Tab, soft again after a click.
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 820 } });
+  await page.goto(`${BASE}/?demo=10`); await page.waitForTimeout(600);
+  const ring = () => page.evaluate(() => ({ active: document.activeElement.id, shadow: getComputedStyle(document.querySelector("#q")).boxShadow }));
+  const load = await ring();
+  await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
+  const kbd = await ring();
+  await page.mouse.click(640, 10); await page.click("#q");
+  const click = await ring();
+  ok("search ring: soft on load", load.active === "q" && /inset/.test(load.shadow), load.shadow);
+  ok("search ring: clear on Tab arrival", kbd.active === "q" && !/inset/.test(kbd.shadow) && /2px/.test(kbd.shadow), kbd.shadow);
+  ok("search ring: soft again after a click", click.active === "q" && /inset/.test(click.shadow), click.shadow);
+  await page.close();
+}
+
 // Plus: gather plays, a second press is ignored, /new in ~1–1.5 s; with 50 agents.
 for (const reducedMotion of ["no-preference", "reduce"]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 820 }, reducedMotion });

@@ -48,3 +48,12 @@ Script: `checks-jony/check-home.mjs`, run against `PORT=3505`. Everything passed
 - `npm test` passes.
 
 Looked at by eye: the screenshots for 0, 10 and 50 agents, mid-gather, and the agent page. One fix came from that: the search's focus ring was a loud lime on every load, so it is now a soft inset.
+
+## Follow-ups from Columbo (all five)
+1. **Reduced motion.** The 409 ms (414 ms on the re-run) is the whole trip: the fade plus loading `/new`. The fade itself is `REDUCED_FADE_MS = 160` in `firefly-gather.js`, and its unit test resolves in about 161 ms, under 200 ms. Nothing for Merlin to fix.
+2. **`glade-fireflies.html` is unchanged.** `git hash-object src/server/public/glade-fireflies.html` gives `645922246274e3c5c695c59163e15824935d9245`, the expected blob hash.
+3. **Start.** `npm run build:app` installed `/Applications/Agent Creator.app`. The bundled `agent-home.html` has the new home and this focus fix, and `npm run start:app` opened the app. I can't see the window from here, so I haven't checked by eye that there's no flash. One real risk from reading the code: `src-tauri/src/main.rs` `canvas()` paints the native window `#121212` in dark mode but **`#ffffff` in light mode**. The home is always `#0B1410` (`html { background: var(--field) }`), so in light mode the window shows white until the page paints. That file isn't in my part. Suggested fix (Columbo to assign): make `canvas()` return `Color(0x0B, 0x14, 0x10, 0xff)` for both themes.
+4. **Focus ring.** The soft inset (`inset 0 0 0 1px rgba(216,242,106,.38)`) now applies to plain `:focus`. A Tab keydown sets `body.kbd`, and `.kbd .find input:focus-visible` gets the clear ring `0 0 0 2px rgba(216,242,106,.55)`, the same as the plus. A pointerdown removes the class again. The WebKit check now tests all three states and they pass: soft on load (autofocus), clear after Tab then Shift+Tab, soft again after a click.
+5. **Sort ties.** The existing test already covers a shared `createdAt` (`c` and `d` both 1 h old, sorted by id, same result from reversed input). I added: "an old record's updatedAt that ties another's createdAt falls back to id, either order". `npm test`: 147 pass, 1 skipped, 0 fail.
+
+The full WebKit check (`checks-jony/check-home.mjs`) passes again after these changes.
