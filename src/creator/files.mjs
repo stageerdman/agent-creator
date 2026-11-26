@@ -3,8 +3,9 @@
 // reads what is inside. Pure functions, so the server, tests and the page
 // agree on what a route means.
 //
-// File: { path, name, size, feeds }. `path` is relative to what the user
-// dropped or picked ("notes/week 1.md") and is the file's identity.
+// File: { path, name, size, feeds, addedAt }. `path` is relative to what the
+// user dropped or picked ("notes/week 1.md") and is the file's identity.
+// `addedAt` (ISO) is when it joined; files saved before it was kept have none.
 
 import { BadInput } from "./errors.mjs";
 
@@ -14,12 +15,13 @@ export const FEEDS = ["rag", "instructions"];
 // What the creator may say about a file or folder, and the feeds that means.
 const ROUTES = { rag: ["rag"], instructions: ["instructions"], both: FEEDS, none: [] };
 
-// Adds new files; one already in the list (same path) keeps its feeds.
-export function addFiles(files, incoming) {
+// Adds new files, stamped `addedAt`; one already in the list (same path)
+// keeps its feeds and its first stamp.
+export function addFiles(files, incoming, addedAt = new Date().toISOString()) {
   const known = new Set(files.map((file) => file.path));
   const added = [];
   for (const entry of incoming) {
-    const file = newFile(entry);
+    const file = { ...newFile(entry), addedAt };
     if (known.has(file.path)) continue;
     known.add(file.path);
     added.push(file);
@@ -47,6 +49,23 @@ export function routeFiles(files, routes) {
 
 // The files one machine should take in.
 export const feedOf = (files, feed) => files.filter((file) => file.feeds.includes(feed));
+
+// What the Fireflies DNA logo draws: one entry per file, oldest first.
+// `topic` is the top folder ("notes/week 1.md" → "notes"; no folder → "other"),
+// the same rule as playground/fireflies-dna.html, so the UI maps it to a
+// colour. A file without a stamp (saved before addedAt existed) takes
+// `fallbackAt`, the agent's own createdAt. sizeBytes is null when unknown.
+// → [{ id, name, sizeBytes, addedAt, topic }].
+export function dnaOf(files = [], fallbackAt) {
+  return files
+    .map(({ path, name, size, addedAt }) => ({ id: path, name, sizeBytes: size ?? null, addedAt: addedAt || fallbackAt, topic: topicOf(path) }))
+    .sort((a, b) => (Date.parse(a.addedAt) || 0) - (Date.parse(b.addedAt) || 0));
+}
+
+function topicOf(path) {
+  const slash = path.indexOf("/");
+  return slash > 0 ? path.slice(0, slash).trim().toLowerCase() : "other";
+}
 
 function routeFor(path, routes) {
   const own = routes.find(([key]) => normalPath(key) === path);

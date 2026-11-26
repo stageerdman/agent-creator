@@ -2,7 +2,7 @@
 // shell) call. Store and engine are passed in; no HTTP here.
 
 import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
-import { addFiles, routeFiles } from "./files.mjs";
+import { addFiles, dnaOf, routeFiles } from "./files.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
@@ -14,14 +14,19 @@ export function shortDescription({ persona = "", instructions = "" } = {}) {
 }
 // The home sorts and ages rows by createdAt. Records written before the store
 // kept it fall back to updatedAt: never undefined, never "now".
-export const summary = ({ id, draft, createdAt, updatedAt }) => ({
-  id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) },
-  createdAt: createdAt || updatedAt, updatedAt,
-});
-const view = ({ id, draft, sessionId, files = [] }) => ({ id, draft, sessionId, files });
+// `dna` is what the row's Fireflies DNA logo draws (files.mjs dnaOf).
+export function summary({ id, draft, files, createdAt, updatedAt }) {
+  const born = createdAt || updatedAt;
+  return {
+    id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) },
+    createdAt: born, updatedAt, dna: dnaOf(files, born),
+  };
+}
+const view = ({ id, draft, sessionId, files = [], createdAt, updatedAt }) =>
+  ({ id, draft, sessionId, files, dna: dnaOf(files, createdAt || updatedAt) });
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
-export function createAgents({ store, engine }) {
+export function createAgents({ store, engine, now = () => new Date() }) {
   return {
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
@@ -65,7 +70,7 @@ export function createAgents({ store, engine }) {
     // Dropped or picked files join the DNA file list, unrouted. Never the chat.
     async addFiles(id, entries) {
       const record = await store.loadAgent(id);
-      const { files, added } = addFiles(record.files ?? [], entries);
+      const { files, added } = addFiles(record.files ?? [], entries, now().toISOString());
       if (added.length) await store.saveDraft(id, { files });
       return { files, added };
     },

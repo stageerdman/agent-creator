@@ -708,7 +708,7 @@ export const imports = {
 export const demoAgents = [rex, marcus, edie, ines, untitled, juno];
 
 // ── The agent-selection home (AGENT-SELECTION-HOME): 0, 1, 10 and 50 agents ──
-// Store-shaped records ({ id, draft, createdAt, updatedAt }); the route turns
+// Store-shaped records ({ id, draft, files, createdAt, updatedAt }); the route turns
 // them into the real API summary. Ages run from minutes to months, measured
 // back from `now`. Some learn; some have no description; one old record has
 // no createdAt (it must fall back to updatedAt); long names with and without spaces.
@@ -726,6 +726,20 @@ const HOME_PEOPLE = [
   ["Ada", "Thinks in small, safe steps when old code needs changing.", 4 * 30 * DAY + DAY, "saved"],
 ];
 const MORE_NAMES = ["Theo", "Sol", "Lena", "Priya", "Omar", "Kofi", "Hana", "Bruno", "Clara", "Dev", "Elif", "Farah", "Gus", "Ivo", "Jade", "Kai", "Lior", "Mina", "Nils", "Odile"];
+// Store-shaped files for each home agent's DNA logo: a few topics (top
+// folders), sizes from a few KB to tens of MB, added over the agent's life.
+// Every 8th agent has none (a fresh agent with no files yet).
+const MOCK_TOPICS = [["talks", "mp4"], ["books", "pdf"], ["notes", "md"], ["interviews", "txt"]];
+function homeFiles(i, bornMs, now) {
+  if (i % 8 === 7) return [];
+  const count = 3 + ((i * 5) % 9);
+  return Array.from({ length: count }, (_, k) => {
+    const [topic, ext] = MOCK_TOPICS[(i + k) % (2 + (i % 3))];
+    const size = Math.round(4096 * 2 ** ((i * 7 + k * 3) % 14));
+    const addedAt = new Date(bornMs + ((now - bornMs) * k) / count).toISOString();
+    return { path: `${topic}/${topic} ${k + 1}.${ext}`, name: `${topic} ${k + 1}.${ext}`, size, feeds: [], addedAt };
+  });
+}
 const MORE_ROLES = ["Contract lawyer", "Startup board advisor", "Piano teacher who explains one thing at a time", "", "Running coach", "Tax explainer, not advice", "Imported from Lena", "Chess sparring partner"];
 
 export function homeAgents(count, now = Date.now()) {
@@ -742,7 +756,7 @@ export function homeAgents(count, now = Date.now()) {
     }
     const [name, persona, age, status, { noCreatedAt } = {}] = row;
     const record = { id: `home-${String(i + 1).padStart(2, "0")}`, draft: { name, persona, instructions: "", status },
-      createdAt: at(age), updatedAt: at(Math.max(0, age - HOUR)) };
+      files: homeFiles(i, now - age, now), createdAt: at(age), updatedAt: at(Math.max(0, age - HOUR)) };
     if (noCreatedAt) { delete record.createdAt; record.updatedAt = at(age); }
     out.push(record);
   }

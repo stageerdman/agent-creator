@@ -117,7 +117,18 @@ test("agents: a chat turn applies the patch, autosaves it and keeps the session"
   const turn = await agents.chat(id, "a loud coach");
   assert.deepEqual(turn.changed, ["name", "persona"]);
   assert.equal(turn.say, "Sketched.");
-  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [] });
+  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], dna: [] });
+});
+
+test("agents: dropped files are stamped by the clock and show up as dna on the list and the view", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]), now: () => new Date("2026-11-20T08:00:00Z") });
+  const { id } = await agents.create();
+  await agents.edit(id, { name: "Ada" });
+  await agents.addFiles(id, [{ path: "talks/one.mp4", size: 2048 }]);
+  const expected = [{ id: "talks/one.mp4", name: "one.mp4", sizeBytes: 2048, addedAt: "2026-11-20T08:00:00.000Z", topic: "talks" }];
+  assert.deepEqual((await agents.list())[0].dna, expected);
+  assert.deepEqual((await agents.get(id)).dna, expected);
 });
 
 test("agents: dropped files join the DNA list, the creator routes them by path", async () => {

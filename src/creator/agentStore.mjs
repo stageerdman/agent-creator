@@ -3,7 +3,8 @@
 // can later keep the agent's materials next to it.
 //
 // Record: { id, draft, sessionId, handEdited, handLines?, files?, createdAt, updatedAt }.
-// `files` is the DNA file list (see files.mjs): paths and feeds, never content.
+// `files` is the DNA file list (see files.mjs): paths, sizes, feeds and
+// added-at stamps, never content.
 
 import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
