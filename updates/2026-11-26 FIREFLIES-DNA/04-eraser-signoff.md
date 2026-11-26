@@ -64,10 +64,18 @@ Columbo's open question, "Should hover highlight the whole file family or only t
 
 Watch item, not blocking: with big Max dot sizes, a seed head near the edge can spill past the 44 px padding and be clipped. If it bothers anyone, keep `it.rad` inside the field in `place()`.
 
-## Recheck (after Jony's pass)
+## Recheck (round 2, at integration)
 
-*Pending.*
+*Columbo (captain) made F1–F3 at integration, because Jony's pass had not landed yet, and rechecked them against the targets above.*
+
+| Fix | Change | Result |
+|---|---|---|
+| F1 | `topicBase` uses the fixed slot list `[0, 0.67, 0.33, 1, 0.5, 0.17, 0.83]` for the first 7 topics, then golden steps. Changed in `02-merlin-magic.md` (code and prose) and pasted into the page | **Pass.** Measured hues (3 files each): recipes ≈120°, garden ≈163°, letters ≈223°, travel ≈270°, so the first 4 are 43–59° apart. Topics 5–7 (≈198°, ≈143°, ≈248°) are each ≥20° from their nearest neighbour. The first file a person adds (`travel/…`) is now clearly its own colour |
+| F2 | Min dot size 0.75–2.5, Max dot size 2.5–9 | **Pass.** The ranges can't cross, so the labels can't lie |
+| F3 | `03-jony-build.md` now says pointing lights "every dot of that file's seed head (not the whole topic)" | **Pass** |
+
+Browser checks rerun after the fixes (`checks/run.cjs`): 19/19 in WebKit (672 lights, 61 fps) and 19/19 in Chrome (672 lights, 60 fps). The console is empty in both, with normal and reduced motion. Check 1 confirms Merlin's block is still byte-identical to his doc.
 
 ## Sign-off
 
-*Pending — NOT YET until F1–F3 are in.*
+**APPROVED.** All four rules can be seen and played with, there's no clutter, it runs smoothly at 600+ lights, and it respects reduced motion. The non-blocking watch item (big heads clipped at the edge) stays open.
