@@ -183,3 +183,50 @@ restarts a mode when that happens.
   issue. If "N MB = N dots" ever has to be exact, round the readout up.
 
 **APPROVED** — Eraser, 2026-11-26, on `c5ecc57`.
+
+## Per-file blink — pixel sign-off on `502662e`
+
+**Goal:** each file's dots blink on that file's own beat, set by when it was added, so you can see
+which dots arrived together. There's nothing for the user to do.
+
+**Step Count for the user: 0 added.** It's still name → Size → Add. The blink is ambient, and
+there are no new controls: eye-check lists the same set, agentName, fname, Add, fsize, minR, maxR, ×.
+
+Checked in fresh headless Chrome and WebKit, one browser at a time, on a worktree at `502662e`.
+The user's folder `/Users/stage/dev/agent-creator` is now at `502662e` too.
+
+**1) eye-check.cjs (`e435071`): PASS in Chrome and WebKit, with Reduce Motion on and off.**
+Reduce Motion lights dots 1 per frame, 66 ms apart, with no pop. Normal mode runs 84 ms apart. The
+slider max is 60 MB = 60 dots, and the rest goes to glow. The console is clean. Chrome dropped out
+mid-run several times, and the script restarted those modes; the page itself never logged an error.
+
+**2) blink-check.cjs (new, in `checks/`):** it reads the brightness of the whole `#preview`
+canvas every rAF frame after the samples are removed with their × buttons. A sharp rise is one
+that climbs more than 25 % of the window's range within 150 ms. Hooks are used only as a cross-check.
+The agent's period is 2835 ms.
+
+| Check | Chrome | WebKit |
+|---|---|---|
+| a.txt then b.txt 1 s later (3 MB each): pairs of rises, then the rest of the beat | 633 / 2200 ms | 616 / 2217 ms |
+| The same pair, with b's addedAt = a + 1 day | 1167 / 1667 ms | 1165 / 1667 ms |
+| The rule's value (phase gap × period): 0.224 → 635 ms; 0.595 → 1148 ms (the shorter side) | ok | ok |
+| Every canvas rise matches a hook blink | ≤ 33 ms | ≤ 34 ms |
+| (a) Same moment: same phase, both blink in the same frame (3 of 3), one rise per beat, 2833 ms apart | ok | ok |
+| (c) One 20-dot file: no rise while it lands; first blink 1983 / 2051 ms after its last dot (≥ 1500) | ok | ok |
+| (c) In the pair: b's first blink comes ≥ 1.8 s after its last dot landed | ok | ok |
+| (d) Reduce Motion: canvas range 0, no rises, hook shows no blink | ok | ok |
+| Console clean | ok | ok |
+
+These agree with Pixel's numbers (634 / 1150 ms, within ~50 ms of the hook).
+
+### Watch
+- **The eye can't tell "a second apart" from "a year apart".** The gap is capped at 0.8 of a
+  beat, and 0.8 ahead looks the same as 0.2 behind. So files added a year apart look like files
+  added 1 s apart (~570 vs ~635 ms). The eye reads only the shorter side of the beat as "the gap".
+  That gap is widest, half a beat, at about 1.5 h apart. After that it shrinks again: 1 day → 0.40,
+  3 weeks → 0.30, a year → 0.20. That's fine for "these came together / these didn't".
+  Don't sell it as a timeline. If it ever has to read as "older = further", cap the phase step at 0.5.
+- The commit says it's parked, outside the current brief. This sign-off covers the behaviour, not the
+  decision to ship it.
+
+**APPROVED** — Eraser, 2026-11-26, on `502662e`.
