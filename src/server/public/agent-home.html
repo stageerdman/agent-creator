@@ -72,7 +72,7 @@
     display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 14px;
     height: 68px; padding: 0 14px 0 6px; border-radius: 14px; color: inherit; text-decoration: none;
   }
-  .row:hover { background: rgba(16, 26, 21, .72); }
+  .row:hover, .row.next { background: rgba(16, 26, 21, .72); }
   .row:focus-visible { outline-offset: 0; border-radius: 14px; }
   .row canvas { width: 56px; height: 56px; display: block; }
   .row .text { min-width: 0; }
@@ -156,6 +156,9 @@ setInterval(ages, 30e3);
 function render() {
   const q = $('#q').value, shown = new Set(filterAgents(agents, q));
   rows.forEach(r => { r.li.hidden = !shown.has(r.a); });
+  // While typing, the row Enter will open wears the hover tint, so Enter never surprises.
+  const top = q.trim() ? rows.find(r => !r.li.hidden) : null;
+  rows.forEach(r => r.li.firstChild.classList.toggle('next', r === top));
   const quiet = $('#quiet');
   const empty = loaded && !failed && !agents.length && !q.trim();
   quiet.textContent = !loaded ? '' : failed ? 'Couldn’t load your agents' : empty ? 'Press + to make your first agent' : !shown.size ? `Nothing matches “${q.trim()}”` : '';
@@ -166,6 +169,7 @@ $('#q').addEventListener('input', render);
 // Type, then Enter: the top visible match opens (like Spotlight).
 $('#find').addEventListener('submit', e => {
   e.preventDefault();
+  if (isGathering()) return;                       // already on the way to /new
   const top = rows.find(r => !r.li.hidden);
   if (top && $('#q').value.trim()) location.href = pageOf(top.a);
 });

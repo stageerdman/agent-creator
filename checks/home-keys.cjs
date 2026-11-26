@@ -15,7 +15,9 @@ const which = process.argv[3] || 'chrome';
 
   await page.goto(home); await page.waitForSelector('.row');
   const top = await page.evaluate(() => window.dnaLogos[1].name);
-  await page.keyboard.type(top); await page.keyboard.press('Enter');
+  await page.keyboard.type(top);
+  console.log('marked as next:', JSON.stringify(await page.$$eval('.row.next .name', els => els.map(e => e.textContent))));
+  await page.keyboard.press('Enter');
   await page.waitForURL(/\/agents\//, { timeout: 3000 });
   console.log('enter opened:', new URL(page.url()).pathname, 'title has', top);
 
@@ -33,6 +35,11 @@ const which = process.argv[3] || 'chrome';
   const t1 = Date.now(); await page.click('#plus'); await page.waitForTimeout(150); await page.click('#plus');
   await page.waitForURL(/\/new/, { timeout: 4000 });
   console.log('double plus reached /new in', Date.now() - t1, 'ms');
+
+  await page.goto(home); await page.waitForSelector('.row');
+  await page.keyboard.type('a'); await page.click('#plus'); await page.focus('#q'); await page.keyboard.press('Enter');
+  await page.waitForURL(/\/(new|agents)/, { timeout: 4000 });
+  console.log('enter during gather goes to:', new URL(page.url()).pathname);
 
   await page.goto(base + '/?demo=0'); await page.waitForTimeout(500);
   console.log('empty line:', await page.textContent('#quiet'));
