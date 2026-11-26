@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Creator · three magic concepts</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    background: #0E0F11;
+    color: #E8E9EB;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 72px 24px;
+  }
+  main { width: 100%; max-width: 960px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+  .lede { color: #9A9DA3; margin: 0 0 48px; max-width: 60ch; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  a.card {
+    display: flex; flex-direction: column; gap: 12px;
+    height: 100%;
+    padding: 24px;
+    border-radius: 16px;
+    background: #16181B;
+    border: 1px solid #24272C;
+    color: inherit; text-decoration: none;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  a.card:hover { border-color: #3A3E45; transform: translateY(-2px); }
+  a.card:focus-visible { outline: 2px solid #8FB3FF; outline-offset: 3px; }
+  .light { height: 72px; border-radius: 10px; position: relative; overflow: hidden; }
+  .letter { font-size: 13px; color: #9A9DA3; }
+  h2 { font-size: 20px; font-weight: 600; margin: 0; }
+  p.pitch { margin: 0; color: #C3C6CB; }
+  .open { margin-top: auto; font-size: 14px; color: #9A9DA3; }
+  a.card:hover .open { color: #E8E9EB; }
+
+  /* A: fireflies falling into sync */
+  .glade { background: #0B1410; }
+  .glade i {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: #D8F26A; box-shadow: 0 0 12px 3px rgba(216,242,106,.35);
+    opacity: .15; animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: .12; } 45% { opacity: 1; } }
+
+  /* B: grey sea, one warm lamp */
+  .sea { background: linear-gradient(#3A474B, #2E3B3F 55%, #1C2629); }
+  .sea::before {
+    content: ""; position: absolute; left: -10%; right: -10%; top: 46%; height: 2px;
+    background: #8FB3A8; opacity: .5; border-radius: 2px;
+    animation: swell 6s ease-in-out infinite;
+  }
+  .sea::after {
+    content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    left: 50%; top: calc(46% - 14px); margin-left: -4px;
+    background: #E8C48A; box-shadow: 0 0 16px 4px rgba(232,196,138,.35);
+    animation: swell 6s ease-in-out infinite;
+  }
+  @keyframes swell { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+
+  /* C: a neon tube flickering on */
+  .neon { background: #0A0A12; display: flex; align-items: center; justify-content: center; }
+  .neon span {
+    font-size: 28px; font-weight: 300; letter-spacing: .08em; color: #7FD8FF;
+    text-shadow: 0 0 6px rgba(127,216,255,.8), 0 0 18px rgba(127,216,255,.45);
+    animation: hum 5s linear infinite;
+  }
+  @keyframes hum { 0%, 6%, 9%, 100% { opacity: 1; } 7%, 8% { opacity: .35; } 60% { opacity: .92; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .glade i { opacity: .8; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Agent Creator · three magic concepts</h1>
+  <p class="lede">Three ways the same app could feel. Each page plays four moments: Home, Birth, Files and Talk. Click through them with the bar at the top.</p>
+  <ul>
+    <li>
+      <a class="card" href="glade-fireflies.html">
+        <div class="light glade" aria-hidden="true" id="flies"></div>
+        <span class="letter">Concept A</span>
+        <h2>Glade</h2>
+        <p class="pitch">Every file the agent learns becomes a firefly; as it truly takes the material in, the lights fall into one shared pulse.</p>
+        <span class="open">Open →</span>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="remembering-sea.html">
+        <div class="light sea" aria-hidden="true"></div>
+        <span class="letter">Concept B</span>
+        <h2>The Remembering Sea</h2>
+        <p class="pitch">Everything you give the agent sinks into a calm grey sea, and the agent is whatever rises back out of it.</p>
+        <span class="open">Open →</span>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="neon-after-rain.html">
+        <div class="light neon" aria-hidden="true"><span>MARCUS</span></div>
+        <span class="letter">Concept C</span>
+        <h2>Neon After Rain</h2>
+        <p class="pitch">Every agent is a neon sign; each file learned wires in one more tube, so the sign is the progress bar.</p>
+        <span class="open">Open →</span>
+      </a>
+    </li>
+  </ul>
+</main>
+<script>
+  // Scatter a few fireflies, each blinking on its own beat.
+  (function () {
+    var box = document.getElementById('flies');
+    var n = 14, flies = [];
+    for (var k = 0; k < n; k++) {
+      var f = document.createElement('i');
+      f.style.left = (6 + Math.random() * 88) + '%';
+      f.style.top = (12 + Math.random() * 70) + '%';
+      f.style.animationDelay = (-Math.random() * 2.4).toFixed(2) + 's';
+      box.appendChild(f);
+      flies.push(f);
+    }
+  })();
+</script>
+</body>
+</html>

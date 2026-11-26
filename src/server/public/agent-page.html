@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent · Agent Creator</title>
+<style>
+  /* The agent's page, on the Fireflies background (same on html and body: no white flash).
+     For now it says who the agent is; talking to it lands here later. */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A; --text: #E6EEE8; --quiet: #8C9A90;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  html { background: var(--field); }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+  .back { position: fixed; top: 20px; left: 20px; color: var(--quiet); text-decoration: none; font-size: 13px; padding: 6px 4px; }
+  .back:hover { color: var(--text); }
+  main { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 48px)); text-align: center; }
+  h1 { margin: 0; font-size: 34px; font-weight: 500; letter-spacing: .02em; overflow-wrap: anywhere; }
+  p { margin: 8px 0 0; color: var(--quiet); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← Agents</a>
+<main aria-live="polite"><h1 id="name"></h1><p id="desc"></p></main>
+<script type="module">
+import { nameOf, descOf } from '/agent-list.js';
+const id = decodeURIComponent(location.pathname.split('/').pop() || '');
+const demo = new URLSearchParams(location.search).get('demo');
+const back = document.querySelector('.back'); if (demo != null) back.href = '/?demo=' + encodeURIComponent(demo);
+const show = (name, desc) => { document.getElementById('name').textContent = name; document.getElementById('desc').textContent = desc; document.title = name + ' · Agent Creator'; };
+try {
+  const r = await fetch(demo != null ? '/mock/home/' + encodeURIComponent(demo) : '/api/agents');
+  const a = r.ok ? (await r.json()).find(x => x.id === id) : null;
+  if (a) show(nameOf(a), descOf(a)); else show('This agent isn’t here', 'It may have been removed.');
+} catch { show('Couldn’t open this agent', 'Go back and try again.'); }
+</script>
+</body>
+</html>

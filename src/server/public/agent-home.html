@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Creator</title>
+<style>
+  /* The Fireflies look, copied from glade-fireflies.html (left untouched). */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --text: #E6EEE8; --quiet: #8C9A90;
+    --panel: #101A15; --line: #1E2B24;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    /* One centred column; the plus sits just right of it, so the column keeps room for it on both sides. */
+    --col: min(560px, calc(100vw - 136px));
+    --top: max(32px, 12vh);
+    --field-h: 44px;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--field); }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+
+  /* The search: centred, soft, iOS-style. Never moves. */
+  .find {
+    position: fixed; top: var(--top); left: 50%; transform: translateX(-50%); width: var(--col); height: var(--field-h); margin: 0;
+  }
+  .find svg { position: absolute; left: 14px; top: 50%; width: 16px; height: 16px; margin-top: -8px; color: var(--quiet); pointer-events: none; }
+  .find input {
+    width: 100%; height: 100%; padding: 0 14px 0 38px; font: inherit; font-size: 16px; color: var(--text);
+    background: rgba(230, 238, 232, .075); border: 0; border-radius: 14px; corner-shape: squircle;
+    box-shadow: inset 0 0 0 .5px rgba(230, 238, 232, .08);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2); backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-appearance: none; appearance: none; caret-color: var(--fly);
+    transition: background-color 160ms cubic-bezier(.5, 1, .89, 1), box-shadow 160ms cubic-bezier(.5, 1, .89, 1);
+  }
+  @supports (corner-shape: squircle) { .find input, .plus { border-radius: 22px; } }
+  .find input::placeholder { color: var(--quiet); opacity: 1; }
+  .find input:focus { outline: none; background: rgba(230, 238, 232, .11); }
+  /* Focused on every load (autofocus), so the ring stays soft: visible, never loud. */
+  .find input:focus { box-shadow: inset 0 0 0 1px rgba(216, 242, 106, .38); }
+  /* Arrived by keyboard (Tab): a clear ring, like the plus. */
+  .kbd .find input:focus-visible { box-shadow: 0 0 0 2px rgba(216, 242, 106, .55); }
+
+  /* The plus: the one way to make an agent, just right of the search. */
+  .plus {
+    position: fixed; top: var(--top); left: calc(50% + var(--col) / 2 + 12px);
+    width: var(--field-h); height: var(--field-h); display: grid; place-items: center;
+    border-radius: 14px; corner-shape: squircle; background: rgba(230, 238, 232, .075);
+    box-shadow: inset 0 0 0 .5px rgba(230, 238, 232, .08); color: var(--quiet);
+    transition: color 120ms cubic-bezier(.5, 1, .89, 1);
+  }
+  .plus:hover, .plus:focus-visible { color: var(--fly); }
+  .plus:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(216, 242, 106, .55); }
+  .plus svg { width: 18px; height: 18px; }
+
+  /* The list: every agent, newest first. */
+  .list {
+    position: fixed; top: calc(var(--top) + var(--field-h) + 16px); bottom: 0; left: 50%; transform: translateX(-50%);
+    width: calc(var(--col) + 16px); padding: 0 8px 32px; overflow-y: auto; overflow-x: hidden;
+    overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .list ol { list-style: none; margin: 0; padding: 0; }
+  .list ol.appear { animation: appear 160ms cubic-bezier(.5, 1, .89, 1) both; }
+  @keyframes appear { from { opacity: 0; } }
+  .row {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+    height: 68px; padding: 0 14px 0 6px; border-radius: 14px; color: inherit; text-decoration: none;
+  }
+  .row:hover { background: rgba(16, 26, 21, .72); }
+  .row:focus-visible { outline-offset: 0; border-radius: 14px; }
+  .row canvas { width: 56px; height: 56px; display: block; }
+  .row .text { min-width: 0; }
+  .row .name, .row .desc { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .name { font-size: 17px; font-weight: 500; letter-spacing: .01em; line-height: 1.3; }
+  .row .desc { font-size: 13px; color: var(--quiet); line-height: 1.4; margin-top: 2px; }
+  .row .age { font-size: 13px; color: var(--quiet); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  li[hidden] { display: none; }
+
+  /* Quiet states: plain text, no magic. */
+  .quiet-line { margin: 0; color: var(--quiet); overflow-wrap: anywhere; }
+  .quiet-line.nomatch { padding: 22px 14px 0 76px; }
+  .quiet-line.empty { padding-top: 18vh; text-align: center; }
+</style>
+</head>
+<body>
+<main id="root">
+  <form class="find" role="search" onsubmit="return false">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <input id="q" type="search" placeholder="Search" aria-label="Search agents" autocomplete="off" spellcheck="false" autofocus>
+  </form>
+  <nav class="list" id="list" aria-label="Agents">
+    <ol id="rows"></ol>
+    <p class="quiet-line" id="quiet" role="status" aria-live="polite" hidden></p>
+  </nav>
+</main>
+<a class="plus" id="plus" href="/new" aria-label="New agent" title="New agent">
+  <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+</a>
+
+<script type="module">
+import { gatherToPlus, isGathering } from './firefly-gather.js';
+import { ageLabel, sortAgents, filterAgents, nameOf, descOf, isLearning } from './agent-list.js';
+
+const $ = s => document.querySelector(s);
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+
+// Keyboard users get the clear search ring once they press Tab; a pointer puts it back to soft.
+addEventListener('keydown', e => { if (e.key === 'Tab') document.body.classList.add('kbd'); }, true);
+addEventListener('pointerdown', () => document.body.classList.remove('kbd'), true);
+
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const wrap = d => d - Math.round(d);   // phase difference in (-.5, .5]
+
+/* ---------- Where the agents come from: the API, or a mock set (/?demo=0|1|10|50) ---------- */
+const demo = new URLSearchParams(location.search).get('demo');
+const source = demo != null ? '/mock/home/' + encodeURIComponent(demo) : '/api/agents';
+const pageOf = a => '/agents/' + encodeURIComponent(a.id) + (demo != null ? '?demo=' + encodeURIComponent(demo) : '');
+
+/* ---------- Rows: built once, newest first; search only hides and shows ---------- */
+let agents = [], rows = [], loaded = false, failed = false;
+const fullDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' }); };
+
+function build() {
+  const ol = $('#rows'); ol.textContent = '';
+  rows = agents.map(a => {
+    const li = document.createElement('li'), row = document.createElement('a');
+    row.className = 'row'; row.href = pageOf(a);
+    const cv = document.createElement('canvas'); cv.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span'); text.className = 'text';
+    const n = document.createElement('span'); n.className = 'name'; n.textContent = nameOf(a); n.title = nameOf(a);
+    text.appendChild(n);
+    if (descOf(a)) { const d = document.createElement('span'); d.className = 'desc'; d.textContent = descOf(a); text.appendChild(d); }
+    const age = document.createElement('span'); age.className = 'age'; age.title = fullDate(a.createdAt);
+    row.append(cv, text, age); li.appendChild(row); ol.appendChild(li);
+    const r = { a, li, cv, age, c: cluster(a, cv), seen: false };
+    row.addEventListener('pointerenter', () => notice(r.c));
+    row.addEventListener('focus', () => notice(r.c));
+    return r;
+  });
+  ages();
+  rows.forEach(r => seer.observe(r.li));
+}
+function ages() { const now = Date.now(); rows.forEach(r => { r.age.textContent = ageLabel(r.a.createdAt, now); }); }
+setInterval(ages, 30e3);
+
+function render() {
+  const q = $('#q').value, shown = new Set(filterAgents(agents, q));
+  rows.forEach(r => { r.li.hidden = !shown.has(r.a); });
+  const quiet = $('#quiet');
+  const empty = loaded && !failed && !agents.length && !q.trim();
+  quiet.textContent = !loaded ? '' : failed ? 'Couldn’t load your agents' : empty ? 'No agents yet' : !shown.size ? `Nothing matches “${q.trim()}”` : '';
+  quiet.className = 'quiet-line ' + (empty || failed ? 'empty' : 'nomatch');
+  quiet.hidden = !quiet.textContent;
+}
+$('#q').addEventListener('input', render);
+
+async function load() {
+  try {
+    const r = await fetch(source); if (!r.ok) throw new Error(r.status);
+    agents = sortAgents(await r.json());
+  } catch { failed = true; }
+  loaded = true;
+  build();
+  if (!reduced) $('#rows').classList.add('appear');
+  render();
+}
+
+/* ============================================================
+   Constellations: each row's firefly cluster, from glade-fireflies.html
+   (cluster, slot, radius, flash), drawn small on the row's own canvas.
+   Learning rows: warm loose fireflies drift in and join, again and again.
+   ============================================================ */
+function sprite(rgb, core) {
+  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, core); gr.addColorStop(.12, `rgba(${rgb},.85)`); gr.addColorStop(.32, `rgba(${rgb},.25)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
+}
+const FLY = sprite('216,242,106', 'rgba(246,255,214,1)');
+const WARM = sprite('196,232,96', 'rgba(236,250,190,1)');  // a softer, warmer green so it never reads as a terminal
+
+/* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
+function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+function slot(i, n, R, seed) { const r = R * Math.sqrt((i + .5) / n), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r * .86]; }
+function radius(n) { return 22 + 8 * Math.sqrt(n); }
+
+const BOX = 56;
+function cluster(a, cv) {
+  const r = rng(hash(nameOf(a) + a.id)), learning = isLearning(a);
+  const c = { a, cv, ctx: cv.getContext('2d'), learning, period: 2.4 + r(), master: r(), lastFlash: -1e9, seed: r() * 6.28, pts: [] };
+  const n = 14 + Math.floor(r() * 16), R = radius(n);
+  c.scale = (BOX / 2 - 4) / R;
+  for (let i = 0; i < n; i++) {
+    const [sx, sy] = slot(i, n, R, c.seed);
+    // About half of a learning cluster is still studying: each of those loops loose → joining → joined.
+    const loops = learning && r() < .5;
+    const ang = r() * 6.283;
+    c.pts.push({ sx, sy, ox: sx, oy: sy, flashT: -1e9, seedA: r() * 6.28, seedB: r() * 6.28,
+      loops, cycle: 5 + r() * 5, offset: r(), phase: r(), ownPeriod: 1.6 + r() * 2.2,
+      lx: Math.cos(ang) * R * (1.05 + r() * .25), ly: Math.sin(ang) * R * .86 * (1.05 + r() * .25), glow: .15 + r() * .25 });
+  }
+  return c;
+}
+function notice(c) { const t = clock(); if (reduced || t - c.lastFlash < 700) return; c.pts.forEach(p => { p.flashT = t; }); c.lastFlash = t; }
+
+let DPR = 1;
+function sizeCanvas(c) {
+  const px = Math.round(BOX * DPR); if (c.cv.width !== px) { c.cv.width = c.cv.height = px; }
+}
+
+function drawCluster(c, t, dt) {
+  sizeCanvas(c);
+  const ctx = c.ctx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, BOX, BOX);
+  ctx.globalCompositeOperation = 'lighter';
+  c.master += dt / c.period;
+  let beat = false; if (c.master >= 1) { c.master -= 1; beat = true; c.lastFlash = t; }
+  for (const p of c.pts) {
+    let tx = p.sx, ty = p.sy, joined = true;
+    if (p.loops) {
+      const u = ((t / 1000) / p.cycle + p.offset) % 1;           // where it is in its own loop
+      if (u < .5) { joined = false; tx = p.lx; ty = p.ly; }      // loose, just outside the cluster
+      else if (u < .72) { joined = false; const k = easeInOut((u - .5) / .22); tx = p.lx + (p.sx - p.lx) * k; ty = p.ly + (p.sy - p.ly) * k; }
+      // else: joined, flashing with the cluster
+      if (!joined && !reduced) {
+        if (u >= .5) { const d = wrap(c.master - p.phase); p.phase += d * Math.min(1, dt * 1.4); }   // finding the beat
+        p.phase += dt / p.ownPeriod; if (p.phase >= 1) { p.phase -= 1; p.flashT = t; }
+      } else p.phase = c.master;
+    }
+    if (joined && !reduced && beat) p.flashT = t + (p.seedA * 4);   // up to ~25 ms apart, like the real thing
+    if (!reduced) {
+      tx += Math.sin(t / 8000 * 6.283 + p.seedA) * (joined ? 1.5 : 6); ty += Math.cos(t / 8000 * 6.283 + p.seedB) * (joined ? 1.5 : 6);
+      const k = Math.min(1, dt * 6); p.ox += (tx - p.ox) * k; p.oy += (ty - p.oy) * k;
+    } else { p.ox = tx; p.oy = ty; }
+    let b, alpha, size, img = FLY;
+    if (reduced) { b = 0; alpha = joined ? .85 : p.glow + .3; size = joined ? 24 : 18; if (!joined) img = WARM; }
+    else { b = flash(t - p.flashT); alpha = (joined ? .1 : .14) + .8 * b; size = 18 + 12 * b; if (!joined) img = WARM; }
+    const s = size * Math.max(.42, c.scale);
+    ctx.globalAlpha = alpha; ctx.drawImage(img, BOX / 2 + p.ox * c.scale - s / 2, BOX / 2 + p.oy * c.scale - s / 2, s, s);
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+// Only rows on screen are drawn, so 50 agents cost what 8 do.
+const seer = new IntersectionObserver(es => es.forEach(e => {
+  const r = rows.find(x => x.li === e.target); if (r) r.seen = e.isIntersecting;
+}), { root: $('#list') });
+
+let last = clock(), drewStill = false;
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  for (const r of rows) if (r.seen && !r.li.hidden && (!reduced || !r.drawn)) { drawCluster(r.c, t, dt); r.drawn = reduced; }
+  if (!reduced) rows.forEach(r => { r.drawn = false; });
+  requestAnimationFrame(frame);
+}
+
+/* ---------- The plus: fireflies gather into it, then /new (02-merlin-motion.md) ---------- */
+const plus = $('#plus');
+plus.addEventListener('click', async e => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;   // a new tab: no motion
+  e.preventDefault();
+  if (isGathering()) return;                                                         // a second press is ignored
+  try { await gatherToPlus($('#root'), plus); } finally { location.href = '/new'; }
+});
+
+/* ---------- Start ---------- */
+load();
+requestAnimationFrame(t => { last = t; frame(t); });
+</script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Firefly River · Glade Home</title>
+<style>
+  /* ---------- Shared Glade Home look (same block on all three pages) ---------- */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --text: #E6EEE8; --quiet: #8C9A90; --panel: #101A15; --line: #1E2B24; --line-on: #3A4A40;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased;
+  }
+  canvas#field { position: fixed; inset: 0; display: block; transition: opacity .16s; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  h2 { font-size: 13px; font-weight: 500; color: var(--quiet); margin: 0; }
+
+  .bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 10;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .back { color: var(--quiet); text-decoration: none; font-size: 13px; justify-self: start; padding: 6px 4px; }
+  .back:hover { color: var(--text); }
+  .sets { display: flex; gap: 2px; background: var(--shadow); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+  .sets button { border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 5px 14px; border-radius: 7px; min-height: 30px; }
+  .sets button:hover { color: var(--text); }
+  .sets button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+  .rm { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
+  .rm[aria-pressed="true"] { color: var(--text); }
+  .rm[aria-pressed="true"]::before { content: "✓ "; }
+
+  .view { position: fixed; inset: 48px 0 0 0; transition: opacity .16s; }
+  .view[hidden] { display: none; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .link { background: none; border: 0; padding: 4px 0; color: var(--quiet); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-on); min-height: 32px; }
+  .link:hover { color: var(--text); }
+  .field-input { width: 100%; background: var(--shadow); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
+  .field-input::placeholder { color: var(--quiet); }
+  .field-input:focus { outline: none; border-color: var(--line-on); }
+  .field-input:focus-visible { outline: 2px solid var(--fly); outline-offset: 2px; }
+
+  /* An agent: a fixed hit box = cluster area + its name panel. */
+  .agent {
+    position: absolute; border: 0; background: transparent; padding: 0; border-radius: 14px;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  }
+  .tag { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px 10px 4px; text-align: center; white-space: nowrap; transition: border-color .16s; }
+  .tag .name { display: block; font-size: 15px; font-weight: 500; line-height: 1.3; transition: color .16s; }
+  .tag .state { display: block; font-size: 13px; color: var(--quiet); line-height: 1.3; }
+  .agent:hover .tag, .agent:focus-visible .tag, .agent.sel .tag { border-color: var(--line-on); }
+  .agent.dim .name { color: var(--quiet); }
+  .sketches { position: absolute; display: flex; align-items: center; gap: 22px; }
+  .sketches[hidden] { display: none; }
+  .hint { min-height: 22px; font-size: 13px; color: var(--quiet); margin: 0; }
+  .hint b { color: var(--text); font-weight: 500; }
+  .sketch { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 4px 10px; font-size: 13px; margin-left: 18px; min-height: 32px; }
+  .sketch:hover, .sketch:focus-visible { border-color: var(--line-on); }
+
+  /* Stand-ins: where each job ends. */
+  .stand { display: flex; align-items: center; justify-content: center; }
+  .stand-panel { width: min(560px, calc(100% - 32px)); padding: 22px 24px 18px; }
+  .stand-panel h1 { font-size: 20px; font-weight: 500; margin: 0 0 6px; }
+  .stand-panel .note { margin: 10px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+  .stand-panel .sub { color: var(--quiet); font-size: 13px; margin: 0; }
+  .stand-panel ol, .stand-panel ul { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .stand-panel .me { align-self: flex-end; max-width: 80%; background: var(--shadow); border: 1px solid var(--line); padding: 8px 14px; border-radius: 12px; }
+  .stand-panel .who { display: block; font-size: 13px; color: var(--quiet); }
+  .stand-panel blockquote { margin: 12px 0 0; padding-left: 12px; border-left: 2px solid var(--line-on); }
+  .stand-panel ul li { font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .stand-panel .home-link { margin-top: 16px; }
+
+  .dropping { position: fixed; inset: 48px 0 0 0; z-index: 20; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .dropping div { padding: 16px 22px; text-align: center; }
+  .dropping p { margin: 0; } .dropping p + p { color: var(--quiet); font-size: 13px; }
+  body.drag .dropping { display: flex; }
+  body.drag #field, body.drag #home { opacity: .4; }
+
+  /* ---------- The Firefly River ---------- */
+  .bank { position: absolute; left: 0; right: 0; top: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .bank::-webkit-scrollbar { display: none; }
+  .bank.scrolls {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .bank-in { position: relative; height: 100%; }
+  #agents .agent { justify-content: flex-start; }
+  #agents .tag .state { white-space: pre-line; }
+  .moor { position: absolute; padding: 4px 10px 5px; border-radius: 9px; text-align: left; font-size: 13px; line-height: 1.3; white-space: nowrap; transition: border-color .16s; }
+  .moor .when { display: block; color: var(--quiet); }
+  .moor:hover, .moor:focus-visible { border-color: var(--line-on); }
+  .chip { position: absolute; right: 24px; margin: 0; padding: 4px 12px; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; z-index: 2; opacity: 0; transition: opacity .4s; }
+  .chip.on { opacity: 1; transition: opacity .12s; }
+  .landing { position: absolute; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .landing label { font-size: 13px; font-weight: 500; color: var(--quiet); }
+  .landing .link { align-self: flex-start; }
+  @media (max-width: 760px) {
+    .sets button { padding: 5px 9px; }
+    .back { font-size: 0; } .back::before { content: "←"; font-size: 15px; }
+  }</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <a class="back" href="index.html">← All concepts</a>
+  <nav class="sets" aria-label="Demo data">
+    <button data-set="0">First run</button>
+    <button data-set="4">4 agents</button>
+    <button data-set="12">12 agents</button>
+  </nav>
+  <button class="rm" id="rm" aria-pressed="false">Reduced motion</button>
+</header>
+
+<main>
+  <section id="home" class="view" aria-label="Home">
+    <div class="bank" id="bank">
+      <div class="bank-in" id="bankIn">
+        <div id="agents"></div>
+        <div id="moored" aria-label="Past talks"></div>
+      </div>
+    </div>
+    <p class="chip" id="chip" aria-live="polite" hidden></p>
+    <div class="landing panel" id="landing">
+      <label for="mk">New agent</label>
+      <input class="field-input" id="mk" placeholder="Describe someone…" autocomplete="off" spellcheck="false" aria-describedby="mkHint">
+      <p class="hint" id="mkHint" aria-live="polite"></p>
+      <button class="link" id="folderBtn">or bring a folder</button>
+    </div>
+    <div class="sketches" id="sketches" hidden><h2>Sketches</h2></div>
+  </section>
+  <section id="talk" class="view stand" aria-label="Talk" hidden>
+    <div class="panel stand-panel">
+      <h1 id="tHead"></h1>
+      <p class="sub" id="tSub"></p>
+      <p class="note" id="tNote" hidden></p>
+      <ol id="tLines"></ol>
+      <button class="link home-link" data-home>Back to Home</button>
+    </div>
+  </section>
+
+  <section id="make" class="view stand" aria-label="New agent" hidden>
+    <div class="panel stand-panel">
+      <h1>New agent</h1>
+      <p class="sub" id="mSub"></p>
+      <blockquote id="mLine" hidden></blockquote>
+      <ul id="mFiles" hidden></ul>
+      <button class="link home-link" data-home>Back to Home</button>
+    </div>
+  </section>
+</main>
+<div class="dropping" aria-hidden="true"><div class="panel"><p>Drop · your files stay on this Mac</p><p>Claude reads them to study</p><p>for a new agent</p></div></div>
+<input type="file" id="folder" webkitdirectory multiple hidden>
+
+<script>
+"use strict";
+/* ============================================================
+   Shared Glade Home core (the same on all three pages, so each opens alone)
+   ============================================================ */
+const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
+const TAU = Math.PI * 2;
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+/* Sample data: identical on all three pages. "Now" in the demo is 10:40. */
+const NOW_H = 10 + 40 / 60;
+const AGENTS = [
+  { name: 'Rex',    about: 'blunt newsletter editor', state: 'ready', files: 24, hour: 10 },
+  { name: 'Ines',   about: 'her design course',       state: 'studying', learned: 18, total: 30, hour: 19 },
+  { name: 'Maya',   about: 'career mentor',           state: 'ready', files: 31, hour: 21 },
+  { name: 'Tony',   about: 'pricing and sales',       state: 'ready', files: 17, hour: 14 },
+  { name: 'Marcus', about: 'running coach',           state: 'ready', files: 12, hour: 7 },
+  { name: 'Amara',  about: 'contract lawyer',         state: 'studying', learned: 4, total: 22, hour: 11 },
+  { name: 'Jun',    about: 'imported from Lena',      state: 'new', files: 19, hour: 16 },
+  { name: 'Priya',  about: 'product strategist',      state: 'ready', files: 28, hour: 13 },
+  { name: 'Theo',   about: 'poetry teacher',          state: 'ready', files: 14, hour: 22 },
+  { name: 'Lena',   about: 'research supervisor',     state: 'ready', files: 40, hour: 9 },
+  { name: 'Sol',    about: 'sleep and calm',          state: 'ready', files: 9,  hour: 23 },
+  { name: 'Hugo',   about: 'cookbook author',         state: 'ready', files: 21, hour: 18 },
+];
+const SKETCHES = ['Untitled sketch', 'Pitch coach'];
+const TALKS = [
+  { agent: 'Rex',  title: 'Subject lines for Friday', when: 'today 09:50',
+    lines: [['me', 'Too clickbait?'], ['Rex', 'Yes. Drop the question mark and say what’s inside.']] },
+  { agent: 'Maya', title: 'The job offer', when: 'yesterday 21:30',
+    lines: [['me', 'They came back with 10% more. Do I take it?'], ['Maya', 'Ask for the start date you want first. Money is easier to move than time.']] },
+  { agent: 'Ines', title: 'Week 3 critique', when: 'yesterday 19:10',
+    lines: [['me', 'Is the grid too tight?'], ['Ines', 'The gutters are fine. The type is too big for them.']] },
+  { agent: 'Tony', title: 'Pricing the workshop', when: 'yesterday 14:05',
+    lines: [['me', 'Should I offer an early-bird price?'], ['Tony', 'Only with a real deadline. Otherwise it’s just a discount.']] },
+  { agent: 'Lena', title: 'Chapter 2 structure', when: 'Mon 09:20',
+    lines: [['me', 'Should the methods come first?'], ['Lena', 'Lead with the question. The methods can wait a page.']] },
+];
+let SET = 12;
+function data() {
+  if (SET === 0) return { agents: [], sketches: [], talks: [] };
+  if (SET === 4) return { agents: AGENTS.slice(0, 4), sketches: SKETCHES.slice(0, 1), talks: TALKS.slice(0, 4) };
+  return { agents: AGENTS, sketches: SKETCHES, talks: TALKS };
+}
+function stateText(a) { return a.state === 'studying' ? `Studying · ${a.learned} of ${a.total}` : a.state === 'new' ? 'new here' : 'Ready'; }
+const byName = n => AGENTS.find(a => a.name === n);
+
+/* Reduced motion: the system setting, or the demo switch. */
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let rmSwitch = false;
+let reduced = mq.matches;
+function setReduced() { reduced = mq.matches || rmSwitch; $('#rm').setAttribute('aria-pressed', reduced); if (window.Concept) Concept.motionChanged && Concept.motionChanged(); }
+mq.addEventListener ? mq.addEventListener('change', setReduced) : mq.addListener(setReduced);
+$('#rm').addEventListener('click', () => { rmSwitch = !rmSwitch; setReduced(); });
+
+/* Light */
+const cv = $('#field'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function sprite(rgb, core) {
+  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, core); gr.addColorStop(.12, `rgba(${rgb},.85)`); gr.addColorStop(.32, `rgba(${rgb},.25)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
+}
+const FLY = sprite('216,242,106', 'rgba(246,255,214,1)');
+const PALE = sprite('230,238,232', 'rgba(255,255,255,1)');
+/* The Glade flash: rise 120 ms ease-out, fall 900 ms ease-in. The answer is shorter: 80 / 600. */
+function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+function flashA(dt) { if (dt < 0 || dt > 680) return 0; if (dt < 80) return easeOut(dt / 80); const x = (dt - 80) / 600; return 1 - x * x; }
+
+/* No light within 8 px of any panel (words always sit on solid panels, never on light). */
+let blockers = [];
+function readBlockers() {
+  blockers = [];
+  for (const el of document.querySelectorAll('.bar, .panel, .tag, .sketch, .chip')) {
+    const r = el.getBoundingClientRect(); if (r.width && r.height) blockers.push([r.left - 8, r.top - 8, r.right + 8, r.bottom + 8]);
+  }
+}
+function clear(x, y) { for (const b of blockers) if (x > b[0] && x < b[2] && y > b[1] && y < b[3]) return false; return true; }
+function dot(x, y, s, a, img) { if (a <= .004 || !clear(x, y)) return; ctx.globalAlpha = Math.min(.9, a); ctx.drawImage(img || FLY, x - s / 2, y - s / 2, s, s); }
+
+/* A cluster: one point per file (at least 12, at most 40). */
+function lights(a) { return clamp(a.state === 'studying' ? a.total : a.files, 12, 40); }
+function makeCluster(a) {
+  const r = rng(hash(a.name)), n = lights(a), R = 9 + 3.6 * Math.sqrt(n), seed = r() * 6.28, pts = [];
+  for (let i = 0; i < n; i++) {
+    const rr = R * Math.sqrt((i + .5) / n), th = i * 2.39996 + seed;
+    pts.push({ sx: Math.cos(th) * rr, sy: Math.sin(th) * rr * .86, a: r() * TAU, b: r() * TAU, j: r() * 25, glow: .2 + r() * .4, flashT: -1e9 });
+  }
+  return { a, R, pts, cx: 0, cy: 0, scale: 1, period: 2.4 + (hash(a.name + 't') % 1000) / 1000, lastBeat: -1e9 + r() * 3000,
+    flashT: -1e9, shape: 'beat', lastFlash: -1e9, next: 0, dim: 0, dimTo: 0, lit: false, hold: false, r };
+}
+/* At most one flash per 2 s from any one cluster. */
+function fire(c, t, shape) { if (t - c.lastFlash < 2000) return false; c.flashT = t; c.shape = shape || 'beat'; c.lastFlash = t; return true; }
+function ownBeat(c, t) { if (c.a.state === 'studying') return; if (t - c.lastBeat >= c.period * 1000) { c.lastBeat = t; fire(c, t); } }
+/* Studying: points blink on their own, scattered; one burst of a few points at most every 2 s. */
+function scatter(c, t) {
+  if (c.a.state !== 'studying' || reduced || t < c.next || t - c.lastFlash < 2000) return;
+  const k = 3 + Math.floor(c.r() * 3);
+  for (let i = 0; i < k; i++) c.pts[Math.floor(c.r() * c.pts.length)].flashT = t + c.r() * 500;
+  c.lastFlash = t; c.next = t + 2000 + c.r() * 1600;
+}
+function drawCluster(c, t, dt) {
+  const ready = c.a.state !== 'studying';
+  if (reduced) c.dim = c.dimTo; else c.dim += clamp(c.dimTo - c.dim, -dt / .16, dt / .16);
+  const k = 1 - .8 * c.dim, cb = c.shape === 'answer' ? flashA : flash;
+  for (const p of c.pts) {
+    let x = c.cx + p.sx * c.scale, y = c.cy + p.sy * c.scale;
+    if (!reduced && !c.hold) { x += Math.sin(t / 8000 * TAU + p.a) * 1.5; y += Math.cos(t / 8000 * TAU + p.b) * 1.5; }
+    let alpha, size;
+    if (reduced) { alpha = c.lit ? .9 : ready ? .8 : p.glow; size = 13; }
+    else { const b = Math.max(cb(t - c.flashT - p.j), ready ? 0 : flash(t - p.flashT)); alpha = .1 + .8 * b; size = 12 + 9 * b; }
+    dot(x, y, size * c.scale, alpha * k);
+  }
+}
+/* Glowworms: sketches. Steady, faint, low; they never blink. */
+function glowworm(x, y) { dot(x, y, 10, .35); }
+/* Wild fireflies (first run only): tiny, 0.15, no names, not clickable. */
+let wild = [];
+function makeWild(spots) { const r = rng(7); wild = spots.map(([x, y]) => ({ x, y, next: r() * 4000, t: -1e9, r })); }
+function drawWild(t) {
+  for (const w of wild) {
+    if (reduced) { dot(w.x, w.y, 8, .1); continue; }
+    if (t > w.next) { w.t = t; w.next = t + 3000 + w.r() * 4000; }
+    dot(w.x, w.y, 9, .15 * flash(t - w.t) + .02);
+  }
+}
+
+/* Hit boxes: the cluster area plus its name panel; set once per layout, never moved before the click. */
+function agentButton(a, onOpen) {
+  const b = document.createElement('button'); b.className = 'agent'; b.dataset.name = a.name;
+  b.innerHTML = '<span class="tag"><span class="name"></span><span class="state"></span></span>';
+  b.querySelector('.name').textContent = a.name; b.querySelector('.state').textContent = stateText(a);
+  b.setAttribute('aria-label', `${a.name}, ${stateText(a)}. Talk.`);
+  b.addEventListener('click', () => onOpen(a));
+  return b;
+}
+function placeAgent(b, c, w) {
+  const top = c.cy - c.R * c.scale - 10, tagTop = c.cy + c.R * c.scale + 14;
+  w = w || 140;
+  b.style.left = (c.cx - w / 2) + 'px'; b.style.width = w + 'px';
+  b.style.top = (top - 48) + 'px'; b.style.height = (tagTop - top + 44) + 'px';
+}
+function holdOn(b, c) {
+  const on = () => { c.hold = b.matches(':hover') || document.activeElement === b; };
+  ['pointerenter', 'pointerleave', 'focus', 'blur'].forEach(e => b.addEventListener(e, on));
+}
+function sketchButton(name) {
+  const b = document.createElement('button'); b.className = 'sketch'; b.textContent = name;
+  b.setAttribute('aria-label', `${name}, sketch. Talk.`);
+  b.addEventListener('click', () => openTalk({ name, sketch: true }));
+  return b;
+}
+
+/* Views: Home, and the two stand-ins every job ends in. */
+let view = 'home';
+function show(v) {
+  view = v; ['home', 'talk', 'make'].forEach(id => { $('#' + id).hidden = id !== v; });
+  cv.style.visibility = v === 'home' ? 'visible' : 'hidden';
+}
+function openTalk(a, talk) {
+  $('#tHead').textContent = `Talk · ${a.name} · ${talk ? talk.title : 'new talk'}`;
+  $('#tSub').textContent = talk ? `${talk.when} · the last two lines` : 'Talk opens here, as a new talk.';
+  const note = $('#tNote');
+  note.hidden = a.state !== 'studying';
+  if (a.state === 'studying') note.textContent = `${a.name} has studied ${a.learned} of ${a.total} files so far. She answers from those.`;
+  const ol = $('#tLines'); ol.textContent = '';
+  (talk ? talk.lines : []).forEach(([who, text]) => {
+    const li = document.createElement('li');
+    if (who === 'me') { li.className = 'me'; li.textContent = text; }
+    else { li.innerHTML = '<span class="who"></span><span class="text"></span>'; li.querySelector('.who').textContent = who; li.querySelector('.text').textContent = text; }
+    ol.appendChild(li);
+  });
+  show('talk'); $('#talk [data-home]').focus();
+}
+function openMake(what) {
+  const line = $('#mLine'), ul = $('#mFiles');
+  line.hidden = !what.line; ul.hidden = !what.files; ul.textContent = '';
+  if (what.line) { line.textContent = '“' + what.line + '”'; $('#mSub').textContent = 'From this line:'; }
+  if (what.files) {
+    $('#mSub').textContent = `From ${what.files.length} file${what.files.length === 1 ? '' : 's'} · they stay on this Mac`;
+    what.files.slice(0, 12).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    if (what.files.length > 12) { const li = document.createElement('li'); li.textContent = `and ${what.files.length - 12} more`; ul.appendChild(li); }
+  }
+  show('make'); $('#make [data-home]').focus();
+}
+function goHome() { show('home'); Concept.build(); }
+$$('[data-home]').forEach(b => b.addEventListener('click', goHome));
+
+/* Make new: bring a folder (a real picker), drop anywhere, ⌘⇧N. */
+$('#folder').addEventListener('change', e => { const f = Array.from(e.target.files || []); e.target.value = ''; if (f.length) openMake({ files: f.map(x => x.webkitRelativePath || x.name) }); });
+function pickFolder() { $('#folder').click(); }
+let dragDepth = 0;
+const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+addEventListener('dragenter', e => { if (!hasFiles(e) || view !== 'home') return; e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag');
+  const list = e.dataTransfer && e.dataTransfer.files; if (!list || !list.length || view !== 'home') return;
+  openMake({ files: Array.from(list).map(f => f.name) });
+});
+addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'n' || e.key === 'N')) {
+    e.preventDefault(); if (view !== 'home') goHome(); Concept.focusNew();
+  }
+}, true);
+
+/* Demo switch */
+function markSet() { $$('.sets button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.set === SET)); }
+$$('.sets button').forEach(b => b.addEventListener('click', () => { SET = +b.dataset.set; markSet(); show('home'); Concept.build(); }));
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  Concept.layout(); // resize only runs after start(), so Concept exists (a top-level const is not on window)
+}
+addEventListener('resize', resize);
+let last = performance.now();
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+  if (view === 'home') { readBlockers(); ctx.globalCompositeOperation = 'lighter'; Concept.draw(t, dt); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+  requestAnimationFrame(frame);
+}
+function start() { markSet(); setReduced(); resize(); Concept.build(); requestAnimationFrame(t => { last = t; frame(t); }); }
+
+/* ============================================================
+   2 · The Firefly River
+   Trees on the far bank in A→Z order; past talks moored in the water;
+   the Landing on the near bank makes someone new.
+   ============================================================ */
+const RV = { d: null, trees: [], btns: [], moors: [], top: 0, bot: 0, scrolls: false, land: { x: 0, y: 0 }, worms: [], prefix: '', keyT: 0, torch: null, lastTree: 0 };
+const bank = $('#bank'), bankIn = $('#bankIn'), mk = $('#mk'), mkHint = $('#mkHint'), chip = $('#chip');
+const RMAX = 9 + 3.6 * Math.sqrt(40);            // the largest cluster: every name panel sits on one line under it
+const dayWord = w => w.split(' ')[0];
+const easeIO = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const riverState = a => a.state === 'studying' ? `Studying\n${a.learned} of ${a.total}` : stateText(a);
+
+const Concept = {
+  build() {
+    const d = RV.d = data(), empty = !d.agents.length;
+    document.body.classList.toggle('empty', empty);
+    const sorted = d.agents.slice().sort((a, b) => a.name.localeCompare(b.name));
+    const box = $('#agents'); box.textContent = ''; RV.trees = []; RV.btns = [];
+    sorted.forEach((a, i) => {
+      const c = makeCluster(a), b = agentButton(a, x => openTalk(x));
+      b.querySelector('.state').textContent = riverState(a);
+      holdOn(b, c); b.addEventListener('focus', () => { RV.lastTree = i; });
+      box.appendChild(b); RV.trees.push(c); RV.btns.push(b);
+    });
+    // Moored lights: each past talk floats under the tree it belongs to.
+    const mo = $('#moored'); mo.textContent = ''; RV.moors = [];
+    d.talks.forEach(k => {
+      const i = sorted.findIndex(a => a.name === k.agent); if (i < 0) return;
+      const b = document.createElement('button'); b.className = 'moor panel';
+      b.append(k.title); const s = document.createElement('span'); s.className = 'when'; s.textContent = dayWord(k.when); b.appendChild(s);
+      b.setAttribute('aria-label', `${k.title}, with ${k.agent}, ${k.when}. Open talk.`);
+      b.addEventListener('click', () => openTalk(byName(k.agent), k));
+      mo.appendChild(b); RV.moors.push({ k, i, b, row: 0, x: 0, y: 0 });
+    });
+    const sk = $('#sketches'); sk.hidden = !d.sketches.length; sk.querySelectorAll('.sketch').forEach(n => n.remove());
+    d.sketches.forEach(n => sk.appendChild(sketchButton(n)));
+    mk.value = ''; RV.torch = null; RV.prefix = ''; RV.lastTree = 0; hideChip();
+    this.layout(); updateMk();
+    bank.scrollLeft = 0;
+    // Focus on arrival: with agents, the page itself (typing finds); first run, the Landing field.
+    if (empty) mk.focus(); else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  },
+  layout() {
+    if (!RV.d || $('#home').hidden) return;
+    const vh = H - 48, empty = !RV.d.agents.length, n = RV.trees.length;
+    RV.top = 48 + vh * .45; RV.bot = 48 + vh * .70;
+    const rh = RV.bot - RV.top;
+    // 80 px minimum: 12 trees fit a 1024 px window (48 + 12·80 = 1008), so every agent is one click away.
+    const slot = n ? Math.max(80, Math.min(150, (W - 48) / n)) : 0, need = 48 + slot * n;
+    RV.scrolls = need > W + .5;
+    const off = RV.scrolls ? 24 : (W - slot * n) / 2, innerW = RV.scrolls ? need : W;
+    bank.style.height = (RV.bot - 48) + 'px'; bank.classList.toggle('scrolls', RV.scrolls);
+    bankIn.style.width = innerW + 'px';
+    // Trees: same height, A→Z, evenly spaced; the hit box is the cluster plus its name panel.
+    const cy = 48 + vh * .225 - 26, tagY = cy + RMAX + 14, hw = Math.min(slot - 6, 140);
+    RV.trees.forEach((c, i) => {
+      c.x0 = off + slot * (i + .5); c.cx = c.x0 - bank.scrollLeft; c.cy = cy; c.scale = 1;
+      const b = RV.btns[i], top = cy - c.R - 10;
+      b.style.left = (c.x0 - hw / 2) + 'px'; b.style.width = hw + 'px';
+      b.style.top = (top - 48) + 'px'; b.style.height = (tagY - top + 64) + 'px';
+      b.querySelector('.tag').style.marginTop = (tagY - top) + 'px';
+    });
+    RV.tagBottom = tagY + 62;
+    // Moored talks: two rows in the water, each panel centred under its tree, greedy by measured width.
+    const ph = RV.moors.length ? RV.moors[0].b.offsetHeight : 44;
+    const y0 = RV.top + Math.max(10, (rh - (12 + ph + 14 + 12 + ph)) / 2), rowY = [y0, y0 + 12 + ph + 14], rows = [[], []];
+    RV.moors.slice().sort((a, b) => a.i - b.i).forEach(m => {
+      const w = m.b.offsetWidth, x0 = RV.trees[m.i].x0;
+      let left = clamp(x0 - w / 2, 8, innerW - w - 8), row = -1;
+      for (let r = 0; r < 2 && row < 0; r++) if (!rows[r].some(([l, rr]) => left < rr + 10 && left + w > l - 10)) row = r;
+      if (row < 0) { row = 1; left = Math.max(...rows[1].map(q => q[1])) + 10; }
+      rows[row].push([left, left + w]); m.row = row; m.x = x0; m.y = rowY[row];
+      m.b.style.left = left + 'px'; m.b.style.top = (rowY[row] + 12 - 48) + 'px';
+    });
+    // The Landing: near bank, left (centred on first run). Glowworms sit in the grass to its right.
+    const lp = $('#landing'), lw = Math.min(empty ? 360 : 300, W - 48);
+    lp.style.width = lw + 'px';
+    const lh = lp.offsetHeight, nearH = H - RV.bot;
+    const lx = empty ? (W - lw) / 2 : 24, ly = RV.bot + Math.max(12, (nearH - lh) / 2);
+    lp.style.left = lx + 'px'; lp.style.top = (ly - 48) + 'px';
+    RV.land = { x: lx + lw / 2, y: ly - 10 };
+    const sk = $('#sketches'); sk.style.left = (lx + lw + 40) + 'px'; sk.style.top = (ly - 48 + 30) + 'px';
+    chip.style.top = (RV.top - 48 + 6) + 'px';
+    RV.worms = [];
+    requestAnimationFrame(() => { sk.querySelectorAll('.sketch').forEach(b => { const r = b.getBoundingClientRect(); RV.worms.push([r.left - 13, r.top + r.height / 2]); }); });
+    if (empty) makeWild([[W * .16, RV.top + rh * .42], [W * .37, RV.top + rh * .72], [W * .58, RV.top + rh * .28], [W * .79, RV.top + rh * .6], [W * .92, RV.top + rh * .22]]);
+    else wild = [];
+  },
+  draw(t, dt) {
+    const rh = RV.bot - RV.top, sl = bank.scrollLeft, empty = !RV.d.agents.length;
+    // The water: a band 2–3% lighter. First run: a bare, faint horizon where the trees will stand.
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(230,238,232,.025)'; ctx.fillRect(0, RV.top, W, rh);
+    if (empty) { ctx.fillStyle = '#1E2B24'; ctx.fillRect(0, Math.round(RV.top) - 1, W, 1); }
+    ctx.globalCompositeOperation = 'lighter';
+    // The torchlight: a soft pool on the ground under the found tree.
+    const T = RV.torch;
+    if (T) {
+      const on = document.activeElement === RV.btns[T.i];
+      T.a = reduced ? (on ? 1 : 0) : clamp(T.a + (on ? dt : -dt) / .26, 0, 1);
+      if (!on && T.a <= 0) RV.torch = null;
+      else {
+        const k = reduced ? 1 : easeOut(clamp((t - T.t0) / 260, 0, 1)), c = RV.trees[T.i];
+        const x = T.fx + (c.x0 - T.fx) * k - sl, y = c.cy + RMAX * .86 + 6;
+        ctx.save(); ctx.translate(x, y); ctx.scale(1, .18);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 46);
+        g.addColorStop(0, 'rgba(216,242,106,1)'); g.addColorStop(1, 'rgba(216,242,106,0)');
+        ctx.globalAlpha = .1 * T.a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 46, 0, TAU); ctx.fill(); ctx.restore();
+      }
+    }
+    // Trees, each on its own beat, and the reflection: same flash 120 ms later, 30%, stretched down.
+    for (const c of RV.trees) {
+      c.cx = c.x0 - sl;
+      ownBeat(c, t); scatter(c, t); drawCluster(c, t, dt);
+      if (!reduced && c.a.state !== 'studying') {
+        const b = flash(t - c.flashT - 120);
+        if (b > 0) {
+          const w = c.R * 1.3, h = Math.min(40, w * 1.6), x = c.cx, y = RV.top + 4 + h / 2;
+          if (clear(x, y)) { ctx.globalAlpha = .3 * b; ctx.drawImage(FLY, x - w / 2, y - h / 2, w, h); }
+        }
+      }
+    }
+    // Moored lights: steady, pale; brighter while its talk is hovered or focused.
+    for (const m of RV.moors) {
+      const hot = m.b.matches(':hover') || document.activeElement === m.b;
+      dot(m.x - sl, m.y, hot ? 13 : 10, hot ? .9 : .6, PALE);
+    }
+    // Soft edges where the bank scrolls under the window.
+    if (RV.scrolls) {
+      ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1;
+      [[0, 24, 1, 0], [W - 24, W, 0, 1]].forEach(([a, b, s0, s1]) => {
+        const g = ctx.createLinearGradient(a, 0, b, 0); g.addColorStop(0, `rgba(0,0,0,${s0})`); g.addColorStop(1, `rgba(0,0,0,${s1})`);
+        ctx.fillStyle = g; ctx.fillRect(a, 48, b - a, RV.bot - 48);
+      });
+      ctx.globalCompositeOperation = 'lighter';
+    }
+    // The crossing: one light per file still to read (12 at most), Landing → foot of the tree, 24 s each.
+    for (const c of RV.trees) {
+      if (c.a.state !== 'studying') continue;
+      const n = Math.min(12, c.a.total - c.a.learned); if (n <= 0) continue;
+      const p0 = RV.land, p2 = { x: c.cx, y: RV.tagBottom + 10 };
+      const p1 = { x: p0.x + (p2.x - p0.x) * .25, y: p0.y + (p2.y - p0.y) * .62 };
+      const seed = (hash(c.a.name) % 1000) / 1000;
+      for (let i = 0; i < n; i++) {
+        let u, a;
+        if (reduced) { u = (i + .5) / n; a = .4; }
+        else {
+          const D = 24000, s = (t / D + i / n + seed) % 1, ms = s * D;
+          u = easeIO(s); a = .55 * Math.min(1, ms / 400, (D - ms) / 400);
+        }
+        const v = 1 - u;
+        let x = v * v * p0.x + 2 * v * u * p1.x + u * u * p2.x, y = v * v * p0.y + 2 * v * u * p1.y + u * u * p2.y;
+        if (!reduced) y += Math.sin(t / 900 + i * 1.7);
+        dot(x, y, 9, a);
+      }
+    }
+    RV.worms.forEach(([x, y]) => glowworm(x, y));
+    drawWild(t);
+  },
+  focusNew() { mk.focus(); mk.select(); },
+  motionChanged() {},
+};
+
+/* Go to a tree: focus it, bring it into view (300 ms glide, or a jump with reduced motion), maybe light the torch. */
+function goTree(i, mode, torch) {
+  const c = RV.trees[i], b = RV.btns[i];
+  b.focus({ preventScroll: true }); RV.lastTree = i;
+  if (RV.scrolls) {
+    const vx = c.x0 - bank.scrollLeft, max = bank.scrollWidth - bank.clientWidth;
+    if (mode === 'center' || vx < 80 || vx > bank.clientWidth - 80)
+      bank.scrollTo({ left: clamp(c.x0 - bank.clientWidth / 2, 0, max), behavior: reduced ? 'auto' : 'smooth' });
+  }
+  if (torch) {
+    const T = RV.torch, now = performance.now(); let fx = c.x0;
+    if (T && T.a > 0) { const k = reduced ? 1 : easeOut(clamp((now - T.t0) / 260, 0, 1)); fx = T.fx + (RV.trees[T.i].x0 - T.fx) * k; }
+    RV.torch = { i, fx, t0: now, a: T ? T.a : 0 };
+  }
+}
+
+/* The typing chip: "Find · Re", or "No one called “Rz”". Fades out 1 s after the last key. */
+let chipT1 = 0, chipT2 = 0;
+function showChip(text) {
+  clearTimeout(chipT1); clearTimeout(chipT2);
+  chip.textContent = text; chip.hidden = false; void chip.offsetWidth; chip.classList.add('on');
+  chipT1 = setTimeout(() => { chip.classList.remove('on'); chipT2 = setTimeout(() => { chip.hidden = true; }, 420); }, 1000);
+}
+function hideChip() { clearTimeout(chipT1); clearTimeout(chipT2); chip.classList.remove('on'); chip.hidden = true; }
+
+/* Type to find: anywhere but the Landing field. A prefix, reset after 1 s, like a Finder list. */
+addEventListener('keydown', e => {
+  if (view !== 'home' || e.metaKey || e.ctrlKey || e.altKey || !RV.btns.length) return;
+  const tg = e.target; if (tg === mk || tg.tagName === 'INPUT') return;
+  if (e.key.length !== 1 || !/\S/.test(e.key)) return;
+  e.preventDefault();
+  const now = performance.now(); if (now - RV.keyT > 1000) RV.prefix = ''; RV.keyT = now; RV.prefix += e.key;
+  const p = RV.prefix.toLowerCase(), i = RV.trees.findIndex(c => c.a.name.toLowerCase().startsWith(p));
+  const shown = RV.prefix.charAt(0).toUpperCase() + RV.prefix.slice(1);
+  if (i >= 0) { goTree(i, 'center', true); showChip('Find · ' + shown); }
+  else showChip(`No one called “${shown}”`);
+});
+
+/* Keyboard order: ← → along the bank; ↓ from a tree to its moored talks, then the Landing; ↑ back up. */
+const moorsOf = i => RV.moors.filter(m => m.i === i).sort((a, b) => a.row - b.row);
+$('#home').addEventListener('keydown', e => {
+  const a = document.activeElement, i = RV.btns.indexOf(a), m = RV.moors.find(q => q.b === a);
+  const go = f => { e.preventDefault(); f(); };
+  if (i >= 0) {
+    if (e.key === 'ArrowRight' && i < RV.btns.length - 1) go(() => goTree(i + 1));
+    else if (e.key === 'ArrowLeft' && i > 0) go(() => goTree(i - 1));
+    else if (e.key === 'ArrowDown') go(() => { const l = moorsOf(i); l.length ? l[0].b.focus() : mk.focus(); });
+  } else if (m) {
+    const l = moorsOf(m.i), j = l.indexOf(m);
+    if (e.key === 'ArrowDown') go(() => j < l.length - 1 ? l[j + 1].b.focus() : mk.focus());
+    else if (e.key === 'ArrowUp') go(() => j > 0 ? l[j - 1].b.focus() : goTree(m.i));
+  } else if (a === mk && e.key === 'ArrowUp' && RV.btns.length) go(() => goTree(RV.lastTree));
+});
+
+/* The Landing: type a line + Return, or bring a folder (drop and ⌘⇧N come from the core). */
+function updateMk() {
+  const v = mk.value.trim();
+  if (v) mkHint.innerHTML = '<b>Return</b> · make a new agent';
+  else mkHint.textContent = RV.d && !RV.d.agents.length ? 'Their tree will stand across the water.' : '';
+}
+mk.addEventListener('input', updateMk);
+mk.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); const v = mk.value.trim(); if (v) openMake({ line: v }); }
+  else if (e.key === 'Escape') { mk.value = ''; updateMk(); }
+});
+$('#folderBtn').addEventListener('click', pickFolder);
+/* A plain mouse wheel moves the bank sideways when it scrolls. */
+bank.addEventListener('wheel', e => {
+  if (!RV.scrolls || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault(); bank.scrollLeft += e.deltaY;
+}, { passive: false });
+
+start();
+</script>
+</body>
+</html>

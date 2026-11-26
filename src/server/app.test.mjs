@@ -52,7 +52,25 @@ test("GET /api/health reports the CLI", async () => {
 test("GET / serves the page", async () => {
   const response = await fetch(`${base}/`);
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /Agent Creator/);
+  const html = await response.text();
+  assert.match(html, /<title>Agent Creator<\/title>/);
+  assert.match(html, /href="\/new"/);
+});
+
+test("GET /new serves the blank new-agent page", async () => {
+  const response = await fetch(`${base}/new`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /text\/html/);
+  assert.match(await response.text(), /New agent · Agent Creator/);
+});
+
+test("GET /agents/:id serves a page, not raw JSON", async () => {
+  const response = await fetch(`${base}/agents/some-agent`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /text\/html/);
+  const html = await response.text();
+  assert.match(html, /Agent · Agent Creator/);
+  assert.match(html, /html \{ background: var\(--field\); \}/);
 });
 
 test("GET serves the screen's scripts and styles", async () => {

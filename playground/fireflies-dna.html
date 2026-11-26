@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fireflies DNA · playground</title>
+<style>
+  /* The Fireflies look, as in src/server/public/agent-home.html. */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --text: #E6EEE8; --quiet: #8C9A90;
+    --panel: #101A15; --line: #1E2B24; --line-on: #3A4A40;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--field); }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+
+  .app {
+    display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px;
+    max-width: 960px; margin: 0 auto; padding: max(32px, 10vh) 32px 48px;
+  }
+  @media (max-width: 820px) { .app { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 24px 16px 40px; } }
+
+  /* The stage: the real thing (a home row), then the same cluster larger. */
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 40px; min-width: 0; }
+  .row {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 14px;
+    width: min(100%, 420px); height: 68px; padding: 0 14px 0 6px; border-radius: 14px;
+  }
+  .row:hover, .row:focus-within { background: rgba(16, 26, 21, .72); }
+  .row canvas { width: 56px; height: 56px; display: block; }
+  .row .text { min-width: 0; }
+  .row .name {
+    display: block; width: 100%; padding: 0; border: 0; background: none; outline: none;
+    font-size: 17px; font-weight: 500; letter-spacing: .01em; line-height: 1.3; caret-color: var(--fly);
+    text-overflow: ellipsis; border-radius: 4px;
+  }
+  .row .name:focus-visible { box-shadow: 0 0 0 2px rgba(216, 242, 106, .55); }
+  .row .desc { display: block; font-size: 13px; color: var(--quiet); line-height: 1.4; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview { width: 224px; height: 224px; display: block; }
+
+  .topics { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; margin: -16px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--quiet); }
+  .topics li { display: inline-flex; align-items: center; gap: 8px; }
+  .sw { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  /* The panel: files, then dot size. */
+  .panel { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+  h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--quiet); font-weight: 500; margin: 0 0 10px; }
+  .files { list-style: none; margin: 0; padding: 0; }
+  .files li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 32px; align-items: center; gap: 10px; height: 36px; font-size: 14px; }
+  .files .fn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .files .fs { color: var(--quiet); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .x { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--quiet); }
+  .x:hover, .x:focus-visible { color: var(--text); background: rgba(230, 238, 232, .06); }
+  .x svg { width: 10px; height: 10px; }
+  .quiet { margin: 0; color: var(--quiet); font-size: 13px; min-height: 20px; }
+
+  .add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 12px; }
+  .field {
+    height: 40px; border-radius: 10px; border: 0; padding: 0 12px; font-size: 14px; min-width: 0;
+    background: rgba(230, 238, 232, .075); box-shadow: inset 0 0 0 .5px rgba(230, 238, 232, .08); caret-color: var(--fly);
+  }
+  .field:focus { outline: none; box-shadow: inset 0 0 0 1px rgba(216, 242, 106, .38); }
+  .field::placeholder { color: var(--quiet); }
+  .go { height: 40px; padding: 0 16px; border-radius: 10px; background: var(--fly); color: var(--field); font-weight: 600; font-size: 14px; }
+  .go:hover { filter: brightness(1.07); }
+  .add .slide { grid-column: 1 / -1; }
+
+  .slide { display: grid; grid-template-columns: 76px minmax(0, 1fr) 56px; align-items: center; gap: 12px; font-size: 13px; color: var(--quiet); }
+  .slide + .slide { margin-top: 6px; }
+  .slide input { width: 100%; margin: 0; height: 24px; accent-color: var(--fly); }
+  .slide output { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="stage" aria-label="Cluster">
+    <div class="row" id="row">
+      <canvas id="avatar" data-role="avatar" aria-hidden="true"></canvas>
+      <span class="text">
+        <input class="name" id="agentName" type="text" value="Juniper" aria-label="Agent name" spellcheck="false" autocomplete="off">
+        <span class="desc" id="desc"></span>
+      </span>
+    </div>
+    <canvas class="preview" id="preview" data-role="preview" role="img"></canvas>
+    <ul class="topics" id="topics" aria-label="Topic colours"></ul>
+  </section>
+
+  <aside class="panel">
+    <section aria-labelledby="hFiles">
+      <h2 id="hFiles">Files</h2>
+      <ul class="files" id="files"></ul>
+      <form class="add" id="add" autocomplete="off">
+        <input class="field" id="fname" type="text" aria-label="File name, folder is the topic" placeholder="folder/file.md" spellcheck="false">
+        <button class="go" type="submit">Add</button>
+        <div class="slide"><label for="fsize">Size</label><input id="fsize" type="range" min="0" max="100" step="0.5"><output id="fsizeV" for="fsize"></output></div>
+      </form>
+      <p class="quiet" id="said" role="status" aria-live="polite"></p>
+    </section>
+
+    <section aria-labelledby="hSize">
+      <h2 id="hSize">Dot size</h2>
+      <div class="slide"><label for="minR">Smallest</label><input id="minR" type="range" min="1" max="9" step="0.25"><output for="minR"></output></div>
+      <div class="slide"><label for="maxR">Largest</label><input id="maxR" type="range" min="1" max="9" step="0.25"><output for="maxR"></output></div>
+    </section>
+  </aside>
+</main>
+
+<script>
+'use strict';
+(function () {
+const $ = s => document.querySelector(s);
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+
+/* ---------- tools, as in agent-home.html ---------- */
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+function fmtSize(b) {
+  if (b < 1000) return Math.round(b) + ' B';
+  const u = ['KB', 'MB', 'GB', 'TB']; let i = -1;
+  do { b /= 1000; i++; } while (b >= 1000 && i < u.length - 1);
+  return (b < 10 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
+}
+
+/* ---------- the cluster's rules ---------- */
+const BOX = 56, MID = BOX / 2, LIMIT = [1, 9], GROW = 1.3;   // a flash grows a dot by up to 30 %
+/* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
+function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+/* The golden-angle spiral. Unlike the home row, a slot's place doesn't depend on how
+   many dots there are, so adding a file never moves the others (Columbo W1). */
+function slot(i, seed) { const r = 10 * Math.sqrt(i + .5), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r]; }
+
+/* Fixed topic hue slots from the last FIREFLIES-DNA round, on its cool arc (110-280 deg). */
+const FIRST_SLOTS = [0, .67, .33, 1, .5, .17, .83];
+function topicColor(k) {
+  const fr = k < FIRST_SLOTS.length ? FIRST_SLOTS[k] : (.15 + k * .6180339887) % 1;
+  const h = 110 + 170 * (.06 + .88 * fr), blue = Math.max(0, 1 - Math.abs(h - 235) / 45);
+  return hslHex(h, 85, Math.min(80, 66 + 6 * blue));
+}
+function hslHex(h, s, l) {
+  s /= 100; l /= 100; const a = s * Math.min(l, 1 - l);
+  const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
+}
+/* File size → radius, on one fixed log scale (100 B … 3 GB), so a new big file never shrinks the others. */
+function sizeT(bytes) { return clamp((Math.log10(Math.max(1, bytes)) - 2) / 7.5, 0, 1); }
+
+/* ---------- state ---------- */
+const S = { name: 'Juniper', min: 2.5, max: 6 };
+let files = [];                       // { name, bytes, topic, slot, bornT, flashT, seedA, seedB }
+const topicSlot = new Map();          // topic → hue slot, in order of first appearance; never reassigned
+function slotOf(topic) { if (!topicSlot.has(topic)) topicSlot.set(topic, topicSlot.size); return topicSlot.get(topic); }
+function colorOf(topic) { return topicColor(slotOf(topic)); }
+function freeSlot() { const used = new Set(files.map(f => f.slot)); let i = 0; while (used.has(i)) i++; return i; }
+function radiusOf(f) { return S.min + (S.max - S.min) * sizeT(f.bytes); }
+
+/* The agent's own look, from its name only: spiral turn, outline, tilt and beat. */
+let look = null;
+function makeLook() {
+  const r = rng(hash(S.name.trim() || 'Untitled'));
+  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r(), lastFlash: -1e9 };
+  look.master = 1 - .4 / look.period;   // the first beat lands 400 ms in, so a new look is seen lit, not dark
+}
+
+/* Where every dot rests, in avatar px. Fits the whole cluster, glow and flash included, inside the box. */
+let layout = { scale: .6, pts: new Map() };
+function relayout() {
+  const pts = new Map(); let far = 0, big = 0;
+  const cs = Math.cos(look.tilt), sn = Math.sin(look.tilt);
+  for (const f of files) {
+    const j = rng(hash(S.name + '|' + f.name));
+    let [u, v] = slot(f.slot, look.seed);
+    const k = 1 + (j() - .5) * .3, w = (j() - .5) * 3;          // a little of the name in each dot
+    u = u * k + w; v = (v * k + w) * look.squash;
+    const x = u * cs - v * sn, y = u * sn + v * cs;
+    pts.set(f, { ux: x, uy: y });
+    far = Math.max(far, Math.hypot(x, y)); big = Math.max(big, radiusOf(f));
+  }
+  const room = MID - 1 - GROW * big;
+  layout = { scale: far > 0 ? Math.min(.62, room / far) : .62, pts };
+}
+function restingDot(f) {
+  const p = layout.pts.get(f);
+  return { x: MID + p.ux * layout.scale, y: MID + p.uy * layout.scale, r: radiusOf(f) };
+}
+
+/* ---------- drawing ---------- */
+const sprites = new Map();
+function spriteOf(hex) {
+  let s = sprites.get(hex); if (s) return s;
+  const n = parseInt(hex.slice(1), 16), rgb = `${n >> 16},${(n >> 8) & 255},${n & 255}`;
+  const core = `rgb(${(n >> 16) + (255 - (n >> 16)) * .7 | 0},${((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * .7 | 0},${(n & 255) + (255 - (n & 255)) * .7 | 0})`;
+  s = document.createElement('canvas'); s.width = s.height = 128; const g = s.getContext('2d');
+  // A brighter core and a shorter glow than the home sprite, so neighbouring topics don't blend to white at 56 px.
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, core); gr.addColorStop(.18, `rgba(${rgb},.9)`); gr.addColorStop(.42, `rgba(${rgb},.28)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128); sprites.set(hex, s); return s;
+}
+
+const avatar = $('#avatar'), preview = $('#preview');
+const actx = avatar.getContext('2d'), pctx = preview.getContext('2d');
+let DPR = 1, shown = layout.scale;
+function fitCanvas(cv, css) { const px = Math.round(css * DPR); if (cv.width !== px) { cv.width = cv.height = px; } }
+
+function draw(ctx, k, list) {
+  ctx.setTransform(DPR * k, 0, 0, DPR * k, 0, 0); ctx.clearRect(0, 0, BOX, BOX);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const d of list) { ctx.globalAlpha = d.a; ctx.drawImage(d.img, d.x - d.s / 2, d.y - d.s / 2, d.s, d.s); }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+let last = clock();
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  fitCanvas(avatar, BOX); fitCanvas(preview, BOX * 4);
+  shown = reduced ? layout.scale : shown + (layout.scale - shown) * Math.min(1, dt * 6);   // a zoom, never a reshuffle
+
+  let beat = false;
+  if (!reduced) { look.master += dt / look.period; if (look.master >= 1) { look.master -= 1; beat = true; look.lastFlash = t; } }
+  const list = [];
+  for (const f of files) {
+    const p = layout.pts.get(f), r = radiusOf(f), age = t - f.bornT;
+    let ux = p.ux, uy = p.uy, a, s;
+    if (reduced) {
+      a = age < 1200 ? 1 : .75; s = 2 * r;                                     // a new file simply appears, lit for a moment
+    } else {
+      if (age < 900) {                                                       // arrival: loose just outside, then joins (the learning loop)
+        const q = easeInOut(age / 900), out = 1.35 + .15 * Math.sin(f.seedA);
+        ux = p.ux * (out + (1 - out) * q); uy = p.uy * (out + (1 - out) * q);
+      } else if (beat) f.flashT = t + f.seedA * 4;                            // up to ~25 ms apart, like the real thing
+      ux += Math.sin(t / 8000 * 6.283 + f.seedA) * 1.5; uy += Math.cos(t / 8000 * 6.283 + f.seedB) * 1.5;
+      const b = flash(t - f.flashT);
+      a = .12 + .8 * b; s = 2 * r * (1 + (GROW - 1) * b);
+    }
+    list.push({ x: MID + ux * shown, y: MID + uy * shown, s, a, img: spriteOf(colorOf(f.topic)) });
+  }
+  draw(actx, 1, list); draw(pctx, 4, list);
+  requestAnimationFrame(frame);
+}
+function notice() { const t = clock(); if (reduced || t - look.lastFlash < 700) return; files.forEach(f => { f.flashT = t; }); look.lastFlash = t; }
+
+/* ---------- files ---------- */
+function topicFromName(name) { const i = name.indexOf('/'); return i > 0 ? name.slice(0, i).trim().toLowerCase() : 'other'; }
+function addFile(o, born) {
+  const name = String(o && o.name || '').trim(), bytes = Math.max(0, +(o && o.bytes) || 0);
+  if (!name || files.some(f => f.name === name)) return false;
+  const topic = String(o.topic == null || o.topic === '' ? topicFromName(name) : o.topic).trim().toLowerCase();
+  const j = rng(hash('fly:' + name));
+  const f = { name, bytes, topic, slot: freeSlot(), bornT: born ? clock() : -1e9, flashT: born ? clock() + 700 : -1e9, seedA: j() * 6.28, seedB: j() * 6.28 };
+  slotOf(topic); files.push(f);
+  relayout(); render();
+  return true;
+}
+function removeFile(name) {
+  const i = files.findIndex(f => f.name === name); if (i < 0) return false;
+  files.splice(i, 1);                                                         // goes at once: no magic on deletion
+  relayout(); render();
+  return true;
+}
+function setSizeRange(a, b) {
+  a = +a; b = +b;
+  if (!isFinite(a)) a = S.min; if (!isFinite(b)) b = S.max;
+  if (a > b) { const t = a; a = b; b = t; }                                 // they can never cross
+  S.min = clamp(a, LIMIT[0], LIMIT[1]); S.max = clamp(b, LIMIT[0], LIMIT[1]);
+  relayout(); syncSize();
+  return { min: S.min, max: S.max };
+}
+
+/* ---------- the page ---------- */
+const X = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+function render() {
+  const ul = $('#files'); ul.textContent = '';
+  for (const f of files) {
+    const li = document.createElement('li');
+    const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = colorOf(f.topic);
+    const fn = document.createElement('span'); fn.className = 'fn'; fn.textContent = f.name; fn.title = f.name;
+    const fs = document.createElement('span'); fs.className = 'fs'; fs.textContent = fmtSize(f.bytes);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.innerHTML = X;
+    x.setAttribute('aria-label', 'Remove ' + f.name);
+    x.addEventListener('click', () => {
+      const i = [...ul.children].indexOf(li);
+      removeFile(f.name); say('Removed ' + f.name);
+      const b = ul.children[Math.min(i, ul.children.length - 1)];           // keep the keyboard in the list
+      (b ? b.querySelector('.x') : $('#fname')).focus();
+    });
+    li.append(sw, fn, fs, x); ul.appendChild(li);
+  }
+  const counts = new Map(); files.forEach(f => counts.set(f.topic, (counts.get(f.topic) || 0) + 1));
+  const tl = $('#topics'); tl.textContent = '';
+  [...counts.keys()].sort((a, b) => slotOf(a) - slotOf(b)).forEach(tp => {
+    const li = document.createElement('li'), sw = document.createElement('span');
+    sw.className = 'sw'; sw.style.background = colorOf(tp);
+    li.append(sw, tp + ' ' + counts.get(tp)); tl.appendChild(li);
+  });
+  const nf = files.length, nt = counts.size;
+  $('#desc').textContent = nf ? `${nf} file${nf === 1 ? '' : 's'} · ${nt} topic${nt === 1 ? '' : 's'}` : 'No files yet';
+  preview.setAttribute('aria-label', `${S.name.trim() || 'Untitled'}’s cluster: ${nf ? `${nf} lights in ${nt} topic colours` : 'no lights yet'}`);
+}
+let sayTimer = 0;
+function say(s) { const p = $('#said'); p.textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => { p.textContent = ''; }, 4000); }
+
+/* Add: the name field always holds a suggestion, so Add works on the first press. */
+const IDEAS = [
+  ['travel/packing-list.txt', 54], ['recipes/pear-tart-notes.md', 30], ['garden/orchard-photos.zip', 88],
+  ['letters/birthday-cards.pdf', 64], ['travel/map-scans.pdf', 72], ['recipes/spice-list.csv', 18],
+  ['garden/pond-plan.pdf', 58], ['letters/pen-pal-1984.txt', 36]
+];
+let ideaN = 0;
+const bytesOf = v => Math.round(Math.pow(10, 2 + v / 100 * 7.5));
+function showBytes() { $('#fsizeV').textContent = fmtSize(bytesOf(+$('#fsize').value)); }
+function suggest() {
+  for (let k = 0; k < IDEAS.length; k++) {
+    const [n, v] = IDEAS[(ideaN + k) % IDEAS.length];
+    if (!files.some(f => f.name === n)) { ideaN += k + 1; $('#fname').value = n; $('#fsize').value = v; showBytes(); return; }
+  }
+  $('#fname').value = ''; showBytes();
+}
+$('#fsize').addEventListener('input', showBytes);
+$('#add').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('#fname').value.trim();
+  if (!name) { $('#fname').focus(); return; }
+  if (!addFile({ name, bytes: bytesOf(+$('#fsize').value) }, true)) { say(name + ' is already here'); return; }
+  say('Added ' + name); suggest();
+});
+
+/* Dot size: two sliders that push each other, so the smallest is never above the largest. */
+const minEl = $('#minR'), maxEl = $('#maxR');
+function syncSize() {
+  minEl.value = S.min; maxEl.value = S.max;
+  minEl.nextElementSibling.textContent = S.min.toFixed(2).replace(/0$/, '') + ' px';
+  maxEl.nextElementSibling.textContent = S.max.toFixed(2).replace(/0$/, '') + ' px';
+}
+minEl.addEventListener('input', () => { const v = +minEl.value; setSizeRange(v, Math.max(v, S.max)); });
+maxEl.addEventListener('input', () => { const v = +maxEl.value; setSizeRange(Math.min(v, S.min), v); });
+
+/* The name is the seed: each agent's cluster looks like its own. */
+$('#agentName').addEventListener('input', e => { S.name = e.target.value; makeLook(); relayout(); render(); });
+$('#row').addEventListener('pointerenter', notice);
+$('#agentName').addEventListener('focus', notice);
+
+/* ---------- the test hook (Eraser) ---------- */
+window.dna = {
+  getFiles: () => files.map(f => ({ name: f.name, bytes: f.bytes, topic: f.topic })),
+  addFile: o => addFile(o, true),
+  removeFile,
+  setSizeRange,
+  getSizeRange: () => ({ min: S.min, max: S.max }),
+  getDots: () => files.map(f => { const d = restingDot(f), q = v => Math.round(v * 100) / 100; return { x: q(d.x), y: q(d.y), r: q(d.r), color: colorOf(f.topic), topic: f.topic }; })
+};
+
+/* ---------- start: a sample agent, same on every reload ---------- */
+makeLook();
+[
+  ['recipes/plum-cake-draft.txt', 3200], ['recipes/grandmas-soup-scan.pdf', 48e6],
+  ['letters/to-aunt-ida.md', 6100], ['letters/postcards-1998.zip', 220e6],
+  ['garden/seed-list.csv', 900], ['garden/rose-bed-photos.zip', 1.4e9],
+  ['recipes/bread-notes.md', 14000], ['letters/thank-you-notes.txt', 31000],
+  ['garden/frost-dates.txt', 2100], ['recipes/menu-planner.xlsx', 2.6e6],
+  ['letters/old-diary-1971.pdf', 18e6], ['garden/compost-how-to.md', 9000],
+  ['travel/rail-trip-notes.md', 12000], ['travel/lake-photos.zip', 640e6]
+].forEach(([name, bytes]) => addFile({ name, bytes }, false));
+shown = layout.scale;
+syncSize(); suggest();
+requestAnimationFrame(t => { last = t; frame(t); });
+})();
+</script>
+</body>
+</html>

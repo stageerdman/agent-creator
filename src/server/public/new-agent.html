@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New agent · Agent Creator</title>
+<style>
+  /* A blank page on the Fireflies background (same on html and body: no white flash). */
+  :root { --field: #0B1410; --shadow: #060B08; }
+  html { background: var(--field); }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
+  canvas#field { position: fixed; inset: 0; display: block; }
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<main aria-label="New agent"></main>
+<script>
+"use strict";
+/* The call fades where agents are born (02-merlin-motion.md §2, Arrival on /new). */
+let fresh = false;
+try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); fresh = !!c && Date.now() - c.t < 2000; } catch {}
+if (fresh && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const cv = document.getElementById('field'), ctx = cv.getContext('2d');
+  const DPR = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(246,255,214,1)'); gr.addColorStop(.12, 'rgba(216,242,106,.85)'); gr.addColorStop(.32, 'rgba(216,242,106,.25)'); gr.addColorStop(1, 'rgba(216,242,106,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t0 = performance.now(), x = W / 2, y = H * .36;
+  const frame = t => {
+    const dt = t - t0; let b, alpha;
+    if (dt < 900) { const k = dt / 900; b = 1 - k * k; alpha = .14 + .8 * b; }
+    else { const k = Math.min(1, (dt - 900) / 600); b = 0; alpha = .14 * (1 - k * k); }
+    const size = 18 + 12 * b;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha;
+    ctx.drawImage(s, x - size / 2, y - size / 2, size, size);
+    if (dt < 1500) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
+  };
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>

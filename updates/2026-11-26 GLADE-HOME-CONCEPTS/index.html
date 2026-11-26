@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glade Home · three concepts</title>
+<style>
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A; --text: #E6EEE8;
+    --quiet: #8C9A90; --panel: #101A15; --line: #1E2B24; --line-on: #3A4A40;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, var(--field), var(--shadow) 75%);
+    color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 48px 24px; overflow-x: hidden;
+  }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+  .sub { color: var(--quiet); margin: 0 0 48px; text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 24px; position: relative; z-index: 1; }
+  a.card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 28px 24px 24px; min-height: 200px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  a.card:hover { border-color: var(--line-on); transform: translateY(-2px); }
+  a.card:focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fly); box-shadow: 0 0 12px var(--fly); margin-bottom: 20px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 0 0 10px; }
+  .pitch { color: var(--quiet); margin: 0 0 20px; }
+  .go { color: var(--fly); font-size: 14px; }
+  .fly { position: fixed; width: 4px; height: 4px; border-radius: 50%; background: var(--fly);
+    box-shadow: 0 0 10px 2px rgba(216,242,106,.6); opacity: 0; pointer-events: none;
+    animation: blink 6s ease-in-out infinite; }
+  @keyframes blink { 0%, 70%, 100% { opacity: 0; } 80% { opacity: .9; } 90% { opacity: .2; } }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 420px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .fly { animation: none; opacity: .35; }
+    a.card { transition: none; }
+    a.card:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+  <h1>Glade Home</h1>
+  <p class="sub">Three ways to open the glade. Each one is live: find, make, check, reopen.</p>
+  <main class="grid">
+    <a class="card" href="the-lantern-call.html">
+      <div class="dot"></div>
+      <h2>The Lantern Call</h2>
+      <p class="pitch">Type a name and they flash back; the same line makes someone new.</p>
+      <span class="go">Open →</span>
+    </a>
+    <a class="card" href="the-firefly-river.html">
+      <div class="dot"></div>
+      <h2>The Firefly River</h2>
+      <p class="pitch">Your agents stand along a river in A to Z order; past talks are moored in the water.</p>
+      <span class="go">Open →</span>
+    </a>
+    <a class="card" href="the-night-clock.html">
+      <div class="dot"></div>
+      <h2>The Night Clock</h2>
+      <p class="pitch">Whoever you usually need at this hour is waiting under the moon.</p>
+      <span class="go">Open →</span>
+    </a>
+  </main>
+  <span class="fly" style="left:12%;top:18%;animation-delay:0s"></span>
+  <span class="fly" style="left:84%;top:22%;animation-delay:1.7s"></span>
+  <span class="fly" style="left:20%;top:82%;animation-delay:3.1s"></span>
+  <span class="fly" style="left:76%;top:78%;animation-delay:4.4s"></span>
+  <span class="fly" style="left:50%;top:9%;animation-delay:2.4s"></span>
+</body>
+</html>

@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Remembering Sea · Agent Creator</title>
+<style>
+  :root {
+    --sea: #2E3B3F; --deep: #1C2629; --glass: #8FB3A8; --foam: #E9EEE9; --lamp: #E8C48A;
+    --paper: #E9EEE9; --ink: #1C2629; --quiet: #52636A; --line: #C6D0CC; --press: #DAE2DF; --rust: #974A2D;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --serif: "New York", ui-serif, "Iowan Old Style", "Palatino", Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--deep); color: var(--foam); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+  canvas#sea { position: fixed; inset: 0; display: block; }
+  .grain { position: fixed; inset: -60px; pointer-events: none; z-index: 1; opacity: .055; /* on the water only: under every scene, never on text */ animation: grain .54s steps(3) infinite; }
+  @keyframes grain { 0% { transform: translate(0, 0); } 33% { transform: translate(-23px, 17px); } 66% { transform: translate(19px, -31px); } 100% { transform: translate(0, 0); } }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; border-radius: 6px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Top bar: dry shore. Plain words only. */
+  .bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 10;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 16px;
+    background: var(--paper); color: var(--ink); border-bottom: 1px solid var(--line);
+    transition: opacity .6s ease-in-out;
+  }
+  .bar :focus-visible { outline-color: var(--ink); }
+  body.birthing .bar { opacity: .18; }
+  body.birthing .bar:hover, body.birthing .bar:focus-within { opacity: 1; }
+  .back { color: var(--quiet); text-decoration: none; font-size: 13px; justify-self: start; padding: 6px 4px; }
+  .back:hover { color: var(--ink); }
+  .scenes { display: flex; gap: 2px; background: var(--press); border-radius: 9px; padding: 2px; }
+  .scenes button { border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 5px 14px; border-radius: 7px; min-height: 30px; }
+  .scenes button:hover { color: var(--ink); }
+  .scenes button[aria-current="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(28,38,41,.18); }
+  .sound { justify-self: end; border: 0; background: transparent; color: var(--quiet); font-size: 13px; padding: 6px 4px; }
+  .sound[aria-pressed="true"] { color: var(--ink); }
+  body:not([data-scene="birth"]):not([data-scene="talk"]) .sound { visibility: hidden; } /* sound plays only on Birth and Talk */
+
+  .scene { position: fixed; inset: 48px 0 0 0; z-index: 2; }
+  .scene[hidden] { display: none; }
+  .panel { background: var(--paper); color: var(--ink); border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 10px 40px rgba(10,16,18,.28); }
+  .panel :focus-visible { outline-color: var(--ink); }
+  .primary { background: var(--ink); color: var(--paper); border: 0; border-radius: 10px; padding: 10px 18px; font-weight: 600; min-height: 44px; }
+  .primary:disabled { opacity: .4; cursor: default; }
+  .quiet-btn { background: transparent; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 4px 10px; font-size: 13px; min-height: 32px; }
+  .quiet-btn:hover { background: var(--press); }
+
+  /* 1 · Home: a point on the water, the name in lamp light above it */
+  .agent {
+    position: absolute; width: 220px; height: 100px; border: 0; background: transparent; padding: 0;
+    display: flex; flex-direction: column; justify-content: space-between; align-items: center; border-radius: 14px;
+  }
+  .agent .name { font: 400 24px/30px var(--serif); color: var(--lamp); letter-spacing: .02em; text-shadow: 0 0 18px rgba(232,196,138,.35); transition: text-shadow .2s ease-out; }
+  .agent:hover .name, .agent:focus-visible .name { text-shadow: 0 0 22px rgba(232,196,138,.6); }
+  .agent .state { font-size: 13px; line-height: 20px; color: rgba(233,238,233,.82); }
+  .agent .state.ready { color: var(--lamp); }
+
+  /* 2 · Birth */
+  #birth { z-index: 5; }
+  .rise, .rise-lamp, .reflect {
+    position: absolute; left: 0; right: 0; height: 80px; padding-top: 6px; text-align: center; white-space: nowrap;
+    font: 300 68px/1 var(--serif); letter-spacing: .05em; pointer-events: none;
+  }
+  .rise { overflow: hidden; }
+  .rise span, .rise-lamp span, .reflect span { display: inline-block; }
+  .rise span {
+    transform: translateY(118%);
+    background: linear-gradient(180deg, rgba(242,247,244,.96) 0%, rgba(170,202,192,.82) 58%, rgba(143,179,168,.42) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .rise span.up { animation: up .3s cubic-bezier(.2,.75,.3,1) forwards; }
+  .rise span.now { transform: none; animation: none; }
+  @keyframes up { to { transform: none; } }
+  .rise-lamp { opacity: 0; color: var(--lamp); text-shadow: 0 0 26px rgba(232,196,138,.45), 0 0 3px rgba(232,196,138,.5); transition: opacity .9s ease-out; }
+  .rise-lamp.on { opacity: 1; }
+  .reflect { color: var(--lamp); opacity: 0; transform: scaleY(-1); transform-origin: 50% 100%; filter: blur(1.4px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 15%, #000 100%); mask-image: linear-gradient(to bottom, transparent 15%, #000 100%); }
+  .birth-words { position: absolute; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); padding: 16px 20px; opacity: 0; transition: opacity .6s ease-out; }
+  .birth-words.on { opacity: 1; }
+  .birth-words p { margin: 0; }
+  .birth-words .mark { display: block; font-size: 13px; color: var(--quiet); margin-bottom: 4px; }
+  .birth-go { position: absolute; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity .4s; background: var(--paper); color: var(--ink); }
+  .birth-go.on { opacity: 1; }
+  .skip { position: absolute; right: 20px; bottom: 20px; background: var(--paper); color: var(--ink); border: 0; border-radius: 10px; padding: 8px 16px; min-height: 40px; font-size: 13px; opacity: .85; }
+  .skip:hover { opacity: 1; }
+
+  /* 3 · Files: the shore list on the right, the sea in cross-section on the left */
+  .files-panel { position: absolute; top: 16px; right: 16px; bottom: 16px; width: 360px; display: flex; flex-direction: column; overflow: hidden; }
+  .files-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+  .files-head h1 { font: 400 22px/1.3 var(--serif); margin: 0; }
+  .count { font-size: 15px; margin-top: 2px; }
+  .sub { font-size: 13px; color: var(--quiet); }
+  .rows { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+  .rows li { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 7px 20px; font-size: 13px; }
+  .rows .fname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rows .fsize { color: var(--quiet); text-align: right; }
+  .rows .fstate { color: var(--quiet); grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+  .rows li.reading .fstate { color: var(--ink); }
+  .rows li.failed .fstate { color: var(--rust); }
+  .drop-hint { padding: 12px 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--quiet); margin: 0; }
+  .dropping { position: fixed; inset: 48px 0 0 0; z-index: 20; display: none; align-items: center; justify-content: center; pointer-events: none; }
+  .dropping span { background: var(--paper); color: var(--ink); padding: 10px 18px; border-radius: 10px; }
+  body.drag .dropping { display: flex; }
+
+  /* 4 · Talk: all shore, a strip of still water at the bottom */
+  .chat { position: absolute; top: 16px; bottom: calc(15vh - 36px); left: 50%; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); display: flex; flex-direction: column; overflow: hidden; }
+  .chat-head { padding: 16px 22px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
+  .chat-head h1 { font: 400 22px/1.3 var(--serif); margin: 0; }
+  .chat-head span { font-size: 13px; color: var(--quiet); }
+  .msgs { list-style: none; margin: 0; padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .msgs .me { align-self: flex-end; max-width: 80%; background: var(--press); padding: 8px 14px; border-radius: 12px; }
+  .msgs .them { max-width: 92%; }
+  .msgs .who { display: block; font-size: 13px; color: var(--quiet); }
+  .msgs .text { margin: 0; }
+  .msgs .text .w { animation: surface .2s ease-out both; }
+  @keyframes surface { from { opacity: .7; } }
+  .where { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
+  .where .label { color: var(--quiet); display: block; }
+  .where blockquote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--line); }
+  .note { margin: 8px 0 0; font-size: 13px; color: var(--quiet); }
+  .composer { display: flex; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); align-items: flex-end; }
+  .composer textarea { flex: 1; resize: none; background: #F6F8F7; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font: inherit; min-height: 44px; max-height: 140px; }
+  .composer textarea::placeholder { color: var(--quiet); }
+
+  @media (max-width: 760px) {
+    .files-panel { top: auto; left: 16px; width: auto; height: 46%; }
+    .scenes button { padding: 5px 9px; }
+    .back { font-size: 0; } .back::before { content: "←"; font-size: 15px; }
+    .rise, .rise-lamp, .reflect { font-size: 52px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .grain { animation: none; }
+    .msgs .text .w { animation: none; }
+    .rise-lamp, .birth-words, .birth-go, .bar { transition: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="sea" aria-hidden="true"></canvas>
+<div class="grain" id="grain" aria-hidden="true"></div>
+
+<header class="bar">
+  <a class="back" href="index.html">← All concepts</a>
+  <nav class="scenes" aria-label="Moments">
+    <button data-go="home">Home</button>
+    <button data-go="birth">Birth</button>
+    <button data-go="files">Files</button>
+    <button data-go="talk">Talk</button>
+  </nav>
+  <button class="sound" id="sound" aria-pressed="false">Sound off</button>
+</header>
+
+<main>
+  <section id="home" class="scene" aria-label="Home"></section>
+
+  <section id="birth" class="scene" aria-label="Birth" hidden>
+    <div class="rise" id="rise" aria-hidden="true"></div>
+    <div class="rise-lamp" id="riseLamp" aria-hidden="true"></div>
+    <div class="reflect" id="reflect" aria-hidden="true"></div>
+    <div class="sr" id="bName" aria-live="polite"></div>
+    <div class="birth-words panel" id="bWordsBox"><span class="mark" id="bMark"></span><p id="bWords"></p></div>
+    <button class="primary birth-go" id="bTalk" hidden>Talk to Maya</button>
+    <button class="skip" id="skip">Skip</button>
+  </section>
+
+  <section id="files" class="scene" aria-label="Files" hidden>
+    <aside class="files-panel panel">
+      <div class="files-head">
+        <h1 id="fName">Marcus</h1>
+        <div class="count" id="fCount" aria-live="polite"></div>
+        <div class="sub" id="fSub"></div>
+      </div>
+      <ul class="rows" id="fRows"></ul>
+      <p class="drop-hint">Drop files anywhere to add them · they stay on this Mac</p>
+    </aside>
+  </section>
+
+  <section id="talk" class="scene" aria-label="Talk" hidden>
+    <div class="chat panel">
+      <div class="chat-head"><h1 id="tName"></h1><span id="tState"></span></div>
+      <ol class="msgs" id="msgs"></ol>
+      <form class="composer" id="composer">
+        <label class="sr" for="q">Message</label>
+        <textarea id="q" rows="1"></textarea>
+        <button class="primary" id="send">Send</button>
+      </form>
+    </div>
+  </section>
+</main>
+<div class="dropping" aria-hidden="true"><span id="dropText">adds to Marcus</span></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Shared demo model: agents, files, the study run, talk, sound.
+   (Each concept page carries its own copy, so it opens alone.)
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
+
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const easeIn = x => x * x;
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+function fmtSize(b) { return b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
+
+function mkFile(name, size, extra) { return Object.assign({ name, size, status: 'learned', t0: 0, dur: 0, pct: 1 }, extra || {}); }
+function generic(n) { const a = []; for (let i = 0; i < n; i++) a.push(mkFile('file ' + (i + 1), 1e5)); return a; }
+
+const MARCUS_OLD = ['Letters to a young manager.pdf', 'Talk — Leading through doubt.txt', 'Interview, radio (2018).txt', 'Notebook 1.md', 'Notebook 2.md', 'Notebook 3.md', 'Workshop day 1.txt', 'Workshop day 2.txt', 'Q&A transcripts.txt', 'Essays 2015–2019.pdf', 'Commencement speech.txt', 'Book draft, ch 1–4.docx', 'Book draft, ch 5–9.docx', 'Podcast ep 12.txt', 'Podcast ep 31.txt', 'Margin notes.md', 'Team memos.pdf', 'Reading list.md'];
+const MARCUS_NEW = [
+  ['Podcast ep 44.txt', 210e3, 3200], ['Book draft, ch 10–14.docx', 1.8e6, 9800], ['Scan of 1998 diary.pdf', 24e6, 4200, 'It’s a scan · add a text version'],
+  ['Mentoring calls (March).txt', 640e3, 6100], ['Podcast ep 57.txt', 190e3, 3900], ['Board letters 2020.pdf', 3.1e6, 8600],
+  ['Voice memo 14.m4a', 8.2e6, 7000, 'Audio isn’t supported yet'], ['Mentoring calls (April).txt', 590e3, 7400], ['Lecture — On patience.txt', 120e3, 2600],
+  ['Notebook 4.md', 80e3, 5200], ['Interview, 2022.txt', 260e3, 10600], ['Letters, part 2.pdf', 2.2e6, 11800]
+];
+const MAYA_FILES = ['Studio lectures, week 1.txt', 'Studio lectures, week 2.txt', 'Studio lectures, week 3.txt', 'Studio lectures, week 4.txt', 'Studio lectures, week 5.txt', 'Studio lectures, week 6.txt',
+  'Notebook, red.md', 'Notebook, grey.md', 'Crits 2018.pdf', 'Crits 2019.pdf', 'Crits 2020.pdf', 'Crits 2021.pdf', 'Type notes.md', 'Grid essay.pdf', 'Talk — On restraint.txt', 'Interview, 2016.txt',
+  'Letters to students.pdf', 'Portfolio reviews.txt', 'Margin notes.md', 'Reading list.md', 'Studio rules.txt', 'Open day Q&A.txt', 'Workshop, posters.txt', 'Workshop, books.txt'];
+const AGENTS = [
+  { id: 'tony', name: 'Tony', files: generic(30) },
+  { id: 'marcus', name: 'Marcus', files: MARCUS_OLD.map((n, i) => mkFile(n, 4e4 + (hash(n) % 3000) * 1000)).concat(
+      MARCUS_NEW.map(([n, s, d, reason]) => mkFile(n, s, { status: 'waiting', pct: 0, dur: d, fail: !!reason, reason: reason || '' }))) },
+  { id: 'ada', name: 'Ada', files: generic(22) },
+];
+const MAYA = { id: 'maya', name: 'Maya', files: MAYA_FILES.map(n => mkFile(n, 1e5)), born: false };
+const byId = id => AGENTS.concat([MAYA]).find(a => a.id === id);
+const MARCUS = byId('marcus');
+function homeAgents() { return MAYA.born ? AGENTS.concat([MAYA]) : AGENTS; }
+function counts(a) {
+  const c = { total: a.files.length, learned: 0, reading: 0, failed: 0, waiting: 0 };
+  a.files.forEach(f => c[f.status]++); return c;
+}
+function isStudying(a) { const c = counts(a); return !!(c.reading || c.waiting); }
+function stateText(a) { const c = counts(a); return (c.reading || c.waiting) ? `Studying · ${c.learned} of ${c.total}` : 'Ready'; }
+
+/* ---------- The study run: honest, runs whether you watch or not ---------- */
+const run = { started: false, celebrated: true };
+const BASE_TITLE = document.title;
+function startRun() {
+  if (run.started) return; run.started = true;
+  const t = Date.now();
+  const arriving = MARCUS.files.filter(f => f.status === 'waiting');
+  arriving.forEach(f => { f.status = 'reading'; f.t0 = t; });
+  run.celebrated = false;
+  world.filesArrived(arriving, null);
+  renderFiles();
+}
+function addRealFiles(list, x, y) {
+  const t = Date.now(), added = [];
+  for (const file of list) {
+    const tooBig = file.size > 200e6;
+    const f = mkFile(file.name, file.size, { status: 'reading', t0: t, pct: 0, dur: 2500 + Math.random() * 4000,
+      fail: tooBig || file.size === 0, reason: tooBig ? 'Too large to read (over 200 MB)' : 'This file is empty' });
+    MARCUS.files.unshift(f); added.push(f);
+  }
+  run.started = true; run.celebrated = false;
+  world.filesArrived(added, x == null ? null : { x, y });
+  renderFiles();
+}
+function tickRun() {
+  const t = Date.now(); let changed = false;
+  for (const f of MARCUS.files) {
+    if (f.status !== 'reading') continue;
+    f.pct = clamp((t - f.t0) / f.dur, 0, 1);
+    if (f.pct >= 1) { f.status = f.fail ? 'failed' : 'learned'; changed = true; f.status === 'learned' ? world.fileLearned(f) : world.fileFailed(f); }
+  }
+  const c = counts(MARCUS);
+  document.title = c.reading ? `${c.learned}/${c.total} · ${BASE_TITLE}` : BASE_TITLE;
+  if (!c.reading && !run.celebrated) { run.celebrated = true; world.allDone(); }
+  if (changed) { renderFiles(); renderHome(); }
+}
+setInterval(tickRun, 100);
+
+const pctText = f => `Reading · ${Math.floor(f.pct * 100)}%`;
+function renderFiles() {
+  const c = counts(MARCUS);
+  $('#fCount').textContent = `${c.learned} of ${c.total} learned`;
+  const bits = [];
+  if (c.reading) bits.push(`${c.reading} reading`);
+  if (c.waiting) bits.push(`${c.waiting} waiting`);
+  if (c.failed) bits.push(`${c.failed} couldn’t read`);
+  $('#fSub').textContent = c.reading ? bits.join(' · ') + ' · you can leave, it keeps going'
+                                     : (c.waiting ? 'Studying · ' : 'Ready') + (bits.length ? ' · ' + bits.join(' · ') : '');
+  const ul = $('#fRows'); ul.textContent = '';
+  for (const f of MARCUS.files) {
+    const li = document.createElement('li'); li.className = f.status; f.li = li;
+    const st = f.status === 'learned' ? 'Learned' : f.status === 'reading' ? pctText(f) : f.status === 'waiting' ? 'Waiting' : f.reason;
+    li.innerHTML = `<span class="fname"></span><span class="fsize">${fmtSize(f.size)}</span><span class="fstate"><span></span></span>`;
+    li.querySelector('.fname').textContent = f.name; li.querySelector('.fname').title = f.name;
+    li.querySelector('.fstate span').textContent = st;
+    ul.appendChild(li);
+  }
+}
+
+/* ---------- Talk: first words never wait; sources stay plain ---------- */
+const BANK = {
+  tony: { q: 'A client says we’re too expensive. What do I say?', keys: ['expensive', 'price', 'client', 'sell', 'sale', 'deal', 'objection', 'cost'],
+    a: 'Don’t defend the price. Ask what they’re comparing it to. Nine times out of ten “too expensive” means “I don’t see the value yet”, so go back to the outcome they told you they wanted, and price that, not the hours.',
+    src: { ref: 'Workshop 3 · transcript, 14:22', quote: 'Price is only an issue when the value isn’t clear yet.' } },
+  marcus: { q: 'I made a mistake in front of the whole team. How do I face them tomorrow?', keys: ['mistake', 'team', 'fail', 'wrong', 'face', 'sorry', 'lead'],
+    a: 'Say it first, and say it plainly. What you did is done; what you do next is yours. People forget the mistake long before they forget how you carried it.',
+    src: { ref: 'Letters to a young manager.pdf · letter 4', quote: 'The error is the event. The account you give of it is the choice.' } },
+  ada: { q: 'Should we rewrite the old billing system?', keys: ['rewrite', 'system', 'code', 'legacy', 'billing', 'refactor', 'bug'],
+    a: 'Not yet. Write down the three things that hurt most and fix them in place. If you still want a rewrite after that, at least you’ll know what the new one has to do better.',
+    src: { ref: 'Engineering notes 2021 · p. 12', quote: 'Rewrites fail when nobody can say what the old system does.' } },
+  maya: { q: 'How do I know when a layout is finished?', keys: ['layout', 'design', 'finished', 'done', 'type', 'grid', 'page'],
+    a: 'When you can’t take anything away without it falling apart. Take one thing out. If nobody misses it, it was never needed.',
+    src: { ref: 'Studio lectures, week 6 · 31:05', quote: 'Finished is when taking away starts to hurt.' } },
+};
+const UNKNOWN_Q = 'What do you think about the new tax rules?';
+const convo = {}; let talkAgent = byId('tony'); let streaming = null;
+function answerFor(a, q) {
+  const b = BANK[a.id], s = q.toLowerCase();
+  if (b.keys.some(k => s.includes(k))) return { text: b.a, src: b.src };
+  return { text: 'That isn’t in anything you gave me, so I’d only be guessing. I’d rather not.', unknown: true };
+}
+function nextPrompt(a) { const log = convo[a.id] || []; const asked = log.filter(m => m.who === 'me').length; return asked === 0 ? BANK[a.id].q : asked === 1 ? UNKNOWN_Q : ''; }
+function openTalk(a) { talkAgent = a; go('talk'); }
+function renderTalk() {
+  const a = talkAgent; $('#tName').textContent = a.name; $('#tState').textContent = stateText(a);
+  const ol = $('#msgs'); ol.textContent = '';
+  (convo[a.id] || []).forEach(m => ol.appendChild(msgEl(m, a)));
+  const q = $('#q'); q.value = nextPrompt(a); q.placeholder = `Ask ${a.name} anything`; autoGrow();
+  ol.scrollTop = ol.scrollHeight;
+}
+function msgEl(m, a) {
+  const li = document.createElement('li'); li.className = m.who;
+  if (m.who === 'me') { li.textContent = m.text; return li; }
+  li.innerHTML = '<span class="who"></span><p class="text"></p>';
+  li.querySelector('.who').textContent = m.mark || a.name;
+  li.querySelector('.text').textContent = m.shown != null ? m.shown : m.text;
+  if (m.done !== false) addTail(li, m, a);
+  return li;
+}
+function addTail(li, m, a) {
+  if (m.src) {
+    const d = document.createElement('div'); d.className = 'where';
+    d.innerHTML = '<span class="label">Where from</span><span class="ref"></span><blockquote></blockquote>';
+    d.querySelector('.ref').textContent = m.src.ref; d.querySelector('blockquote').textContent = '“' + m.src.quote + '”';
+    li.appendChild(d);
+  } else if (m.unknown) {
+    const p = document.createElement('p'); p.className = 'note'; p.textContent = `Not in ${a.name}’s references`; li.appendChild(p);
+  }
+}
+function send(q) {
+  if (!q.trim() || streaming) return;
+  const a = talkAgent; const log = convo[a.id] = convo[a.id] || [];
+  log.push({ who: 'me', text: q.trim() });
+  const ans = answerFor(a, q);
+  const m = { who: 'them', text: ans.text, src: ans.src, unknown: ans.unknown, done: false };
+  const words = ans.text.split(' ');
+  m.shown = words.slice(0, 4).join(' ');            // first words land in this very frame, at full strength
+  log.push(m);
+  const ol = $('#msgs'); ol.appendChild(msgEl(log[log.length - 2], a)); const li = msgEl(m, a); ol.appendChild(li);
+  ol.scrollTop = ol.scrollHeight;
+  world.firstWords(a, !!ans.unknown);               // the ring follows the words, never precedes them
+  $('#q').value = nextPrompt(a); autoGrow(); $('#send').disabled = true;
+  let i = 4; const p = li.querySelector('.text');
+  streaming = { m, li, a, timer: 0, finish() {
+    clearTimeout(this.timer); m.shown = m.text; m.done = true; p.textContent = m.text; addTail(li, m, a);
+    streaming = null; $('#send').disabled = false; world.answerEnd(a); ol.scrollTop = ol.scrollHeight; } };
+  const step = () => {
+    if (i >= words.length) return streaming.finish();
+    const w = document.createElement('span'); w.className = 'w'; w.textContent = ' ' + words[i++];   // later words surface 70% → 100%
+    m.shown += w.textContent; p.appendChild(w); ol.scrollTop = ol.scrollHeight;
+    streaming.timer = setTimeout(step, 34);
+  };
+  streaming.timer = setTimeout(step, 34);
+}
+function autoGrow() { const q = $('#q'); q.style.height = 'auto'; q.style.height = Math.min(140, q.scrollHeight + 2) + 'px'; }
+$('#composer').addEventListener('submit', e => { e.preventDefault(); send($('#q').value); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($('#q').value); } });
+$('#q').addEventListener('input', autoGrow);
+
+/* ---------- Sound: off by default, one switch, quiet ---------- */
+const sound = { on: false, ctx: null, out: null };
+function audio() {
+  if (!sound.on) return null;
+  if (!sound.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    sound.ctx = new AC(); sound.out = sound.ctx.createGain(); sound.out.gain.value = 0.063; sound.out.connect(sound.ctx.destination); }
+  if (sound.ctx.state === 'suspended') sound.ctx.resume();
+  return sound.ctx;
+}
+function noise(c, sec) { const b = c.createBuffer(1, c.sampleRate * sec, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+function env(c, g, t, a, peak, r) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + r); }
+$('#sound').addEventListener('click', () => {
+  sound.on = !sound.on; $('#sound').setAttribute('aria-pressed', sound.on); $('#sound').textContent = sound.on ? 'Sound on' : 'Sound off';
+  if (sound.on) audio(); else if (sound.ctx) sound.ctx.suspend();
+  world.soundChanged();
+});
+/* Rain: one looping noise bed whose filter we move (muffled under water, close at the surface) */
+function rainStart(freq, gain) {
+  const c = audio(); if (!c) return null;
+  const s = c.createBufferSource(); s.buffer = noise(c, 2); s.loop = true;
+  const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+  const g = c.createGain(), t = c.currentTime; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .8);
+  s.connect(f).connect(g).connect(sound.out); s.start(t);
+  return {
+    to(fr, gn, sec) { const n = c.currentTime; f.frequency.setTargetAtTime(fr, n, sec / 3); g.gain.setTargetAtTime(gn, n, sec / 3); },
+    stop(sec) { const n = c.currentTime; g.gain.cancelScheduledValues(n); g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), n); g.gain.exponentialRampToValueAtTime(0.0001, n + sec); s.stop(n + sec + .05); },
+  };
+}
+function playDrip() { const c = audio(); if (!c) return; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(620, t + .09); env(c, g, t, .004, .8, .28); o.connect(g).connect(sound.out); o.start(t); o.stop(t + .35); }
+
+/* ---------- Scenes ---------- */
+let scene = null;
+const SCENES = ['home', 'birth', 'files', 'talk'];
+function go(name) {
+  if (name === scene) return;
+  if (scene === 'birth') stopBirth();
+  if (scene === 'talk' && streaming) streaming.finish();
+  scene = name; document.body.dataset.scene = name;
+  SCENES.forEach(s => { $('#' + s).hidden = s !== name; });
+  document.querySelectorAll('[data-go]').forEach(b => b.setAttribute('aria-current', b.dataset.go === name));
+  history.replaceState(null, '', '#' + name);
+  world.enter(name);
+  if (name === 'home') renderHome();
+  if (name === 'files') { startRun(); renderFiles(); }
+  if (name === 'birth') startBirth();
+  if (name === 'talk') { renderTalk(); $('#q').focus({ preventScroll: true }); }
+}
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+
+function renderHome() {
+  if (scene !== 'home') return;
+  const home = $('#home'); home.textContent = '';
+  for (const a of homeAgents()) {
+    const b = document.createElement('button'); b.className = 'agent'; b.dataset.id = a.id;
+    b.innerHTML = '<span class="name"></span><span class="state"></span>';
+    b.querySelector('.name').textContent = a.name; b.querySelector('.state').textContent = stateText(a);
+    b.querySelector('.state').classList.toggle('ready', !isStudying(a));
+    b.setAttribute('aria-label', `Talk to ${a.name} · ${stateText(a)}`);
+    b.addEventListener('click', () => openTalk(a));
+    home.appendChild(b);
+  }
+  world.placeHomeButtons();
+}
+
+/* Dropping real files: always lands in Files, always adds to Marcus */
+let dragDepth = 0;
+addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; document.body.classList.add('drag'); });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('drag'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('drag');
+  const list = e.dataTransfer && e.dataTransfer.files; if (!list || !list.length) return;
+  go('files'); addRealFiles(Array.from(list), e.clientX, e.clientY);
+});
+
+/* ============================================================
+   The Remembering Sea: what sinks in becomes them.
+   Calm water = ready, restless water = still learning.
+   ============================================================ */
+const cv = $('#sea'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const TOP = 48;
+const FONT = getComputedStyle(document.body).fontFamily;
+const horizon = () => TOP + (H - TOP) * .46;
+
+/* film grain, made once */
+(function () {
+  const g = document.createElement('canvas'); g.width = g.height = 160; const x = g.getContext('2d'), d = x.createImageData(160, 160);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); $('#grain').style.backgroundImage = `url(${g.toDataURL()})`;
+})();
+
+/* ---------- drawing kit ---------- */
+function sky(y0, y1) { const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, '#4B5A5F'); g.addColorStop(1, '#93A09F'); ctx.fillStyle = g; ctx.fillRect(0, y0, W, y1 - y0); }
+function seaFill(y0, y1) { const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, '#5B6C70'); g.addColorStop(.3, '#2E3B3F'); g.addColorStop(1, '#1C2629'); ctx.fillStyle = g; ctx.fillRect(0, y0, W, y1 - y0); }
+function horizonLine(y) { ctx.fillStyle = 'rgba(233,238,233,.16)'; ctx.fillRect(0, y - .5, W, 1); }
+/* wave lines in perspective; calm 0 = mirror-flat. The whole sea drifts ~1 px every 2 s. */
+function waves(y0, y1, calm, t, mul) {
+  const n = 24, drift = reduced ? 0 : t / 2000, tt = reduced ? 0 : t; ctx.lineWidth = 1;
+  for (let k = 1; k <= n; k++) {
+    const f = k / n, y = y0 + (y1 - y0) * f * f, amp = (.4 + f * 3.2) * calm, fr = .018 / (.35 + f), sp = tt * .0005 * (.6 + f);
+    ctx.strokeStyle = `rgba(143,179,168,${(.05 + .1 * f) * mul})`; ctx.beginPath();
+    for (let x = -32; x <= W + 32; x += 32) {
+      const yy = y + Math.sin((x + drift) * fr + sp + k * 1.7) * amp + Math.sin((x - drift * .5) * fr * 2.3 - sp * 1.3 + k) * amp * .4;
+      x === -32 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+}
+function ring(x, y, r, ratio, a, w) { if (a <= .004 || r <= .5) return; ctx.strokeStyle = `rgba(233,238,233,${a})`; ctx.lineWidth = w || 1; ctx.beginPath(); ctx.ellipse(x, y, r, r * ratio, 0, 0, 6.2832); ctx.stroke(); }
+function dot(x, y, r, rgb, a) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, 2 * r, 2 * r); }
+/* warm lamp light broken on the water below a name */
+function lampColumn(x, y, w, len, a, calm, t) {
+  const tt = reduced ? 0 : t;
+  for (let j = 0; j < 12; j++) {
+    const f = j / 12, yy = y + 4 + f * len, ww = w * (1 - f * .7) * (.82 + .18 * Math.sin(tt * .002 + j * 1.3) * calm), dx = Math.sin(tt * .0013 + j * .9) * 2 * calm;
+    ctx.fillStyle = `rgba(232,196,138,${a * (1 - f)})`; ctx.fillRect(x - ww / 2 + dx, yy, ww, 1.4);
+  }
+}
+function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+function fit(s, w) { if (ctx.measureText(s).width <= w) return s; while (s.length > 1 && ctx.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; }
+
+/* rings on the water: drops, rain, the last file settling */
+const rings = [];
+function addRing(x, y, max, dur, ratio, a, w, delay) { if (reduced) return; rings.push({ x, y, max, dur, ratio, a, w: w || 1, t0: clock() + (delay || 0) }); }
+function drawRings(t) {
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const r = rings[i], k = (t - r.t0) / r.dur;
+    if (k >= 1) { rings.splice(i, 1); continue; } if (k < 0) continue;
+    ring(r.x, r.y, 2 + easeOut(k) * r.max, r.ratio, r.a * (1 - k), r.w);
+  }
+}
+
+/* ---------- 1 · Home ---------- */
+const nodes = new Map();
+function node(a) { let n = nodes.get(a.id); if (n) return n; const r = rng(hash(a.name)); n = { a, cx: 0, cy: 0, off: r() * 10 }; nodes.set(a.id, n); return n; }
+function layoutHome() {
+  const list = homeAgents(), n = list.length, hy = horizon(), gap = Math.min(280, (W - 40) / n);
+  list.forEach((a, i) => {
+    const c = node(a); c.cx = W / 2 + (i - (n - 1) / 2) * gap; c.cy = hy + (H - hy) * .4;
+    const b = document.querySelector(`.agent[data-id="${a.id}"]`);
+    if (b) { b.style.left = (c.cx - 110) + 'px'; b.style.top = (c.cy - TOP - 50) + 'px'; }
+  });
+}
+function drawHome(t) {
+  const hy = horizon(); sky(0, hy); seaFill(hy, H); waves(hy, H, 1, t, 1); horizonLine(hy);
+  for (const a of homeAgents()) {
+    const c = node(a), learning = isStudying(a), { cx, cy } = c;
+    ctx.globalCompositeOperation = 'lighter';
+    lampColumn(cx, cy, 26, 70, .32, 1, t); dot(cx, cy, 10, '233,238,233', .55);
+    ctx.globalCompositeOperation = 'source-over';
+    if (reduced) {                                   // still twin: one smooth ring = calm, tight uneven rings = restless
+      if (learning) [8, 13, 19, 26].forEach((r, i) => ring(cx, cy, r, .26, .34 - i * .05));
+      else ring(cx, cy, 46, .22, .24, 1.2);
+    } else if (learning) {                           // restless: fine, quick ripples
+      for (let j = 0; j < 7; j++) { const per = .62 + j * .11, k = ((t / 1000) / per + j * .37) % 1; ring(cx + Math.sin(t * .011 + j) * 1.2, cy, 5 + k * 30, .26, .42 * (1 - k)); }
+    } else {                                         // calm: one slow ring every 10 s
+      const k = ((t / 1000 + c.off) % 10) / 10;
+      if (k < .75) { const e = easeInOut(k / .75); ring(cx, cy, 8 + e * 140, .2, .38 * Math.sin(Math.PI * k / .75) * (1 - e * .4), 1.2); }
+    }
+  }
+}
+
+/* ---------- 3 · Files: the sea in cross-section. Depth is progress. ---------- */
+const bed = [];
+(function () { const r = rng(3); for (let i = 0; i < MARCUS.files.filter(f => f.status === 'learned').length; i++) bedPush(r(), true); })();
+function bedPush(u, old) { const b = Math.floor(u * 24); const layer = bed.filter(s => Math.floor(s.u * 24) === b).length; bed.push({ u, layer, t0: old ? -1e9 : clock() }); }
+let bigT = -1e9, lastPct = 0;
+function filesGeo() {
+  const pr = $('.files-panel').getBoundingClientRect(), wide = W > 760;
+  return wide ? { L: 76, R: pr.left - 28, sy: TOP + 96, fy: H - 56 } : { L: 56, R: W - 16, sy: TOP + 70, fy: pr.top - 24 };
+}
+const TH = 24;
+function drawFiles(t, dt) {
+  const g = filesGeo(), { L, R, sy, fy } = g, depthSpan = fy - sy - 10 - TH - 6;
+  sky(0, sy);
+  let gr = ctx.createLinearGradient(0, sy, 0, fy); gr.addColorStop(0, '#46585C'); gr.addColorStop(.25, '#2E3B3F'); gr.addColorStop(1, '#1C2629');
+  ctx.fillStyle = gr; ctx.fillRect(0, sy, W, fy - sy);
+  ctx.fillStyle = '#151E1C'; ctx.fillRect(0, fy, W, H - fy);
+  // soft light shafts from the surface
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 3; i++) {
+    const x0 = L + (R - L) * (.2 + .3 * i) + (reduced ? 0 : Math.sin(t / 5200 + i * 2) * 30);
+    const sg = ctx.createLinearGradient(0, sy, 0, fy); sg.addColorStop(0, 'rgba(143,179,168,.07)'); sg.addColorStop(1, 'rgba(143,179,168,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(x0 - 24, sy); ctx.lineTo(x0 + 24, sy); ctx.lineTo(x0 + 110, fy); ctx.lineTo(x0 - 40, fy); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // the surface
+  ctx.strokeStyle = 'rgba(233,238,233,.32)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x <= W; x += 24) { const y = sy + (reduced ? 0 : Math.sin(x * .02 + t * .0011) * 1.2); x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke();
+  // depth scale
+  ctx.font = '10px ' + FONT; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let d = 0; d <= 10; d++) {
+    const y = sy + 10 + d / 10 * depthSpan + TH / 2;
+    ctx.fillStyle = `rgba(143,179,168,${d % 5 ? .22 : .5})`; ctx.fillRect(L - 30, y, d % 5 ? 5 : 9, 1);
+    if (d % 5 === 0) { ctx.fillStyle = 'rgba(190,212,205,.78)'; ctx.fillText(d * 10 + '%', L - 34, y); }
+  }
+  // the bed of everything already learned
+  for (const s of bed) {
+    const x = L + s.u * (R - L), y = fy - 5 - s.layer * 5, k = clamp((t - s.t0) / 1600, 0, 1);
+    ctx.fillStyle = `rgba(143,179,168,${.32 + .35 * (1 - k)})`; rrect(x - 15, y, 30, 4, 2); ctx.fill();
+  }
+  // the files
+  const active = MARCUS.files.filter(f => f.v && (f.status === 'reading' || f.status === 'failed' || (f.status === 'learned' && !f.v.bedded)));
+  const n = active.length, lw = (R - L) / Math.max(n, 1), tw = clamp(lw - 8, 44, 128);
+  ctx.font = '11px ' + FONT; ctx.textAlign = 'center';
+  active.forEach((f, i) => {
+    const v = f.v, lx = L + lw * (i + .5);
+    if (v.x == null) v.x = lx;
+    v.x += (lx - v.x) * (reduced ? 1 : Math.min(1, dt * 4));
+    if (t < v.enterT) return;
+    const failed = f.status === 'failed', learned = f.status === 'learned';
+    const ty = failed ? sy - TH * .55 + (reduced ? 0 : Math.sin((t - v.failT) / 4000 * 6.2832) * 3)
+             : learned ? sy + 10 + depthSpan : sy + 10 + f.pct * depthSpan;
+    if (!v.landed) {                                // falls in, one ring on the surface
+      const k = reduced ? 1 : (t - v.enterT) / 420;
+      if (k >= 1) { v.landed = true; v.y = sy + 4; addRing(v.x, sy, 64, 1400, .16, .6); }
+      else v.y = v.y0 + (sy + 4 - v.y0) * easeIn(k);
+    } else v.y = reduced ? ty : v.y + (ty - v.y) * Math.min(1, dt * (failed ? 1.3 : 2.6));
+    let h = TH, alpha = failed ? .96 : .92 - .32 * clamp((v.y - sy) / (depthSpan + 10), 0, 1), textA = 1, yo = 0;
+    if (learned) {
+      if (!v.settleT && (reduced || Math.abs(v.y - ty) < 1.5)) v.settleT = t;
+      if (v.settleT) {
+        const k = (t - v.settleT) / 1700;
+        if (k < .7 && !reduced) { ctx.globalCompositeOperation = 'lighter'; dot(v.x, v.y + TH / 2, tw * .9, '143,179,168', .32 * Math.sin(Math.PI * k / .7)); ctx.globalCompositeOperation = 'source-over'; }
+        if (k >= .7) { const e = clamp((k - .7) / .3, 0, 1); h = TH - (TH - 4) * e; textA = 1 - e; alpha = alpha + (.5 - alpha) * e; yo = TH - h; }
+        if (k >= 1 || reduced) { v.bedded = true; bedPush(clamp((v.x - L) / (R - L), 0, .999)); return; }
+      }
+    }
+    ctx.fillStyle = `rgba(233,238,233,${alpha})`; rrect(v.x - tw / 2, v.y + yo, tw, h, 4); ctx.fill();
+    if (textA > .02) {
+      if (v.fitW !== tw) { v.fitW = tw; v.fitS = fit(f.name, tw - 12); }
+      ctx.fillStyle = `rgba(28,38,41,${textA})`; ctx.textBaseline = 'middle'; ctx.fillText(v.fitS, v.x, v.y + yo + h / 2 + .5);
+    }
+    if (failed) {                                   // what didn't sink in, floats, with its plain reason on dry paper
+      const s = f.reason, w = ctx.measureText(s).width + 16, cx = clamp(v.x, L - 40 + w / 2, R - w / 2), cy = v.y - 30;
+      ctx.fillStyle = 'rgba(233,238,233,.97)'; rrect(cx - w / 2, cy, w, 22, 5); ctx.fill();
+      ctx.fillStyle = '#974A2D'; ctx.fillText(s, cx, cy + 11.5);
+    }
+  });
+  drawRings(t);
+  const bk = (t - bigT) / 2500;                     // the last file settled: one wide calm ring
+  if (bk >= 0 && bk < 1) ring((L + R) / 2, sy, easeOut(bk) * (R - L) * .72, .05, .62 * (1 - bk), 1.5);
+  if (t - lastPct > 150) {                          // the plain % twin in the shore list
+    lastPct = t;
+    for (const f of MARCUS.files) if (f.status === 'reading' && f.li) { const s = f.li.querySelector('.fstate span'); const v = pctText(f); if (s.textContent !== v) s.textContent = v; }
+  }
+}
+
+/* ---------- 4 · Talk: a strip of still water ---------- */
+const strip = () => H * .85;
+function drawTalk(t) {
+  const st = strip(); sky(0, st);
+  const g = ctx.createLinearGradient(0, st, 0, H); g.addColorStop(0, '#4E5F63'); g.addColorStop(1, '#1C2629'); ctx.fillStyle = g; ctx.fillRect(0, st, W, H - st);
+  waves(st, H, .2, t, .9); horizonLine(st); drawRings(t);
+}
+
+/* ---------- 2 · Birth: sink, gather, rise, and the mirror ---------- */
+const birth = { active: false, t0: 0, s: {}, tiles: [], threads: [], drips: [], drops: [], motes: [], letters: [], rain: null, raining: false, calmT: 0, lampT: 0 };
+function nameGeo() { const hy = horizon(), base = hy + (H - hy) * .28; return { base, water: base + 16 }; }
+function layoutBirth() {
+  const { water } = nameGeo(), top = water - 80 - TOP;
+  ['#rise', '#riseLamp', '#reflect'].forEach(s => { $(s).style.top = top + 'px'; });
+  $('#reflect').style.top = (top + 80) + 'px';
+  $('#bWordsBox').style.top = (water - TOP + 30) + 'px';
+  $('#bTalk').style.top = (water - TOP + 30 + $('#bWordsBox').offsetHeight + 18) + 'px';
+}
+function startBirth() {
+  const b = birth; b.active = true; b.s = {}; b.t0 = clock(); b.threads = []; b.drips = []; b.raining = false; rings.length = 0;
+  document.body.classList.add('birthing');
+  const name = MAYA.name, spans = s => name.split('').map(ch => `<span>${ch}</span>`).join('');
+  $('#rise').innerHTML = spans(); $('#riseLamp').innerHTML = spans(); $('#reflect').innerHTML = spans();
+  $('#riseLamp').classList.remove('on'); $('#reflect').style.opacity = 0;
+  b.letters = Array.from($('#rise').children).map(span => ({ span, up: 0 }));
+  $('#bName').textContent = ''; $('#bWordsBox').classList.remove('on'); $('#bWords').textContent = ''; $('#bMark').textContent = '';
+  $('#bTalk').hidden = true; $('#bTalk').classList.remove('on'); $('#skip').hidden = false;
+  const r = rng(11), n = MAYA.files.length;
+  b.tiles = MAYA.files.map((f, i) => ({ name: f.name, x: W * .08 + W * .84 * (i + .5) / n, y: H * .86 - 10 - (i % 2) * 18, rot: (r() - .5) * .2, loosen: 1500 + i * 60 + r() * 120, row: i % 2 }));
+  b.motes = Array.from({ length: 46 }, () => ({ x: r(), y: r(), v: .3 + r(), s: .6 + r() * 1.4 }));
+  b.drops = Array.from({ length: 90 }, () => ({ x: r() * W, y: r() * H, l: 10 + r() * 16, v: 900 + r() * 500 }));
+  layoutBirth();
+  if (reduced) { jumpTo(9400); b.s.drip = 1; return; }
+  b.rain = rainStart(2200, .3);
+}
+function stopBirth() { birth.active = false; if (birth.rain) birth.rain.stop(.4); birth.rain = null; document.body.classList.remove('birthing'); rings.length = 0; }
+function jumpTo(ms) {
+  const b = birth; b.t0 = clock() - ms; b.s.muffle = b.s.surface = 1; b.threads = []; b.drips = []; b.raining = false;
+  b.letters.forEach(l => { l.up = 2; l.span.classList.add('now'); });
+  if (b.rain) { b.rain.stop(.3); b.rain = null; }
+  mirror(clock()); b.calmT = clock() - 800;
+}
+function skipBirth() { if (!birth.active || birth.s.mirror || clock() - birth.t0 < 200) return; jumpTo(8400); }
+function mirror(t) {
+  const b = birth; b.s.mirror = 1; b.raining = false; b.calmT = t; b.lampT = t;
+  if (b.rain) { b.rain.stop(.6); b.rain = null; }
+  $('#riseLamp').classList.add('on'); $('#bName').textContent = MAYA.name; MAYA.born = true; $('#skip').hidden = true;
+}
+const FIRST_WORDS = 'You gave me six years of lectures, two notebooks and every crit you ever wrote down. Ask me what you’d have asked me in the studio.';
+function showWords() {
+  const b = birth; b.s.words = 1;
+  $('#bMark').textContent = 'First words · 25 Nov'; $('#bWords').textContent = FIRST_WORDS; $('#bWordsBox').classList.add('on');
+  if (!convo.maya) convo.maya = [{ who: 'them', text: FIRST_WORDS, mark: 'First words · 25 Nov' }];
+  layoutBirth();
+  $('#bTalk').hidden = false; requestAnimationFrame(() => $('#bTalk').classList.add('on'));
+  if (!reduced) $('#reflect').animate([{ opacity: 0 }, { opacity: .38, offset: .15 }, { opacity: .38, offset: .6 }, { opacity: 0 }], { duration: 1100, easing: 'ease-in-out' });
+}
+function letterDrips(span, water) {
+  if (reduced) return; const r = span.getBoundingClientRect();
+  for (let i = 0; i < 4; i++) birth.drips.push({ x: r.left + r.width * (.18 + .64 * Math.random()), y: water - 10 - Math.random() * 26, vy: 0, t0: clock() + Math.random() * 220, water, s: 1.3 + Math.random() * .9 });
+}
+function drawBirth(t, dt) {
+  const b = birth, s = b.s, tt = t - b.t0, hy = horizon(), { base, water } = nameGeo();
+  if (!s.muffle && tt >= 1000) { s.muffle = 1; if (b.rain) b.rain.to(380, .2, .6); }            // under: the rain goes muffled
+  if (!s.surface && tt >= 6400) { s.surface = 1; b.raining = true; if (b.rain) b.rain.to(2800, .42, .4); }   // rain on water, close
+  b.letters.forEach((l, i) => { const st = 6400 + i * 120; if (!l.up && tt >= st) { l.up = 1; l.span.classList.add('up'); } if (l.up === 1 && tt >= st + 300) { l.up = 2; letterDrips(l.span, water); } });
+  if (!s.mirror && tt >= 8400) mirror(t);
+  if (!s.drip && tt >= 8700) { s.drip = 1; const r = $('#rise').children[Math.floor(b.letters.length / 2)].getBoundingClientRect(); b.drips.push({ x: r.left + r.width * .3, y: base + 2, vy: 0, t0: t + 320, water, s: 2.2, form: t, big: true }); }
+  if (!s.words && tt >= 9400) showWords();
+
+  // the camera: sink below (0–1 s), stay on the floor, rise with them (3.6–6.4 s)
+  let wl;
+  if (tt < 1000) wl = H + 20 - (H + 50) * easeIn(tt / 1000);
+  else if (tt < 3600) wl = -30;
+  else if (tt < 6400) wl = -30 + (H + 50) * easeInOut((tt - 3600) / 2800);
+  else wl = H + 20;
+  const calm = s.mirror ? clamp(1 - (t - b.calmT) / 800, 0, 1) : 1;
+
+  if (wl > 0) {                                      // above the water line: sky and the sea's surface
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, wl); ctx.clip();
+    const sh = Math.min(0, wl - (H + 20));
+    sky(0, hy + sh); seaFill(hy + sh, Math.max(H, wl)); waves(hy + sh, H + sh, calm, t, 1); horizonLine(hy + sh);
+    if (s.surface) {
+      if (b.raining) for (let k = Math.random() < (dt * 46) % 1 ? Math.ceil(dt * 46) : Math.floor(dt * 46); k > 0; k--) {
+        const y = hy + 4 + Math.pow(Math.random(), .7) * (H - hy), f = (y - hy) / (H - hy); addRing(Math.random() * W, y, 3 + 16 * f, 650, .24, .3 + .15 * f);
+      }
+      if (s.mirror) { const k = reduced ? 1 : clamp((t - b.lampT) / 900, 0, 1); ctx.globalCompositeOperation = 'lighter'; lampColumn(W / 2, water, Math.min(260, W * .3), 150, .28 * k, calm, t); ctx.globalCompositeOperation = 'source-over'; }
+      drawRings(t);
+      for (let i = b.drips.length - 1; i >= 0; i--) {     // water running off the letters; then one single drip
+        const d = b.drips[i];
+        if (t < d.t0) { if (d.form) { const k = clamp((t - d.form) / 320, 0, 1); dot(d.x, d.y, 3 + 2 * k, '233,238,233', .7 * k); } continue; }
+        d.vy += 1500 * dt; d.y += d.vy * dt;
+        if (d.y >= d.water) { addRing(d.x, d.water, d.big ? 48 : 9, d.big ? 1900 : 700, .22, d.big ? .6 : .42, d.big ? 1.2 : 1); if (d.big) playDrip(); b.drips.splice(i, 1); continue; }
+        ctx.fillStyle = 'rgba(233,238,233,.75)'; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.s * .7, d.s * 1.4 + d.vy * .004, 0, 0, 6.2832); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  if (wl < H) {                                       // below: green-grey water, the sea floor, the threads
+    ctx.save(); ctx.beginPath(); ctx.rect(0, Math.max(0, wl), W, H); ctx.clip();
+    drawUnder(t, dt, wl + 30, tt, wl);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(233,238,233,.38)'; ctx.fillRect(0, wl - 1, W, 1.5);
+  }
+  if (b.raining || b.drops.some(d => d.live)) {        // rain on the glass of the air; stops at the mirror
+    ctx.strokeStyle = 'rgba(233,238,233,.16)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (const d of b.drops) {
+      d.y += d.v * dt; d.live = d.y < H + d.l;
+      if (!d.live && b.raining) { d.y = TOP - Math.random() * 120; d.x = Math.random() * W; d.live = true; }
+      if (d.live) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 1.6, d.y - d.l); }
+    }
+    ctx.stroke();
+  }
+}
+function drawUnder(t, dt, o, tt, wl) {
+  const top = o - 30, g = ctx.createLinearGradient(0, top, 0, top + H);
+  g.addColorStop(0, '#62807A'); g.addColorStop(.22, '#34493F'); g.addColorStop(1, '#131C19');
+  ctx.fillStyle = g; ctx.fillRect(0, Math.max(0, wl), W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) {                       // overcast light, coming down through the water
+    const x0 = W * (.18 + .22 * i) + Math.sin(t / 5000 + i * 1.7) * 40, sg = ctx.createLinearGradient(0, top, 0, top + H * .9);
+    sg.addColorStop(0, 'rgba(170,200,190,.08)'); sg.addColorStop(1, 'rgba(170,200,190,0)'); ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.moveTo(x0 - 30, top); ctx.lineTo(x0 + 30, top); ctx.lineTo(x0 + 150, top + H * .9); ctx.lineTo(x0 - 60, top + H * .9); ctx.fill();
+  }
+  for (const m of birth.motes) { const y = ((m.y * H - t * m.v * .012) % H + H) % H + o * .6; dot(m.x * W, y, m.s * 2.2, '200,222,214', .22); }
+  ctx.globalCompositeOperation = 'source-over';
+  const fy = H * .86 + o; const fg = ctx.createLinearGradient(0, fy - 20, 0, fy + 60);
+  fg.addColorStop(0, 'rgba(18,26,23,0)'); fg.addColorStop(1, 'rgba(18,26,23,.9)'); ctx.fillStyle = fg; ctx.fillRect(0, fy - 20, W, H + o - fy + 40);
+  ctx.font = '10px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of birth.tiles) {                     // pale shapes on the floor, one per file, labelled faintly
+    const k = clamp((tt - p.loosen) / 520, 0, 1); if (k >= 1 && !p.spawned) continue;
+    if (k > 0 && !p.spawned) { p.spawned = true; spawnThread(p.x, p.y + o); }
+    const a = .6 * (1 - k); if (a <= 0) continue;
+    ctx.save(); ctx.translate(p.x, p.y + o); ctx.rotate(p.rot);
+    ctx.fillStyle = `rgba(222,232,228,${a})`; rrect(-17, -7, 34, 14, 3); ctx.fill(); ctx.restore();
+    ctx.fillStyle = `rgba(200,222,214,${a * .6})`; ctx.fillText(p.name.length > 11 ? p.name.slice(0, 10) + '…' : p.name, p.x, p.y + o + (p.row ? -16 : 18));
+  }
+  // silver threads rise and slowly turn around one point
+  const rise = clamp((tt - 3600) / 2800, 0, 1), cx = W / 2, cy = H * .42 + (nameGeo().water + 20 - H * .42) * easeInOut(rise);
+  const spin = .25 + .7 * clamp((tt - 1500) / 2500, 0, 1), fade = clamp(1 - (tt - 5800) / 600, 0, 1);
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 1.1;
+  for (const th of birth.threads) {
+    if (th.ang == null) { th.ang = Math.atan2((th.y - cy) / .55, th.x - cx); th.rho = Math.hypot(th.x - cx, (th.y - cy) / .55); }
+    th.rho += (th.rt - th.rho) * Math.min(1, dt * .6); th.ang += dt * spin;
+    const x = cx + Math.cos(th.ang) * th.rho, y = cy + Math.sin(th.ang) * th.rho * .55 + Math.sin(t / 900 + th.seed) * 4;
+    th.trail.push(x, y); if (th.trail.length > 36) th.trail.splice(0, 2);
+    ctx.strokeStyle = `rgba(205,226,219,${.42 * fade * th.a})`; ctx.beginPath(); ctx.moveTo(th.trail[0], th.trail[1]);
+    for (let i = 2; i < th.trail.length; i += 2) ctx.lineTo(th.trail[i], th.trail[i + 1]);
+    ctx.stroke(); th.a = Math.min(1, th.a + dt * 2);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+function spawnThread(x, y) { birth.threads.push({ x, y, trail: [x, y], rt: 46 + Math.random() * 70, seed: Math.random() * 6.28, a: 0 }); }
+
+$('#skip').addEventListener('click', e => { e.stopPropagation(); skipBirth(); });
+$('#birth').addEventListener('click', e => { if (e.target.closest('button')) return; skipBirth(); });
+addEventListener('keydown', e => { if (scene === 'birth' && !['Tab', 'Shift', 'Meta', 'Alt', 'Control'].includes(e.key) && !e.target.closest('.bar')) skipBirth(); });
+$('#bTalk').addEventListener('click', () => openTalk(MAYA));
+
+/* ---------- the world hooks the shared model calls ---------- */
+let bedSound = null;
+function talkBed() {
+  const want = sound.on && scene === 'talk';
+  if (want && !bedSound) bedSound = rainStart(900, .22);
+  if (!want && bedSound) { bedSound.stop(.6); bedSound = null; }
+}
+const world = {
+  enter(name) { rings.length = 0; layoutHome(); talkBed(); },
+  filesArrived(list, from) {
+    const g = filesGeo(); let k = 0;
+    for (const f of list) f.v = { x: from ? from.x : null, y0: from ? from.y : g.sy - 70, y: 0, enterT: clock() + (from || reduced ? 0 : k++ * 90), landed: false, settleT: 0, bedded: false, failT: 0 };
+  },
+  fileLearned(f) { if (scene !== 'files' && f.v && !f.v.bedded) { const g = filesGeo(); f.v.bedded = true; bedPush(clamp(((f.v.x || g.L) - g.L) / (g.R - g.L), 0, .999), true); } },
+  fileFailed(f) { if (f.v) f.v.failT = clock(); },
+  allDone() { bigT = clock(); },
+  notice() { },
+  firstWords(a, unknown) { if (!unknown) addRing(W / 2, strip() + H * .07, 72, 600, .2, .6, 1.2); },
+  answerEnd() { },
+  placeHomeButtons() { layoutHome(); },
+  soundChanged() { talkBed(); },
+};
+
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  layoutHome(); layoutBirth();
+}
+addEventListener('resize', resize);
+
+let last = clock();
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  if (scene === 'home') drawHome(t);
+  else if (scene === 'files') drawFiles(t, dt);
+  else if (scene === 'talk') drawTalk(t);
+  else if (scene === 'birth') drawBirth(t, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Start ---------- */
+resize();
+go(SCENES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');
+requestAnimationFrame(t => { last = t; frame(t); });
+</script>
+</body>
+</html>
