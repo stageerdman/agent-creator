@@ -60,6 +60,9 @@
   .agent:hover .tag, .agent:focus-visible .tag, .agent.sel .tag { border-color: var(--line-on); }
   .agent.dim .name { color: var(--quiet); }
   .sketches { position: absolute; display: flex; align-items: center; gap: 22px; }
+  .sketches[hidden] { display: none; }
+  .hint { min-height: 22px; font-size: 13px; color: var(--quiet); margin: 0; }
+  .hint b { color: var(--text); font-weight: 500; }
   .sketch { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 4px 10px; font-size: 13px; margin-left: 18px; min-height: 32px; }
   .sketch:hover, .sketch:focus-visible { border-color: var(--line-on); }
 
@@ -92,8 +95,6 @@
   .lantern input:focus { outline: none; }
   .lantern .rule { height: 1px; background: var(--line); margin: 6px 0 8px; }
   .lantern:focus-within .rule { background: var(--line-on); }
-  .hint { min-height: 22px; font-size: 13px; color: var(--quiet); margin: 0; }
-  .hint b { color: var(--text); font-weight: 500; }
   .hint2 { align-self: flex-start; padding: 0; min-height: 26px; }
   .left { margin-top: 10px; flex: 1; overflow: hidden; }
   .left[hidden] { display: none; }
