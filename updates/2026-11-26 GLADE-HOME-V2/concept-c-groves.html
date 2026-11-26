@@ -59,15 +59,14 @@ button{background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:lef
 .rm *{transition:none!important;animation:none!important}
 /* ── C · The Groves ──────────────────────────────────────────────── */
 .c{display:grid;grid-template-columns:200px 1fr}
-/* The panel is the door (it lights on drop, empty space opens New agent); the button is pill + hint; Planted is plain text under it. */
-.door{border-width:0 1px 0 0;height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:14px;padding:32px 24px;text-align:left;cursor:pointer}
-.door:hover{border-color:var(--line-on)}
+/* The panel lights on drop; only the button (pill + hint) opens New agent; Planted is plain text under it. */
+.door{border-width:0 1px 0 0;height:100%;display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:14px;padding:32px 24px;text-align:left}
 .door .dbtn{display:flex;flex-direction:column;align-items:flex-start;gap:14px;border-radius:10px}
 .door .pill{background:var(--fly);color:var(--field);font-weight:600;border-radius:10px;padding:0 20px;height:44px;display:inline-flex;align-items:center;gap:8px}
 .door .pill .plus{font-size:20px;font-weight:400;line-height:1}
-.door:hover .pill{filter:brightness(1.07)}
+.door .dbtn:hover .pill{filter:brightness(1.07)}
 .door .hint{font-size:14px;color:var(--quiet);line-height:1.4}
-.door .planted{font-size:14px;line-height:1.4;color:var(--text);border-top:1px solid var(--line);padding-top:14px;margin:4px 0 0;cursor:default}
+.door .planted{font-size:14px;line-height:1.4;color:var(--text);border-top:1px solid var(--line);padding-top:14px;margin:4px 0 0}
 .door.drop-on{box-shadow:inset 0 0 0 1px var(--fly)!important}
 .groves{padding:8px 12px 10px;min-width:0;overflow:auto}
 .c .chip{display:inline-flex;margin:0 0 2px;border-radius:8px}
@@ -434,7 +433,7 @@ addEventListener('drop', e => {
   $('#rmb').onclick = () => { G.rm = !G.rm; document.documentElement.classList.toggle('rm', G.rm); $('#rmb').setAttribute('aria-pressed', String(G.rm)); Sky.build(); };
   document.querySelectorAll('.demo [data-n]').forEach(b => b.onclick = () => G.setN(+b.dataset.n));
   $('#back').onclick = () => G.home();
-  Concept.door().onclick = e => { if (!e.target.closest('#planted')) G.open('new', null); };
+  $('#door').onclick = () => G.open('new', null);
   addEventListener('resize', () => Sky.build());
   const n = +p.get('n');
   G.setN(p.has('n') && [0, 1, 12, 50].includes(n) ? n : 12);

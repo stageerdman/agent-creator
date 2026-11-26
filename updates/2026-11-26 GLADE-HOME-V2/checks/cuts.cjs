@@ -69,6 +69,8 @@ const ok = (c, msg) => out.push((c ? 'ok   ' : 'FAIL ') + msg);
     ok(await pg.isVisible('#planted'), `${t} C2 planted line shows after Keep`);
     await pg.click('#planted');
     ok(await pg.isVisible('#home') && await pg.isHidden('#screen'), `${t} C2 clicking planted does nothing`);
+    await pg.click('#doorpanel', { position: { x: 100, y: 40 } });
+    ok(await pg.isVisible('#home') && await pg.isHidden('#screen'), `${t} C2 clicking empty panel space does nothing (only the button opens New agent)`);
     const name = await pg.evaluate(() => { const b = document.querySelector('#door'); return [...b.childNodes].map(c => c.getAttribute && c.getAttribute('aria-hidden') === 'true' ? '' : c.textContent).join(' ').replace(/\s+/g, ' ').trim(); });
     ok(!name.includes('Nell'), `${t} C2 button name is "${name}"`);
     const fit = await pg.evaluate(() => { const g = document.querySelector('#groves'); return g.scrollHeight <= g.clientHeight + 1; });
