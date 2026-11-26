@@ -145,3 +145,40 @@ runs passed 45/45.
 
 ## Sign-off
 **APPROVED** — Eraser, 2026-11-26. Chrome and WebKit, normal and reduced motion. Nothing is left to cut.
+
+## Reduce Motion pace + 60 MB slider (item 9e390bf9) — eye check
+
+**Checked commit:** `c5ecc57` (on `origin/main`), file `playground/fireflies-dna.html`.
+**How:** `checks/eye-check.cjs`. A fresh browser for each run, with no cache or old tabs, at 1280×800.
+Reduce Motion was emulated on once and off once. The check never reads the test hooks.
+On every animation frame (about every 16 ms), it reads the 224 px preview canvas pixels and
+counts the bright dot centres. All input goes through the real UI: × to clear, then the name field,
+the Size slider and Add. As a control, the same check run on the old page (`5f3d08b`) fails:
+with Reduce Motion on, 12 dots show up in one frame (33–44 ms → 12), and the slider reads "100 MB".
+
+Step Count for the user is unchanged. It is still: name → Size → Add. There are no new controls.
+
+| Check | Chrome | WebKit |
+|---|---|---|
+| a) Reduce Motion on: a 12 MB file's dots appear 1 per frame, in order, median 66 ms apart (13 separate arrivals, never 2+ in one frame) | ok | ok |
+| a) No flash growth or pop: bright area never swells between arrivals; each dot is ≥ 0.98 of its peak brightness on its first frame | ok | ok |
+| b) Reduce Motion off: still one by one, median 84 ms apart (same as before the fix) | ok | ok |
+| c) Size slider at its max reads "60 MB"; one max file shows 60 dots; three max files still show 60 dots, and the note says extra MB adds glow | ok | ok |
+| d) Controls are the same set as before (agentName, fname, Add, fsize, minR, maxR, × per file). No second way to add or size anything | ok | ok |
+| Console clean | ok | ok |
+
+Chrome note: one normal-mode Chrome run flagged a 3-dot jump. That was the detector, not the page:
+overlapping landing flashes hid one dot's peak for a moment, and the same thing (a 2-dot jump)
+shows on the old page, whose normal path this diff doesn't touch. A rerun gave 13 separate
+arrivals. Headless Chrome also drops out at random here (see the note above), so the check
+restarts a mode when that happens.
+
+### Watch
+- **The user's folder is not pulled yet.** `/Users/stage/dev/agent-creator` is still at
+  `5f3d08b`, with `max` reading 100 MB and all dots lighting at once. Until that folder pulls `origin/main`, the
+  user opening `file:///Users/stage/dev/agent-creator/playground/fireflies-dna.html` sees the
+  old page. That gap is how this goal started.
+- The readout rounds: "12 MB" can be 12.4 MB and show 13 dots. That's a one-dot gap, not a cap
+  issue. If "N MB = N dots" ever has to be exact, round the readout up.
+
+**APPROVED** — Eraser, 2026-11-26, on `c5ecc57`.
