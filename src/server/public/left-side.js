@@ -5,6 +5,7 @@ import { createDna, dotsFor, timeOf, PLACED, flash } from './fireflies-dna.js';
 import { FLY, WAKE, WAKE_MS, outQuad } from './firefly-orbit.js';
 import { MENU_W, FLY_MS, spotOf, wanderAt, wanderParams, fieldLayout, dotLook, flightAt, flyerAlpha, leaveOrder } from './creation-screen.js';
 import { nameOf } from './agent-list.js';
+import { renderMarkdown } from './markdown.js';
 
 export const SIT_MS = FLY_MS - 180;   // 600: the mark answers this long after the first flyer leaves
 export const WHOLE_WAIT = 1200;       // ms after the last setFiles before the shared flash
@@ -197,7 +198,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     id = a.id; name = nameOf(a); files = a.dna || [];
     heldWhole = false; wasKept = kept(store, a); create.hidden = true;
     if (wasKept) store['left.kept.' + id] = '1';
-    log.replaceChildren(); for (const m of a.chat || []) line(m.who === 'you' ? 'you' : 'sketcher', m.text);   // the talk so far, after a reload too
+    log.replaceChildren(); for (const m of a.chat || []) { const you = m.who === 'you'; line(you ? 'you' : 'sketcher', m.text, !you); }   // the talk so far, after a reload too: same renderer as live
     known = new Map(files.map(f => [f.id, f.state]));
     const res = gatheredFiles(files); prev = { shown: res.shown, live: res.live };
     flown = new Set(files.filter(f => f.state === 'processed').map(f => f.id));
@@ -252,14 +253,21 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   }, true);
 
   /* ---- talking to Sketcher ---- */
-  const line = (who, text) => { const p = doc.createElement('p'); p.className = who; p.textContent = text; log.append(p); log.scrollTop = log.scrollHeight; return p; };
+  // A line is a div (a reply may hold lists and quotes). Only Sketcher's own words (md) are rendered
+  // as markdown; the user's lines and the app's lines (waiting, errors, "Yours…") stay plain text.
+  const say = (el, text) => el.replaceChildren(renderMarkdown(doc, text));
+  const line = (who, text, md = false) => {
+    const el = doc.createElement('div'); el.className = who + (md ? ' md' : '');
+    if (md) say(el, text); else el.textContent = text;
+    log.append(el); log.scrollTop = log.scrollHeight; return el;
+  };
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const message = box.value.trim(); if (!message || busy || !id) return;
     busy = true; box.value = ''; const mine = line('you', message);
     const reply = line('sketcher wait', 'Sketching…');
-    const onText = text => { reply.textContent = text; reply.classList.remove('wait'); log.scrollTop = log.scrollHeight; };
+    const onText = text => { say(reply, text); reply.classList.remove('wait'); reply.classList.add('md'); log.scrollTop = log.scrollHeight; };
     try {
       const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange: pull });
       if (showKeep(text, wasKept)) create.hidden = false;

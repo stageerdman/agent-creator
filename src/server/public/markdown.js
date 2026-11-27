@@ -33,8 +33,9 @@ function inline(s, inLink = false) {
       if (code.length > 2 && code[0] === ' ' && code[code.length - 1] === ' ' && code.trim()) code = code.slice(1, -1);
       flush(); out.push({ t: 'code', text: code }); i = end + n; continue;
     }
-    if (c === '[' && !inLink && s[i - 1] !== '!') {
-      const l = link(s, i);
+    if (c === '[' || (c === '!' && s[i + 1] === '[')) {
+      const img = c === '!', l = link(s, img ? i + 1 : i);
+      if (l && (img || inLink || !l.href)) { buf += s.slice(i, l.end); i = l.end; continue; }   // images and unsafe links: plain, whole
       if (l) { flush(); out.push({ t: 'a', href: l.href, kids: inline(l.text, true) }); i = l.end; continue; }
     }
     if (!inLink && (c === 'h' || c === 'H') && !WORD.test(s[i - 1] || '') && /^https?:\/\//i.test(s.slice(i, i + 8))) {
@@ -92,7 +93,7 @@ function findClose(s, i, c, n) {
   return -1;
 }
 
-/* [text](url) at i → { text, href, end } when the url is safe; else null (it stays plain). */
+/* [text](url) at i → { text, href, end }; href is null when the url isn't safe. Not that shape → null. */
 function link(s, i) {
   let depth = 0, j = i;
   for (; j < s.length; j++) {
@@ -103,8 +104,8 @@ function link(s, i) {
   if (j >= s.length || s[j + 1] !== '(') return null;
   const close = s.indexOf(')', j + 2);
   if (close < 0) return null;
-  const href = safeHref(s.slice(j + 2, close));
-  return href && j > i + 1 ? { text: s.slice(i + 1, j), href, end: close + 1 } : null;
+  if (j <= i + 1) return null;
+  return { text: s.slice(i + 1, j), href: safeHref(s.slice(j + 2, close)), end: close + 1 };
 }
 
 /* A bare https://… address, without the sentence's own closing punctuation. */
