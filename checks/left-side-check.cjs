@@ -46,6 +46,10 @@ const focused = page => page.evaluate(() => document.activeElement && document.a
   const store = createAgentStore({ home });
   const agents = createAgents({ store, engine: {} });
   agents.seedChat = (id, chat) => store.saveDraft(id, { chat });   // no endpoint writes a chat without the AI
+  if (process.env.ARROW_ONLY) {   // ARROW_ONLY=<agent id>: just step 10, for a quick look at the arrow
+    for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await arrowLine(kind, w, h, process.env.ARROW_ONLY);
+    console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
+  }
   for (let attempt = 1; ; attempt++) {
     fails = 0; let lost = false;
     try { await run(agents, () => lost, v => { lost = v; }); return; }
@@ -239,6 +243,7 @@ async function run(agents, isLost, setLost) {
   if (isLost()) throw new Error('browser lost');
   await browser.close();
   await webkitChat(agents, id);
+  for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await arrowLine(kind, w, h, id);
   console.log(fails ? `${fails} FAILED` : 'ALL PASS');
   process.exit(fails ? 1 : 0);
   }
@@ -292,5 +297,103 @@ async function webkitChat(agents, id) {
   ok(!!r.pre && r.pre.sw > r.pre.cw && r.logSW <= r.logCW + 1, '7. webkit: a long code line scrolls inside its block, the chat does not widen', JSON.stringify({ pre: r.pre, logSW: r.logSW, logCW: r.logCW, panelW: r.panelW }));
   ok(r.scripts === 0 && !r.pwned && r.edgeText.includes('<script>') && r.edgeText.includes('**half'), '7. webkit: HTML shows as text, a half-streamed ** stays plain', JSON.stringify(r.edgeText.slice(-60)));
   ok(errors.length === 0, '7. webkit: no page errors', errors.slice(0, 3).join(' | '));
+  await browser.close();
+}
+
+/* ---------- 10. One arrow on one line: closed, open, closed again — rects, ink and the slide, per engine and size ---------- */
+// The rects can match while the eye still sees a jump (a font glyph's ink sits on its baseline), so the
+// arrow's ink is read from the pixels too. Screenshots go to Reports/sliding-arrow/ for a human look.
+const fs = require('fs');
+const shotDir = path.join(__dirname, '..', 'Reports', 'sliding-arrow');
+// Chrome here gets quit from outside now and then: a run cut short is done again from the start (its results dropped).
+async function arrowLine(kind, w, h, id) {
+  for (let k = 1; ; k++) {
+    const before = fails;
+    try { return await arrowLineOnce(kind, w, h, id); }
+    catch (e) { if (!/has been closed/.test(String(e && e.message)) || k >= 4) throw e; fails = before; console.log('.. browser quit from outside: this arrow run starts again'); }
+  }
+}
+async function arrowLineOnce(kind, w, h, id) {
+  const tag = `${kind === 'chromium' ? 'chrome' : 'webkit'} ${w < 640 ? 'narrow' : 'desktop'}`, file = tag.replace(' ', '-');
+  console.log(`== arrow line: ${tag} ${w}x${h}`);
+  fs.mkdirSync(shotDir, { recursive: true });
+  const browser = await pw[kind].launch(kind === 'chromium' ? { channel: 'chrome' } : {});
+  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 3 });
+  await page.goto(`${base}/new?agent=${id}`);
+  await until(async () => (await linfo(page)).handle.shown, 8000);
+  await page.mouse.move(w - 5, 5); await page.waitForTimeout(900);
+  const rects = () => page.evaluate(() => {
+    const hd = document.querySelector('#handle'), c = hd.querySelector('.chev'), r = hd.getBoundingClientRect(), g = c.getBoundingClientRect(), p = document.querySelector('#sketcher');
+    const f = (q) => ({ top: +q.top.toFixed(2), bottom: +q.bottom.toFixed(2), cy: +((q.top + q.bottom) / 2).toFixed(2) });
+    return { handle: { ...f(r), left: +r.left.toFixed(2), width: +r.width.toFixed(2) }, glyph: f(g), expanded: hd.getAttribute('aria-expanded'),
+      panelRight: p.hidden ? 0 : p.getBoundingClientRect().right, panelW: p.getBoundingClientRect().width, minW: parseFloat(getComputedStyle(hd).minWidth), vw: innerWidth };
+  });
+  // The arrow's ink inside the 48px tab, from a 3x screenshot of the tab inset 2px and short of its 12px
+  // right corners (the keyboard focus ring curves in there; it shows after a JS click, with no pointer),
+  // counting lime pixels only (grey text behind the see-through tab is not the arrow). Coordinates: tab-relative.
+  const ink = async r => {
+    const png = await page.screenshot({ clip: { x: r.handle.left + 2, y: r.handle.top + 2, width: r.handle.width - 16, height: r.handle.bottom - r.handle.top - 4 } });
+    return page.evaluate(async b64 => {
+      const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height).data; let t = 1e9, b = -1, l = 1e9, rr = -1;
+      for (let y = 0; y < c.height; y++) for (let i = 0; i < c.width; i++) { const k = (y * c.width + i) * 4; if (d[k + 1] > 110 && d[k] > 90 && d[k + 2] < d[k + 1] * 0.75) { t = Math.min(t, y); b = Math.max(b, y); l = Math.min(l, i); rr = Math.max(rr, i); } }
+      return { top: +(t / 3 + 2).toFixed(2), bottom: +((b + 1) / 3 + 2).toFixed(2), cy: +((t + b + 1) / 6 + 2).toFixed(2), cx: +((l + rr + 1) / 6 + 2).toFixed(2) };
+    }, png.toString('base64'));
+  };
+  const state = async name => { const r = await rects(); r.ink = await ink(r); r.shot = await page.screenshot({ scale: 'css' }); console.log(`.. ${tag} ${name} ${JSON.stringify({ handle: r.handle, glyph: r.glyph, ink: r.ink, expanded: r.expanded })}`); return r; };
+  // Open or close with a click, sampling the handle and the panel on every frame of the slide.
+  const toggle = () => page.evaluate(() => new Promise(done => {
+    const hd = document.querySelector('#handle'), p = document.querySelector('#sketcher'), frames = [];
+    hd.click();
+    const s = getComputedStyle(hd), ps = getComputedStyle(p), pick = st => { const i = st.transitionProperty.split(', ').findIndex(n => n === 'transform' || n === 'all'); return i < 0 ? null : st.transitionDuration.split(', ')[i] + ' ' + st.transitionTimingFunction.split(/,\s*(?![^()]*\))/)[i]; };
+    const tr = { handle: pick(s), panel: pick(ps) };
+    const t0 = performance.now();
+    const tick = () => { const r = hd.getBoundingClientRect(), q = p.getBoundingClientRect(); frames.push({ left: r.left, top: r.top, right: q.right, w: q.width }); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done({ tr, frames }); };
+    requestAnimationFrame(tick);
+  }));
+  // Same duration and easing from the same start: the arrow's X is the panel's right edge scaled to its own
+  // travel (the full panel width on desktop; under 640px it stops minWidth short of the screen edge).
+  const ride = (sl, label) => {
+    const minW = closed.minW, live = sl.frames.filter(f => f.w > 0);
+    // 4px: at the fastest point of the close ease-in the edge moves ~4px per ms, so the two rect reads of one frame may be 1 ms apart.
+    const bad = live.filter(f => Math.abs(f.left - Math.max(0, f.right) * Math.min(f.w, w - minW) / f.w) > 4);
+    const edge = live.length ? Math.min(live[0].w, w - minW) : null;
+    const tops = sl.frames.map(f => f.top), moved = sl.frames.filter(f => f.left > 0.5 && f.left < Math.max(...sl.frames.map(g => g.left)) - 0.5).length;
+    ok(!!sl.tr.handle && sl.tr.handle === sl.tr.panel, `10. ${tag}: ${label}: the arrow and the panel slide with the same duration and easing`, JSON.stringify(sl.tr));
+    ok(live.length > 0 && bad.length === 0 && moved > 0, `10. ${tag}: ${label}: on every frame the arrow rides the panel's edge`, JSON.stringify({ frames: sl.frames.length, inBetween: moved, off: bad.slice(0, 2), edge }));
+    ok(Math.max(...tops) - Math.min(...tops) <= 0.5, `10. ${tag}: ${label}: its top never moves during the slide`, JSON.stringify({ min: Math.min(...tops), max: Math.max(...tops) }));
+  };
+  const closed = await state('closed');
+  ride(await toggle(), 'opening'); await page.mouse.move(w - 5, 5); await page.waitForTimeout(400);
+  const open = await state('open');
+  ride(await toggle(), 'closing'); await page.mouse.move(w - 5, 5); await page.waitForTimeout(400);
+  const again = await state('closed again');
+  const same = (k, f) => { const v = [closed, open, again].map(s => s[k][f]); return { ok: Math.max(...v) - Math.min(...v) <= 0.5, v }; };
+  for (const k of ['handle', 'glyph', 'ink']) for (const f of ['top', 'bottom', 'cy']) {
+    const s = same(k, f); ok(s.ok, `10. ${tag}: ${k} ${f} equal closed / open / closed again (±0.5px)`, JSON.stringify(s.v));
+  }
+  ok([closed, open, again].every(s => Math.abs(s.ink.cy - (s.handle.bottom - s.handle.top) / 2) <= 0.75), `10. ${tag}: the arrow's ink sits on the tab's middle line`, JSON.stringify([closed, open, again].map(s => s.ink.cy)));
+  ok(Math.abs(open.ink.cx - closed.ink.cx) <= 0.75, `10. ${tag}: the flip turns the arrow in place (no sideways shift inside the tab)`, JSON.stringify({ closed: closed.ink.cx, open: open.ink.cx }));
+  const edge = Math.min(open.panelW, w - open.minW);
+  ok(closed.handle.left === 0 && again.handle.left === 0 && Math.abs(open.handle.left - edge) <= 1, `10. ${tag}: only X changes: left 0 closed, the panel's edge open`, JSON.stringify({ closed: closed.handle.left, open: open.handle.left, edge, again: again.handle.left }));
+  ok(closed.expanded === 'false' && open.expanded === 'true' && again.expanded === 'false', `10. ${tag}: aria-expanded false / true / false`);
+  ok([closed, open, again].every(s => s.handle.width >= 44), `10. ${tag}: the arrow is at least 44px wide in every state`, JSON.stringify([closed, open, again].map(s => s.handle.width)));
+  ok(await page.evaluate(() => document.querySelectorAll('#handle').length === 1 && !document.querySelector('#sketcher button[aria-label*="lose"], #sketcher-close')), `10. ${tag}: one arrow, no second close button`);
+  await toggle(); await page.keyboard.press('Escape'); await page.waitForTimeout(700);
+  ok(!(await linfo(page)).panel.open && (await rects()).expanded === 'false', `10. ${tag}: Esc closes it`);
+  if (w < 640) { const pr = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#sketcher')).paddingRight)); ok(pr === 56, `10. ${tag}: the panel keeps a 56px right gap for the arrow`, String(pr)); }
+  // Closed and open side by side, a hairline through the handle's middle on both: the eye check.
+  fs.writeFileSync(path.join(shotDir, `${file}-closed.png`), closed.shot);
+  fs.writeFileSync(path.join(shotDir, `${file}-open.png`), open.shot);
+  const both = await page.evaluate(async ({ a, b, cy }) => {
+    const load = async s => { const i = new Image(); i.src = 'data:image/png;base64,' + s; await i.decode(); return i; };
+    const [A, B] = [await load(a), await load(b)], gap = 16, c = document.createElement('canvas');
+    c.width = A.width + gap + B.width; c.height = Math.max(A.height, B.height); const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(A, 0, 0); x.drawImage(B, A.width + gap, 0);
+    x.strokeStyle = 'rgba(255,60,60,.7)'; x.lineWidth = 1; x.beginPath(); x.moveTo(0, Math.round(cy) + .5); x.lineTo(c.width, Math.round(cy) + .5); x.stroke();
+    return c.toDataURL('image/png').split(',')[1];
+  }, { a: closed.shot.toString('base64'), b: open.shot.toString('base64'), cy: closed.handle.cy });
+  fs.writeFileSync(path.join(shotDir, `${file}-side-by-side.png`), Buffer.from(both, 'base64'));
   await browser.close();
 }
