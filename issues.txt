@@ -68,3 +68,10 @@
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
+
+- [ ] LEFT-SIDE (Eraser, 2026-11-27, RETURNED): Jony fixes M1–M5 in
+      updates/2026-11-27 LEFT-SIDE - OPEN/04-eraser-review.md. In short:
+      Create→Keep, ready only on "press Keep" and never once kept, keep the
+      message in the box when a send fails, the likeness dims at 50% (check 4
+      must count lit pixels), and one flash per close. Columbo: the creator
+      prompt says "Keep in the Sketch", but no Sketch with Keep is on /new.
