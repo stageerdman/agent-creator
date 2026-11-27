@@ -1,8 +1,8 @@
 // Browser check for the agent page (design/agent-page.md): Edit, Profile, DNA, Talk, the draft line.
 // Usage: node checks/agent-page-check.cjs http://localhost:3505
-// It CREATES two agents, so start the server with a scratch home:
-//   AGENT_CREATOR_HOME=<scratch folder> PORT=3505 npm start
-// The talk endpoint is stubbed in the browser (page.route), so no AI is needed.
+// It CREATES two agents and talks to one through the REAL /api/agents/:id/talk route, so start
+// the real server with only the CLI faked (it echoes what it is sent), on a scratch home:
+//   AGENT_CREATOR_HOME=<scratch folder> PORT=3505 node checks/mock-engine-server.mjs
 const pw = require('playwright-core');
 const base = process.argv[2] || 'http://localhost:3505';
 let fails = 0;
@@ -12,8 +12,8 @@ const api = async (method, url, body) => {
   if (!r.ok) throw new Error(`${method} ${url}: ${r.status}`);
   return r.json();
 };
-const SSE = 'event: delta\ndata: {"text":"Here is **one** thing:\\n\\n1. "}\n\n'
-  + 'event: done\ndata: {"say":"Here is **one** thing:\\n\\n1. `tax`","used":[{"kind":"skill","name":"Taxes"},{"kind":"file","name":"law.pdf"}]}\n\n';
+// The fake CLI answers "Echo: " + these words: markdown, then the block naming what it used.
+const ASK = 'Here is **one** thing:\n\n1. `tax`\n<used>{"files":["knowledge.md","not-given.pdf"]}</used>';
 
 async function one(kind, launch, created, draft) {
   console.log(`== ${kind} against ${base}`);
@@ -21,9 +21,10 @@ async function one(kind, launch, created, draft) {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  await page.route('**/api/agents/*/talk', route => route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body: SSE }));
+  const talks = [];
+  page.on('response', r => { if (/\/api\/agents\/[^/]+\/talk$/.test(r.url())) talks.push(r.status()); if (r.status() >= 400 && process.env.TRACE) console.log('.. ' + r.status() + ' ' + r.url()); });
 
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !/favicon\.ico$/.test(m.location().url || '')) errors.push(m.text() + ' ' + (m.location().url || '')); });
   await page.goto(`${base}/agents/${encodeURIComponent(created)}`);
   await page.waitForSelector('#views:not([hidden])', { timeout: 8000 }).catch(async e => {
     console.log('.. page shows:', await page.$eval('#name', n => n.textContent), errors.join(' | '));
@@ -40,13 +41,20 @@ async function one(kind, launch, created, draft) {
   ok(await page.$eval('#profile', e => e.hidden), `G2 ${kind}: one view at a time`);
   ok(await page.isVisible('#talk-box') && await page.$eval('#not-yet', e => e.hidden), `G4 ${kind}: a created agent has the talk box`);
 
-  await page.fill('#talk-box', 'What do you know?');
+  const before = (await api('GET', `/api/agents/${created}`)).talk.length;
+  await page.fill('#talk-box', ASK);
   await page.press('#talk-box', 'Enter');
+  await page.waitForSelector('#talk-log .agent:last-child .used', { timeout: 8000 });
+  const r = await page.$eval('#talk-log', l => { const a = l.querySelector('.agent:last-child'); return { you: [...l.querySelectorAll('.you')].pop()?.textContent, strong: a.querySelectorAll('strong').length, code: a.querySelectorAll('code').length, ol: a.querySelectorAll('ol').length, text: a.querySelector('.md').textContent, used: a.querySelector('.used').textContent }; });
+  ok(talks.length === 1 && talks[0] === 200, `G4 ${kind}: the real talk route answered`, JSON.stringify(talks));
+  ok(r.you === ASK, `G4 ${kind}: your line shows`);
+  ok(r.strong === 1 && r.code === 1 && r.ol === 1 && !r.text.includes('**') && !r.text.includes('<used>'), `F14 ${kind}: the answer is formatted markdown, the block never shows`, JSON.stringify(r));
+  ok(r.used === 'Used · knowledge.md', `F14 ${kind}: a quiet line says what it used (only names it was given)`, r.used);
+  const kept = (await api('GET', `/api/agents/${created}`)).talk;
+  ok(kept.length === before + 2 && kept.at(-1).who === 'agent', `G4 ${kind}: the talk is saved with the agent`, String(kept.length));
+  await page.reload();
   await page.waitForSelector('#talk-log .agent .used', { timeout: 8000 });
-  const r = await page.$eval('#talk-log', l => ({ you: l.querySelector('.you')?.textContent, strong: l.querySelectorAll('.agent strong').length, code: l.querySelectorAll('.agent code').length, ol: l.querySelectorAll('.agent ol').length, raw: l.querySelector('.agent .md').textContent.includes('**'), used: l.querySelector('.agent .used').textContent }));
-  ok(r.you === 'What do you know?', `G4 ${kind}: your line shows`);
-  ok(r.strong === 1 && r.code === 1 && r.ol === 1 && !r.raw, `F14 ${kind}: the answer is formatted markdown`, JSON.stringify(r));
-  ok(r.used === 'Used · Taxes, law.pdf', `F14 ${kind}: a quiet line says what it used`, r.used);
+  ok(await page.$$eval('#talk-log .agent', d => d.length) === kept.filter(t => t.who === 'agent').length, `G4 ${kind}: after a reload the talk is still there`);
 
   await page.goto(`${base}/agents/${encodeURIComponent(draft)}`);
   await page.waitForSelector('#views:not([hidden])', { timeout: 8000 });

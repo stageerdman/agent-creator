@@ -42,8 +42,9 @@
       and readable rag/skill files (capped). done { say, used }, where
       `used` names only what it has. The talk is kept in agent.json.
       Server test "G4/F14: talk ...".
-      Still open: agent-page-check.cjs fakes the route with page.route;
-      it should hit the real one with the fake engine. Owner: Jony.
+      Jony (2026-11-28): agent-page-check now hits the real route through
+      checks/mock-engine-server.mjs (no page.route stub); talk saved and
+      back after a reload. ALL PASS, Chrome + WebKit.
 
 - [x] CHAT ready flag (Jony → Uncle Bob, 2026-11-27). Closed 2026-11-28
       (Columbo, integration): the Sketcher puts "ready": true in its draft
@@ -51,7 +52,9 @@
       sends ready { ready: true } and done { ready }, only for a non-empty
       draft that isn't created (Uncle Bob a55f15b + Columbo). The page reads
       the flag, not words. Server test "F10: done carries ready ...".
-      Still open: no browser check drives a real turn to Create. Owner: Jony.
+      Jony (2026-11-28): the word match is retired; left-side-check step 9
+      drives a real turn on the real server (CLI faked) to Create, pressed,
+      saved. Home descriptions are plain text (descOf drops markdown).
 
 - [ ] Eraser's eye-check.cjs (e435071), Reduce Motion off: the "dots appear
       one at a time" line is flaky in Chrome (landing dots overlap a
