@@ -1,30 +1,160 @@
-# DRAFT — working notes (Columbo audit, in progress)
+# REQUIREMENTS AUDIT: every user requirement vs. the app on main
 
-## Facts found so far (main = 544f761)
-- App on main: only 3 pages: src/server/public/agent-home.html, agent-page.html, new-agent.html
-  (+ left-side.js, creation-screen.js, file-intake.js, fireflies-dna.js, firefly-gather.js, firefly-orbit.js).
-- 793c876 (2026-11-26) DELETED index.html, app.js, app.css, magic.css, components.js, block-a..f.js,
-  sketch.js, tab-focus.js -> FULL-UX Sketch (Profile/DNA switches), Talk (block-d), Know (C), Identity (E),
-  Share/export (F) no longer exist on main. Many "shipped" features came from those screens.
-- Glass gap: src-tauri/src/main.rs:56-68 builds an opaque window: no .transparent(true), no vibrancy;
-  set_background_color(0x0B1410, alpha 0xff) at :67,:73-74. tauri.conf.json has no macOSPrivateApi/transparent.
-- issues.txt open items: RAG unscoped; SKILL.md Chinese; demo Talk line (block-d, now deleted);
-  eye-check flaky; per-file blink; ethics of real-person clones; FIREFLIES-DNA run.cjs flaky;
-  CLUSTER run.cjs stale (8 fails); CHAT ready flag via words (fragile).
+Audited by Columbo on 2026-11-27, against main `544f761`. My only commit on top is the audit notes. I changed no app code.
 
-## Requirements collected (source -> requirement)
-- CLAUDE.md/INIT: folder of material -> (1) personality clone instructions.md, (2) RAG KB. Tony Robbins instance exists. Raw sources never committed. RAG unscoped.
-- ROBBINS: knowledge.md + instructions.md built, gitignored (CLOSED, offline deliverable).
-- AI-ENGINE (P1): local claude CLI, no API key, streaming /api/ask SSE, /api/health, cancel, --strict-mcp-config.
-- AGENT-CREATOR v1 (P2): chat with creator, live draft name/persona/instructions, hand edits win, autosave, Keep, agents in ~/.agent-creator, find again after restart, CLI offline state, narrow layout, draft block never shown.
-- AGENT-CREATOR v2 (9 fixes on creation screen): F1 no file count; F7 no status lines (waiting/used/...); F9 no fireflies by name; F2 drift + dim shine, still under reduced motion; F3 no drag; F5 loose seeded clusters; F4 skill names shown; F6 tap cluster flies to spots w/ names & back; F8 click name to rename (Enter/blur keep, Esc revert, empty keeps old, persists).
-- FULL-UX: all journeys UJ1-12 clickable w/ mocks as .app; P2 chat real; mocks never leak into agent.json.
-- NATIVE-SHELL: Tauri, no Chrome, /Applications, Spotlight, Start opens installed app, <10MB, server dies with shell, 7 regressions (Finder drop, Tab focus, narrow window, close mark, dark tone, old-Safari CSS, launch flash).
-- MAGIC-CONCEPTS: 3 concepts as HTML pages (glade/sea/neon) in update folder; plain-text twin; Talk never delays; reduced motion.
-- Features (25): see mcp feature list. Key user asks: Sketch Profile switch (face,name,desc,good/medium/not trained); DNA switch (instructions->made from->RAG files->quality); build via chat/drag/pick nested folders, files never in chat, routed by path, creator doesn't read content; creation moment; P3-P12 planned; txt memory; RAG builder; per-file score; LEFT SIDE (mess->fireflies glow one by one->final DNA logo; left arrow pulls creator chat; access to files; ready -> Create/ask more; close window; GLASSY blur, 2 rounded right corners, merged left, back arrow; barely noticeable agent chat over DNA; show agent's skill/RAG use; creator allocates files on "move outstanding files to knowledge, X,Y for transcript"); AI souls not faces (DNA logo on every face, home constellation, search, plus); magic pass; Sketch Instructions only/no Talk section; remove Studying top bar; full UX .app; P2; P1.
+## Count
 
-## Still to read
-MAGIC-PASS research-columbo (skim), SKETCH-REWORK update-plan, AGENT-HOME 00-roadmap, AGENT-SELECTION-HOME 00-roadmap,
-FIREFLIES-DNA 00-roadmap, CLUSTER 00-roadmap, GLADE-HOME-CONCEPTS home-brief+roadmap, GLADE-HOME-V2 brief,
-CREATION-SCREEN 00-roadmap, FIREFLIES-BUILD 00-roadmap, LEFT-SIDE update v1; Reports (19) skim for user asks.
-Then: npm install --no-save playwright-core? (check), npm test, PORT=3505 npm start, screenshot pages in webkit, check chat markdown in left-side.js.
+| Total | Met | Partly | Missing |
+|---|---|---|---|
+| 81 | 60 | 7 | 14 |
+
+## How I checked
+
+- `npm test`: **226 pass, 1 skipped (live CLI), 0 fail**.
+- I ran the bare server from main with a scratch home: `AGENT_CREATOR_HOME=.tmp-test/audit-home PORT=3505 npm start`.
+- `node checks/left-side-check.cjs http://localhost:3505 --home …`: **ALL PASS**. It covered: the handle after a drop; opening with click, Enter and Space; closing with Esc and ‹; focus going back to the handle; the likeness getting brighter at 25/50/100 % (lit pixels 6 → 182 → 264 → 668); Reduce Motion; the small screen; no page errors. It ran in Chrome (the script's default). I did not run a separate WebKit pass, so Eraser should do one.
+- I read the code for anything a check does not cover. Each file:line is listed in its row.
+- **Big finding:** commit `793c876` (2026-11-26) deleted `index.html`, `app.js`, `app.css`, `magic.css`, `components.js`, `block-a…f.js`, `sketch.js`, `tab-focus.js` and `glade-fireflies.html`. Main now has three pages: `agent-home.html` (home), `new-agent.html` (/new: build and creation), `agent-page.html` (/agents/:id). Several features still marked *shipped* (Sketch Profile/DNA switches, Talk, Know, Identity, Share) were built on the deleted screens and **are not in the app any more**. I judged them as missing, whatever the old sign-offs say.
+
+Owners: **chat-formatting item**, **glass-window item**, or a Magic UX member: **Jony** (design and build), **Merlin** (magic), **Eraser** (review), **Columbo** (research).
+
+---
+
+## A. Engine and data (CLAUDE.md, INIT, AI-ENGINE, AGENT-CREATOR v1)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| A1 | AI runs through the user's local `claude` CLI, no API key | CLAUDE.md, AI-ENGINE update v1 | met | tests: `args: -p -- <message> is always last`, `resolveBinary`, `checkCli reports version` | — |
+| A2 | User's own MCP servers never loaded (`--strict-mcp-config`) | AI-ENGINE v1 | met | test `args: the user's own MCP servers are never loaded` | — |
+| A3 | Streaming answers (SSE), cancel kills a hung CLI | AI-ENGINE v1 | met | tests `POST /api/ask streams deltas`, `askAgent: aborting kills a hung CLI` | — |
+| A4 | Clear state when the CLI is missing | AI-ENGINE v1, AGENT-CREATOR v1 | met | tests `a missing CLI is an error event with kind not-installed`, `GET /api/health reports the CLI` | — |
+| A5 | Agents saved under `~/.agent-creator`, found again after restart | AGENT-CREATOR v1 | met | src-tauri/src/main.rs:47; tests `store round trip`, `store writes only under its home` | — |
+| A6 | Autosave; hand edits win over creator edits | AGENT-CREATOR v1 | met | tests `agents: a chat turn applies the patch, autosaves it`, `a hand edit reaches the prompt and survives a patch` | — |
+| A7 | Creator's hidden draft block never shown in chat | AGENT-CREATOR v1 | met | tests `streamFilter never leaks a draft tag`, `chat streams … the block never shows` | — |
+| A8 | Files never go into the chat; creator routes by path, never reads content | Feature "build via chat/drag", CREATION-SCREEN | met | tests `the turn message lists file paths and feeds, never content`, `dropped files land in the DNA list, never the chat` | — |
+| A9 | Raw source material never committed | CLAUDE.md, ROBBINS | met | `.gitignore` excludes the corpus; ROBBINS folder CLOSED | — |
+| A10 | Personality clone `instructions.md` per person (Robbins instance) | CLAUDE.md, ROBBINS | met | offline deliverable, gitignored, ROBBINS CLOSED | — |
+| A11 | RAG knowledge base: files really embedded and searchable | CLAUDE.md, Feature "RAG builder", CREATION-SCREEN rules | **missing** | no embedding code in `src/` (grep `embed` finds nothing); test `knowledge is read-only text`; issues.txt says "RAG unscoped" | **Columbo**: fixed means a scoped RAG plan exists, then a dropped Knowledge file turns bright only after it is really embedded |
+| A12 | Memory kept as plain txt per agent | Feature "txt memory" | **missing** | no memory file in `src/` (grep) | **Columbo**: fixed means researched and scoped into a plan with an owner |
+
+## B. Native shell and window (NATIVE-SHELL)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| B1 | Real Mac app (Tauri), no Chrome | NATIVE-SHELL v1 | met | src-tauri/src/main.rs:56 `WebviewWindowBuilder` (WKWebView) | — |
+| B2 | Installed in /Applications, found by Spotlight; Start opens the newest build | NATIVE-SHELL v1, fresh-build-check.md | met | test `Start builds, replaces the installed app, then opens that copy`; 544f761 records a fresh install | — |
+| B3 | Server dies with the shell | NATIVE-SHELL v1 | met | main.rs `start_server` owns the server process; covered by `npm run test:shell` (not run in this audit) | — |
+| B4 | No white flash at launch, dark tone | NATIVE-SHELL regressions | met | main.rs:63 `visible(false)`, :67 dark background before `show()`; new-agent.html:14 `html` background | — |
+| B5 | Finder drops reach the page | NATIVE-SHELL regressions | met | main.rs:62 `disable_drag_drop_handler()`; file-intake tests pass | — |
+| B6 | Narrow window works (one-pane layout) | NATIVE-SHELL regressions | met | main.rs:60 min 640; left-side-check "small screen" PASS | — |
+| B7 | **Glassy, see-through window** (the desktop shows through, blurred) | User ask (goal of this round), Feature LEFT SIDE | **missing** | main.rs:56-65 builds the window with no `.transparent(true)` and no vibrancy; :67 + :73-74 paint it solid `Color(0x0B,0x14,0x10,0xff)` (alpha 0xff = opaque); `tauri.conf.json` has no `macOSPrivateApi`; new-agent.html:14-16 paints an opaque background | **glass-window item**: fixed means the window is transparent with macOS vibrancy, so the desktop shows through blurred, text stays readable, and a launch still never flashes white |
+
+## C. Home (AGENT-SELECTION-HOME, AGENT-HOME, GLADE-HOME-V2, Feature "AI souls not faces")
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| C1 | Home does one thing: pick an agent or make one (rows, one search, one plus, no header or footer) | AGENT-SELECTION-HOME rule 1, GLADE-HOME-V2 brief | met | agent-home.html; test `the home loads its modules`; check-eraser `only rows + search + plus are controls` | — |
+| C2 | Newest first, by createdAt (falls back to updatedAt) | AGENT-SELECTION-HOME | met | tests `sortAgents: newest createdAt first`, `summary() returns createdAt` | — |
+| C3 | Live search on every letter, name and description, calm no-match line | AGENT-HOME, AGENT-SELECTION-HOME | met | test `filterAgents: one letter, full name, case, description words, no match` | — |
+| C4 | Each agent shown as its firefly constellation (soul), not a face | Feature "AI souls not faces" | met | agent-home.html rows draw a canvas per row (`agent-list.js`); no face images on main | — |
+| C5 | Plus → fireflies gather → blank /new | AGENT-SELECTION-HOME ph.3 | met | tests `the call flies into the 30 ring slots`, `reduced motion: no fireflies, resolves within 200 ms` | — |
+| C6 | A row opens a real agent page, never raw JSON | AGENT-HOME sign-off | met | test `a home row opens a real page: /agents/:id is HTML` | — |
+| C7 | Empty agents hidden and reused | AGENT-CREATOR fixes (R8) | met | test `agents: empty agents are hidden from the list and reused by create` | — |
+| C8 | Original Fireflies look is the base; `glade-fireflies.html` kept byte for byte | AGENT-SELECTION-HOME rule 2-3 | partly | the look lives on in agent-home.html and new-agent.html:10, but `glade-fireflies.html` was deleted in 793c876 | **Eraser**: fixed means rule 3 is formally retired in the roadmap (the file is gone on purpose), or the file is restored |
+
+## D. Build screen /new (FIREFLIES-BUILD)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| D1 | Dim fireflies circle the middle, each at its own speed | FIREFLIES-BUILD fixed rules | met | test `orbit: 30 seeded fireflies in three rings` | — |
+| D2 | Hover the middle: faint "Select Folder" in firefly light, a few flies brighten | FIREFLIES-BUILD | met | test `orbit: hover lifts the word to .36, 5 fireflies lean in` | — |
+| D3 | Click opens the Finder folder picker | FIREFLIES-BUILD | met | new-agent.html `#pick`; test `picks keep the folder's own name and leave hidden files out` | — |
+| D4 | Drop works anywhere on the screen | FIREFLIES-BUILD | met | left-side-check drops on `document.body` PASS; test `a dropped folder is walked to any depth` | — |
+| D5 | After a pick or drop, every fly lights up and speeds up | FIREFLIES-BUILD | met | test `orbit: release hands over 30 live flies … wake to .8 in 120 ms` | — |
+| D6 | Cancel or empty drop: gentle settle, nothing created; Esc goes home | FIREFLIES-BUILD | met | test `nothing usable → no start, 'no files found' and no agent is made` | — |
+| D7 | Dot radius fixed 2.5–6.0, no size controls | FIREFLIES-BUILD, FIREFLIES-DNA | met | test `dot size is fixed, 2.5 to 6.0, with no way to change it` | — |
+| D8 | Start from one line, with no folder | FULL-UX UJ3 (named later in FIREFLIES-BUILD) | **missing** | /new accepts only a folder or files (new-agent.html `#pick`) | **Columbo**: fixed means the research says whether UJ3 still belongs in the MVP, and the roadmap gives it an owner |
+
+## E. Creation screen (CREATION-SCREEN, AGENT-CREATOR v2 nine fixes)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| E1 | Scan walks every subfolder; one file = one firefly; hidden files left out | CREATION-SCREEN fixed rules | met | tests `finds every file in every subfolder … hidden ones left out`, `10,000 files: fed in batches without a freeze` | — |
+| E2 | Right-side menu: System prompt, Knowledge, Skills | CREATION-SCREEN | met | test `the three zones and their labels` | — |
+| E3 | While dragging, the parts become drop zones: Adjust DNA / Adjust Knowledge / Create new skill | CREATION-SCREEN | met | tests `the three zones and their labels`, `against the server: each zone sends the files to its own section` | — |
+| E4 | Dim until really used; bright once used; red if removed but still baked in | CREATION-SCREEN | partly | test `dim if unprocessed, bright if processed, red if removed`. But "used" for Knowledge cannot mean embedded, because there is no embedding (A11) | **Jony**: fixed means a Knowledge file turns bright only on a real embed event from the server (after A11) |
+| E5 | No file count, no status lines (F1, F7) | AGENT-CREATOR v2 | met | test `no count line and no status helpers are left in the screen` | — |
+| E6 | No firefly names shown (F9); no fly dragging (F3) | AGENT-CREATOR v2 | met | creation-screen tests; left-side-check found no labels on the field | — |
+| E7 | Flies drift with a dim, rare shine, still under Reduce Motion (F2) | AGENT-CREATOR v2 | met | tests `wander: … no glow under reduced motion`, `shine is rare` | — |
+| E8 | Loose seeded clusters, never a row (F5) | AGENT-CREATOR v2 | met | test `cluster spots: seeded, inside the box, spread out, never a row` | — |
+| E9 | Skill names shown (F4); tap a cluster, it flies to spots with names and back (F6) | AGENT-CREATOR v2 | met | tests `skills: made from dropped files, listed`, `a flight starts and ends where it should and bows` | — |
+| E10 | Click the name to rename: Enter/blur keep, Esc revert, empty keeps the old name, saved (F8) | AGENT-CREATOR v2 | met | tests `a rename keeps what was typed`, `against the server: a rename is saved and comes back` | — |
+| E11 | Remove a file says "removed from Agent, not from your Mac" with Undo | CREATION-SCREEN build | met | tests `remove: a file never used leaves every list`, `against the server: remove, red until a full rebuild` | — |
+| E12 | One-word section empty state ("nothing yet · drag files here") | CREATION-SCREEN sign-off | met | test `a section says nothing when it has files, only the empty hint` | — |
+
+## F. Left side and Sketcher chat (LEFT-SIDE, Feature "The Left Side")
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| F1 | Starts as a loose mess; it only adds up into the AI identity as files are processed | LEFT-SIDE fixed rules | met | left-side-check step 1 `the likeness is still empty`, step 4 brighter at 25/50/100 %; tests 1-5 | — |
+| F2 | Gathering never goes backwards (except gently on removal) | LEFT-SIDE ph.3 | met | tests `2. processing one by one never lowers shown`, `3. … a removal may` | — |
+| F3 | Final state is the Fireflies DNA mark | Feature LEFT SIDE | met | left-side-check `all used: the whole likeness is shown {shown:40,live:40}` | — |
+| F4 | Small arrow on the left edge pulls out the creator chat; one way in | LEFT-SIDE fixed rules | met | left-side-check step 2-3 (click, Enter, Space open it) | — |
+| F5 | One way out: back arrow on top (Esc is the same action); focus back on the arrow; the DNA shows again | LEFT-SIDE fixed rules | met | left-side-check `Esc closes it`, `the ‹ close button closes it`, `focus goes back to the handle` | — |
+| F6 | Chat panel is glassy and blurs what is behind it | LEFT-SIDE fixed rules | met | new-agent.html:134-135 `backdrop-filter: blur(18px) saturate(1.2)` on `#sketcher` over the field (in-page glass; for the window itself see B7) | — |
+| F7 | Two rounded corners on the right, merged with the left edge | LEFT-SIDE fixed rules | met | `#sketcher` styles in new-agent.html; LEFT-SIDE review round 3 APPROVED (4dd4d36); seen in the check's open-panel step | — |
+| F8 | **Chat replies are formatted** (bold, lists, code look like text, not symbols) | User ask (goal of this round) | **missing** | left-side.js:255 `p.textContent = text` and :262 `reply.textContent = text`: the reply is put in as plain text, so `**bold**`, `1.` lists and `` `code` `` show as raw markdown | **chat-formatting item**: fixed means bold, italics, numbered and bulleted lists, inline code and code blocks show formatted while streaming and after a reload; no raw HTML from the model is ever run |
+| F9 | Chat history kept when closed and opened again, and after a reload | LEFT-SIDE ph.4 | met | test `the Sketcher panel: … the talk is there after a reload` | — |
+| F10 | When the AI is ready it offers to build: **Create**, or ask more, or keep chatting | Feature LEFT SIDE | partly | test `Keep shows only when proposed`: the button reads **Keep**, not Create; the ready signal is found by words (issues.txt "CHAT ready flag via words, fragile") | **Jony**: fixed means one Create button appears from a real server flag, not from word matching |
+| F11 | Reduce Motion respected; small screens keep a way out | LEFT-SIDE | met | left-side-check step 5 and 6 PASS | — |
+| F12 | Creator allocates files on request ("move outstanding files to knowledge, X, Y for transcript") | Feature LEFT SIDE | partly | tests `routeFiles: own entry beats the deepest folder`, `the creator's routing keeps skill feeds`: the creator can route by path, but there is no visual for it and no check of a real sentence (out of scope in LEFT-SIDE v1) | **Merlin**: fixed means a moment shows the files moving when the chat allocates them, and a check drives it with that sentence |
+| F13 | Middle fireflies glow one by one as files are allocated into the final DNA | Feature LEFT SIDE | partly | test `M4. the likeness grows as it fills`; flyers leave one by one (test 6), but this is tied to "processed", not to allocation | **Merlin**: fixed means the per-file glow follows each allocation event |
+| F14 | Barely noticeable chat with the **built agent** over the DNA, showing its skill and RAG use | Feature LEFT SIDE | **missing** | not on /new or /agents/:id; named out of scope in LEFT-SIDE update v1 | **Jony**: fixed means an agent can be talked to over its DNA, and each answer shows which skill or file it used |
+| F15 | Access to the files from the left side | Feature LEFT SIDE | partly | files are listed in the right-hand sections (E2); the left field gives no way to open a file | **Columbo**: fixed means research confirms what "access" means to the user, and the roadmap holds it |
+
+## G. Agent page and the screens deleted in 793c876 (FULL-UX, SKETCH-REWORK, MAGIC-PASS, Features)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| G1 | Sketch **Profile** switch: face/soul, name, description, Good at / Medium / Not trained for | Feature, SKETCH-REWORK | **missing** | sketch.js and block-a deleted in 793c876; agent-page.html has no Profile view | **Jony**: fixed means /agents/:id shows the profile with the three level words |
+| G2 | Sketch **DNA** switch: instructions → made from → RAG files → quality | Feature, SKETCH-REWORK | **missing** | deleted in 793c876 | **Jony**: fixed means /agents/:id shows the DNA view in that order |
+| G3 | Sketch shows instructions only, no Talk section | Feature "Sketch instructions only" | **missing** | the Sketch screen is gone; it cannot be confirmed | **Jony**: fixed means it is rebuilt with G1/G2, instructions only |
+| G4 | Talk with a finished agent | FULL-UX UJ4-7 | **missing** | block-d.js deleted; no talk on agent-page.html | **Jony**: fixed means the user can chat with a kept agent (shares the formatter from F8) |
+| G5 | Know / Identity / Share-export screens | FULL-UX UJ8-11 | **missing** | block-c/e/f deleted in 793c876 | **Columbo**: fixed means research says which of these the MVP still needs, and the features are updated to match |
+| G6 | "Studying" top bar removed | Feature (shipped) | met | not present in any of the three pages (the old screen is gone) | — |
+| G7 | Magic pass details (signature moments) | MAGIC-PASS, Feature (shipped) | partly | the moments on home, /new and the left side exist (C5, D5, F1); the moments on the deleted screens are gone | **Merlin**: fixed means the magic list names only moments that exist on main |
+| G8 | Full UX prototype: every journey UJ1-12 clickable as the .app | FULL-UX | **missing** | only UJ1-2 (home, build, creation) and part of UJ12 remain | **Columbo**: fixed means the Features list stops marking the full UX as shipped, and the remaining journeys are planned |
+| G9 | Mocks never leak into agent.json | FULL-UX | met | tests `mock routes are read-only`, `the map never lives inside the draft` | — |
+| G10 | The agent page is real (not "Not found") | AGENT-HOME sign-off | met | test `GET /agents/:id serves a page, not raw JSON` | — |
+
+## H. Look and principles across the app (MAGIC-CONCEPTS, FIREFLIES-DNA, team principles)
+
+| # | Requirement | Source | Verdict | Evidence | Owner / fixed means |
+|---|---|---|---|---|---|
+| H1 | Reduce Motion respected everywhere | every roadmap | met | Reduce Motion tests for gather, orbit, wander, left side; left-side-check step 5 | — |
+| H2 | One way to do each thing; no dead UI | principles, every roadmap | met | home check `only rows + search + plus`; left-side one in / one out | — |
+| H3 | DNA blinks follow the rate files were added, never all at once | FIREFLIES-DNA-CLUSTER ("all shining at once") | met | tests `files added 1 s apart blink about 650 ms apart`, `long gaps are log-squashed` | — |
+| H4 | One dot per MB, extra past 60 only adds glow | FIREFLIES-DNA | met | tests `one dot per started MB`, `past 60 dots, extra MB only add glow` | — |
+| H5 | Never looks like a loop; randomness stays | FIREFLIES-DNA rule 3 | met | test `wander: every fly really roams (never stuck)`; seeded random sparks | — |
+| H6 | Words stay readable over the field | FIREFLIES-DNA rule 4, FIREFLIES-BUILD Columbo ("quiet, not invisible") | met | test `orbit: rest is dim … Select Folder readable at .24` | — |
+| H7 | Magic concepts as HTML pages, plus a plain-text twin | MAGIC-CONCEPTS | met | files in `updates/2026-11-25 MAGIC-CONCEPTS/` (design deliverable, not app) | — |
+| H8 | Planned features P3-P12 | Features | **missing** (planned) | not started; listed so nothing is lost | **Columbo**: fixed means each one has a roadmap slot when its turn comes |
+| H9 | Every open issue in issues.txt has an owner | issues.txt | **missing** | open: RAG unscoped, SKILL.md in Chinese, eye-check flaky, per-file blink, ethics of real-person clones, FIREFLIES-DNA run.cjs flaky, CLUSTER run.cjs stale (8 fails), CHAT ready flag via words | **Eraser**: fixed means each line in issues.txt names an owner or is closed |
+
+---
+
+## Watch out (works today, but at risk)
+
+1. **Shipped features with no screen.** The Features list still says shipped for things deleted in 793c876 (G1-G5, G8). Anyone who trusts that list will think the app does more than it does.
+2. **Glass vs. readability.** When B7 makes the window see-through, the Sketcher panel (`backdrop-filter` over a transparent page) and the faint "Select Folder" word (.24 opacity) can become hard to read on a bright desktop. Re-check H6 and F6 after the glass change.
+3. **No white flash vs. transparency.** B4 relies on an opaque dark background (main.rs:67). A transparent window must still not flash at launch.
+4. **Formatting vs. safety.** F8 must never put model output in with `innerHTML` without cleaning it first. The hidden draft-block filter (A7) must keep working before formatting is applied.
+5. **The ready signal is found by words** (F10). A small wording change in the creator prompt breaks the Create/Keep offer without warning.
+6. **Browser checks are flaky.** The left-side check had "Chrome was closed from outside" twice in this run and recovered. FIREFLIES-DNA run.cjs is flaky and CLUSTER run.cjs is stale (issues.txt). A real break could hide in that noise.
+7. **Ethics of real-person clones** (issues.txt). The Robbins instance works; consent and use of a real person's voice are still unanswered.
+
+## Key insights and open questions
+
+- The app on main is now a strong **make** flow: home → build → creation → left side. The **use** flow (talk, profile, DNA view) is gone. The user's job "make an agent **and then use it**" is only half covered.
+- Open: should the deleted Sketch/Talk screens come back on `/agents/:id`, or did the user drop them on purpose in 793c876? The commit message doesn't say. **Assumption:** removed by mistake or as a temporary cut, so they count as missing.
+- Open: does "Create" (user's word) replace "Keep" (app's word)? Two words for one action is a risk.
