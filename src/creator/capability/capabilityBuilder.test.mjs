@@ -9,7 +9,7 @@ import { buildTurnMessage } from "../creatorPrompt.mjs";
 import { BadInput, BadOutput } from "../errors.mjs";
 import { createSourceMemory } from "../sourceText/memory.mjs";
 import { createCapabilityBuilder } from "./capabilityBuilder.mjs";
-import { fingerprintOf, roleOf } from "./capabilitySources.mjs";
+import { fingerprintOf, roleOf } from "../sourceText/usable.mjs";
 
 const home = await mkdtemp(join(tmpdir(), "agent-creator-capability-"));
 after(() => rm(home, { recursive: true, force: true }));

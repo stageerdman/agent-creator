@@ -1,6 +1,7 @@
-// What the capability map is read from: every file the agent uses (not
-// removed, in at least one feed) that has a text copy, tagged with its role.
-// The fingerprint tells whether a saved map still matches them.
+// What reports about an agent (capability map, knowledge quality) read:
+// every file the agent uses (not removed, in at least one feed) that has a
+// text copy, tagged with its role. The fingerprint tells whether a saved
+// report still matches them.
 
 import { createHash } from "node:crypto";
 import { isSkillFeed } from "../files.mjs";

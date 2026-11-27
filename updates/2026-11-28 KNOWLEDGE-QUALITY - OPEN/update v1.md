@@ -80,4 +80,4 @@ Knowledge files are actually cut with.
 
 ## Status
 
-- [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
