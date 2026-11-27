@@ -33,9 +33,11 @@ routes files by name and never sees what is inside.
 - **Errors:** no usable source → `BadInput` (400). Engine errors pass through
   with their `kind`. A reply without a valid block → `BadOutput`-style error,
   nothing saved.
-- `POST /api/agents/:id/persona/build` → SSE: `say` deltas, then
-  `done { say, draft, changed, kept, context, used, cut, skipped, dna }` or
-  `error`. `GET /api/agents/:id/context` → `{ text }`.
+- `POST /api/agents/:id/persona/build` → SSE: `delta { text }` (as chat and
+  talk), then `done { say, draft, changed, kept, context, used, cut, skipped,
+  dna }` or `error { kind }` (`bad-input` for no usable source, since the
+  stream is already open; an unknown agent is a plain 404 before it opens).
+  `GET /api/agents/:id/context` → `{ text }`.
 
 Module: `src/creator/persona/` — `pack.mjs` (pure), `personaPrompt.mjs`
 (pure), `personaBuilder.mjs` (use case).
@@ -51,4 +53,7 @@ Module: `src/creator/persona/` — `pack.mjs` (pure), `personaPrompt.mjs`
 
 ## Status
 
-- [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
+
+Shipped: 346 tests, 344 pass, 0 fail, 2 skipped by design. Routes in
+`src/server/routes/persona.mjs`, server tests in `src/server/persona.test.mjs`.
