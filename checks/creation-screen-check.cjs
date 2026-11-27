@@ -80,7 +80,7 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
   await page.waitForTimeout(800);
   let c = await cinfo(page);
   ok(c.field.total === 10000 && c.field.drawn === 3000, '1. field: 10,000 counted, 3,000 drawn', c.field.total + '/' + c.field.drawn);
-  ok((await page.textContent('#count')) === '10,000 files · 3,000 shown', '1. the count line', await page.textContent('#count'));
+  ok(!(await page.$('#count')) && !(await page.$('#emblem')) && !(await page.$('#ghost')), 'fix 1+9: no file count, no fireflies by the name, no carried dot');
   const id = new URL(page.url()).searchParams.get('agent');
   ok(!!id, '1. the URL holds the agent (a reload comes back to the split)', page.url());
 
@@ -118,26 +118,53 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
   c = await cinfo(page);
   ok(c.sections['system-prompt'].length === 3, '3. Finder files on Adjust DNA go to System prompt', JSON.stringify(c.sections['system-prompt']));
   await page.waitForTimeout(300);
-  await dropFiles(page, 2, sk.x, sk.y, 'sk');
+  const sk2 = await zoneAt('[data-section="skills"]');   // the clusters have grown: the skills zone moved down
+  await dropFiles(page, 2, sk2.x, sk2.y, 'sk');
   await until(async () => (await cinfo(page)).skills.length === 1, 8000);
   c = await cinfo(page);
   ok(c.skills.length === 1, '3. Finder files on Create new skill make one skill', JSON.stringify(c.skills));
 
-  // A firefly carried from the field onto Knowledge.
-  const dot = c.field.dots.find(d => !c.sections.knowledge.some(f => f.path === d.id));
+  /* ---------- fix 3: field fireflies can't be dragged ---------- */
+  const dot = c.field.dots[0];
   await page.mouse.move(dot.x, dot.y); await page.mouse.down();
   await page.mouse.move((dot.x + kn.x) / 2, (dot.y + kn.y) / 2, { steps: 5 });
-  const carry = await page.evaluate(() => ({ dragging: document.body.classList.contains('dragging'), ghost: document.querySelector('#ghost').classList.contains('on') }));
   await page.mouse.move(kn.x, kn.y, { steps: 5 });
-  const hotCarry = await page.evaluate(() => [...document.querySelectorAll('#menu .hot')].map(s => s.dataset.section));
-  await page.mouse.up();
-  ok(carry.dragging && carry.ghost, '3. carrying a firefly shows the zones and the carried dot', JSON.stringify(carry));
-  ok(JSON.stringify(hotCarry) === '["knowledge"]', '3. carried over Knowledge: Knowledge lights', JSON.stringify(hotCarry));
+  const carry = await page.evaluate(() => ({ dragging: document.body.classList.contains('dragging'), hot: document.querySelectorAll('#menu .hot').length, pe: getComputedStyle(document.querySelector('#flies')).pointerEvents }));
+  await page.mouse.up(); await page.waitForTimeout(600);
+  c = await cinfo(page);
+  ok(!carry.dragging && carry.hot === 0 && carry.pe === 'none' && c.sections.knowledge.length === 2, 'fix 3: pressing and moving on a field firefly does nothing (no zones, nothing moves)', JSON.stringify(carry));
+  const kn2c = await zoneAt('[data-section="knowledge"]');
+  await dropFiles(page, 1, kn2c.x, kn2c.y, 'kx');
   await until(async () => (await cinfo(page)).sections.knowledge.length === 3, 8000);
   c = await cinfo(page);
-  ok(c.sections.knowledge.some(f => f.path === dot.id) && c.field.total === 10007, '3. the carried firefly lands in Knowledge, nothing new added to the agent', c.sections.knowledge.length + ' in Knowledge, field ' + c.field.total);
 
-  /* ---------- 4. Belt dim/bright per file, click opens the list ---------- */
+  /* ---------- fix 2 + 5: dots drift and shine; the cluster is organic and seeded ---------- */
+  const K = '[data-section="knowledge"]';
+  const shape = () => page.evaluate(K => [...document.querySelectorAll(K + ' .flies i.d')].map(d => d.style.transform), K);
+  const look5 = await page.evaluate(K => [...document.querySelectorAll(K + ' .flies i.d')].map(d => { const s = getComputedStyle(d), a = getComputedStyle(d, '::after'); return { drift: s.animationName, shine: a.animationName, op: +s.opacity }; }), K);
+  ok(look5.length === 3 && look5.every(d => d.drift === 'drift' && d.shine === 'shine'), 'fix 2: each file firefly drifts and has a dim shine', JSON.stringify(look5));
+  const cl1 = await shape();
+  const ys = cl1.map(t => +t.match(/,\s*(-?[\d.]+)px/)[1]);
+  ok(new Set(cl1).size === 3 && new Set(ys).size > 1, 'fix 5: knowledge sits in a cluster, not a row', JSON.stringify(cl1));
+
+  /* ---------- fix 6: a tap flies them out to their names, again flies them back ---------- */
+  await page.click(K + ' .belt');
+  await page.waitForTimeout(80);
+  const flying = await page.evaluate(K => [...document.querySelectorAll(K + ' .flies i.d')].filter(d => d.getAnimations().some(a => a.id === 'flight')).length, K);
+  ok(flying === 3, 'fix 6: tapping the cluster starts a flight for every firefly', String(flying));
+  await page.waitForTimeout(1000);
+  const opened6 = await page.evaluate(K => { const vis = e => getComputedStyle(e).visibility === 'visible' && +getComputedStyle(e).opacity > .9;
+    return { rows: [...document.querySelectorAll(K + ' .row')].filter(vis).map(r => [r.querySelector('.fname').textContent, r.querySelectorAll('.rm').length, r.getBoundingClientRect().top]),
+      dots: [...document.querySelectorAll(K + ' .flies i.d')].map(d => d.getBoundingClientRect().top) }; }, K);
+  const tops = opened6.rows.map(r => r[2]);
+  ok(opened6.rows.length === 3 && opened6.rows.every(r => r[0] && r[1] === 1) && tops.every((t, i) => !i || t > tops[i - 1]), 'fix 6: open, each file name shows in order with one Remove', JSON.stringify(opened6.rows));
+  await page.click(K + ' .belt'); await page.waitForTimeout(1000);
+  ok(JSON.stringify(await shape()) === JSON.stringify(cl1), 'fix 6: tapping again flies them back to the same cluster');
+  await page.reload(); await until(async () => { try { return (await cinfo(page)).sections.knowledge.length === 3; } catch { return false; } }, 8000);
+  await page.waitForTimeout(300);
+  ok(JSON.stringify(await shape()) === JSON.stringify(cl1), 'fix 5: the same cluster after a reload (seeded)');
+
+  /* ---------- 4. dim/bright per file ---------- */
   if (home) {
     const { createAgentStore, createAgents } = await import(path.join(__dirname, '..', 'src', 'creator', 'index.mjs'));
     const agents = createAgents({ store: createAgentStore({ home }), engine: {} });
@@ -145,43 +172,39 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
     await agents.markProcessed(id, 'knowledge', [kpaths[0]]);
     await page.reload(); await until(async () => { try { return (await cinfo(page)).sections.knowledge.length === 3; } catch { return false; } }, 8000);
     await page.waitForTimeout(500);
-    const belt = await page.evaluate(() => { const s = document.querySelector('[data-section="knowledge"]'); return { dots: [...s.querySelectorAll('.belt .d')].map(d => [d.className, getComputedStyle(d).opacity]), line: s.querySelector('.belt .line').textContent }; });
-    ok(belt.dots.length === 3 && belt.dots.filter(d => d[0] === 'd processed' && +d[1] > .8).length === 1 && belt.dots.filter(d => d[0] === 'd unprocessed' && +d[1] < .4).length === 2, '4. belt: one bright, two dim', JSON.stringify(belt.dots));
-    ok(belt.line === '1 used · 2 waiting', '4. belt line', belt.line);
-    await page.click('[data-section="knowledge"] .belt');
-    await page.waitForTimeout(500);
-    const rows = await page.evaluate(() => [...document.querySelectorAll('[data-section="knowledge"] .rows li')].filter(li => li.offsetHeight).map(li => [li.className, li.querySelector('.n').textContent, li.querySelectorAll('button').length]));
-    ok(rows.length === 3 && rows.every(r => r[2] === 1), '4. clicking the belt opens the list: every file once, one Remove each', JSON.stringify(rows));
-    await page.click('[data-section="knowledge"] .belt'); await page.waitForTimeout(200);
-    ok(await page.evaluate(() => document.querySelector('[data-section="knowledge"] .rows').hidden), '4. clicking the belt again closes it');
-    await page.click('[data-section="knowledge"] .belt'); await page.waitForTimeout(400);
+    const belt = await page.evaluate(K => [...document.querySelectorAll(K + ' .flies i.d')].map(d => [d.className, getComputedStyle(d).opacity]), K);
+    ok(belt.length === 3 && belt.filter(d => d[0] === 'd processed' && +d[1] > .8).length === 1 && belt.filter(d => d[0] === 'd unprocessed' && +d[1] < .4).length === 2, '4. cluster: one bright, two dim', JSON.stringify(belt));
+    await page.click(K + ' .belt'); await page.waitForTimeout(900);
 
     /* ---------- 5. Remove: never-used leaves, used turns red until a full rebuild ---------- */
-    const usedName = await page.evaluate(() => document.querySelector('[data-section="knowledge"] .rows li.processed .n').textContent);
-    await page.click('[data-section="knowledge"] .rows li.processed button');
+    const usedName = await page.evaluate(K => document.querySelector(K + ' .row.processed .fname').textContent, K);
+    await page.click(K + ' .row.processed .rm');
     await page.waitForTimeout(700);
-    let k = await page.evaluate(() => ({ rows: [...document.querySelectorAll('[data-section="knowledge"] .rows li')].map(li => [li.className, li.querySelectorAll('button').length, (li.querySelector('.out') || {}).textContent || '', getComputedStyle(li.querySelector('.n')).color]), note: document.querySelector('#note span').textContent, undo: !document.querySelector('#note button').hidden }));
-    const red = k.rows.find(r => r[0] === 'removed');
-    ok(red && red[1] === 0 && red[2] === 'out at next rebuild' && red[3] === 'rgb(255, 107, 94)', '5. a used file, removed: stays, red, "out at next rebuild", no second Remove', JSON.stringify(red));
+    let k = await page.evaluate(K => ({ rows: [...document.querySelectorAll(K + ' .row')].map(r => [r.className, r.querySelectorAll('.rm').length, getComputedStyle(r.querySelector('.fname')).color]), note: document.querySelector('#note span').textContent, undo: !document.querySelector('#note button').hidden }), K);
+    const red = k.rows.find(r => r[0] === 'row removed');
+    ok(red && red[1] === 0 && red[2] === 'rgb(255, 107, 94)', '5. a used file, removed: stays, red, no second Remove', JSON.stringify(red));
     ok(k.note.includes('not from your Mac') && k.undo, '5. confirmation says "not from your Mac", with Undo', k.note);
     let a = await api('GET', `/api/agents/${id}`);
-    const gone = a.dna.find(f => f.id === 'f0.md');
+    const gone = a.dna.find(f => f.id === kpaths[0]);
     ok(gone && gone.state === 'removed', '5. on the server the used file is marked removed (kept until the rebuild)', JSON.stringify(gone && { id: gone.id, state: gone.state }));
     await page.click('#note button');
     await until(async () => (await cinfo(page)).sections.knowledge.filter(f => f.state !== 'removed').length === 3, 6000);
     c = await cinfo(page);
-    ok(c.field.total === 10007, '5. Undo brings it back', JSON.stringify(c.sections.knowledge));
+    ok(c.sections.knowledge.filter(f => f.state !== 'removed').length === 3, '5. Undo brings it back', JSON.stringify(c.sections.knowledge));
     await page.waitForTimeout(400);
-    // remove it again (it is now unprocessed? whatever the server says) and a never-used one
-    const waitingName = await page.evaluate(() => document.querySelector('[data-section="knowledge"] .rows li.unprocessed .n').textContent);
-    await page.click('[data-section="knowledge"] .rows li.unprocessed button');
+    if (!(await page.evaluate(K => document.querySelector(K + ' .belt').getAttribute('aria-expanded') === 'true', K))) { await page.click(K + ' .belt'); await page.waitForTimeout(900); }
+    const waitingName = await page.evaluate(K => document.querySelector(K + ' .row.unprocessed .fname').textContent, K);
+    await page.click(K + ' .row.unprocessed .rm');
     await page.waitForTimeout(700);
-    k = await page.evaluate(() => [...document.querySelectorAll('[data-section="knowledge"] .rows li .n')].map(n => n.textContent));
+    k = await page.evaluate(K => [...document.querySelectorAll(K + ' .row .fname')].map(n => n.textContent), K);
     ok(!k.includes(waitingName), '5. a never-used file, removed: leaves the list', JSON.stringify(k));
+    c = await cinfo(page);
     await agents.markProcessed(id, 'knowledge', c.sections.knowledge.map(f => f.path));
     await page.reload(); await page.waitForTimeout(1500);
-    await page.click('[data-section="knowledge"] .belt'); await page.waitForTimeout(400);
-    await page.click('[data-section="knowledge"] .rows li.processed button'); await page.waitForTimeout(700);
+    await page.click(K + ' .belt'); await page.waitForTimeout(900);
+    await page.click(K + ' .row.processed .rm'); await page.waitForTimeout(700);
+    const words = await page.evaluate(() => document.body.innerText);
+    ok(!/\d[\d,]* files|waiting|\bused\b|out at next rebuild|processing/i.test(words), 'fix 1+7: no count or status words anywhere', (words.match(/\d[\d,]* files|waiting|\bused\b|out at next rebuild|processing/i) || [''])[0]);
     c = await cinfo(page);
     ok(c.sections.knowledge.some(f => f.state === 'removed'), '5. red after remove', JSON.stringify(c.sections.knowledge));
     const redOnField = await page.evaluate(() => window.creation.info().field.dots.some(d => d.state === 'removed'));
@@ -225,7 +248,32 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
   ok(skill.name === 'Bake' && skill.body === 'Knead, rest, bake.', '6. a skill opens and saves its name and steps', JSON.stringify({ name: skill.name, body: skill.body }));
   await page.mouse.click(5, 5); await page.waitForTimeout(400);
   ok(!(await page.evaluate(() => document.querySelector('#sheet').open)), '6. a click on the backdrop closes');
-  ok(await page.getAttribute('[data-section="skills"] .star', 'aria-label') === 'Open skill Bake', '6. the star takes the new name');
+  ok((await page.textContent('[data-section="skills"] .star .sk-name')) === 'Bake', 'fix 4: the skill shows its name next to its star, and takes the new name', await page.textContent('[data-section="skills"] .star .sk-name'));
+
+  /* ---------- fix 8: the name is edited in place ---------- */
+  const draftName = async () => (await api('GET', `/api/agents/${id}`)).draft?.name;
+  const nameNow = async () => (await page.textContent('#name')).trim();
+  const editName = async (text, key) => { await page.click('#name'); await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A'); if (text) await page.keyboard.type(text); else await page.keyboard.press('Backspace'); if (key) await page.keyboard.press(key); await page.waitForTimeout(600); };
+  ok((await page.getAttribute('#name', 'contenteditable')) !== null, 'fix 8: the name is editable where it is');
+  await editName('Bread bot', 'Enter');
+  ok((await draftName()) === 'Bread bot' && (await nameNow()) === 'Bread bot', 'fix 8: Enter saves the name', String(await draftName()));
+  await page.reload(); await page.waitForTimeout(1200);
+  ok((await nameNow()) === 'Bread bot', 'fix 8: the saved name stays after a reload', await nameNow());
+  await editName('Oops', 'Escape');
+  ok((await nameNow()) === 'Bread bot' && (await draftName()) === 'Bread bot' && new URL(page.url()).pathname === '/new', 'fix 8: Esc puts the old name back (and stays on the screen)', await nameNow());
+  await editName('', 'Enter');
+  ok((await nameNow()) === 'Bread bot' && (await draftName()) === 'Bread bot', 'fix 8: an empty name keeps the old one', await nameNow());
+  await editName('Rye bot'); await page.mouse.click(600, 790); await page.waitForTimeout(600);
+  ok((await draftName()) === 'Rye bot', 'fix 8: clicking away saves too', String(await draftName()));
+
+  /* ---------- fix 2 + 6, reduced motion: snaps, no flight, no drift ---------- */
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.waitForTimeout(300);
+  const rm = await page.evaluate(K => ({ anims: [...document.querySelectorAll(K + ' .flies i.d')].reduce((n, d) => n + d.getAnimations().length, 0), moving: window.creation.info().field.moving }), K);
+  ok(rm.anims === 0 && rm.moving === false, 'fix 9: reduced motion: no drift, no shine, the field is still', JSON.stringify(rm));
+  await page.click(K + ' .belt'); await page.waitForTimeout(60);
+  const snap = await page.evaluate(K => ({ anims: [...document.querySelectorAll(K + ' .flies i.d')].reduce((n, d) => n + d.getAnimations().length, 0), open: document.querySelector(K + ' .belt').getAttribute('aria-expanded') }), K);
+  ok(snap.anims === 0 && snap.open === 'true', 'fix 9: reduced motion: the tap snaps them into place, no flight', JSON.stringify(snap));
+  await page.click(K + ' .belt'); await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   ok(errors.length === 0, 'no page errors', JSON.stringify(errors.slice(0, 5)));
   await browser.close();

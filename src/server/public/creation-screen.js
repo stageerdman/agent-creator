@@ -252,11 +252,12 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   function renderSection(s) {
     const { sec, swarm, belt, flies, names, line } = parts(s), files = sections[s];
     if (!files.length && isOpen(s)) { belt.setAttribute('aria-expanded', 'false'); sec.classList.remove('open'); }
+    swarm.hidden = !files.length;   // before placing: a hidden swarm has no width, and the cluster would shift later
     const open = isOpen(s), at = spots(s, open);
     flies.replaceChildren(...files.map((f, i) => { const d = dot(f); d.classList.toggle('tucked', !open && i >= BELT_CAP); place(d, at[i]); return d; }));
     names.replaceChildren(...files.map((f, i) => row(f, i)));
     line.textContent = sectionLine(files); line.hidden = !!files.length;
-    swarm.hidden = !files.length; belt.disabled = !files.length;
+    belt.disabled = !files.length;
     belt.setAttribute('aria-label', `${TITLES[s]} files`);
     setHeight(s, open);
   }
