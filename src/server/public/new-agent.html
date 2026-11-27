@@ -141,11 +141,25 @@
   #sketcher-close { width: 44px; height: 44px; margin: -10px 0 -10px -12px; border: 0; border-radius: 10px; background: transparent; color: var(--fly); font: 400 22px/1 var(--font); cursor: pointer; }
   #sketcher-close:hover, #sketcher-close:focus-visible { background: rgba(216,242,106,.1); outline: none; }
   #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-  #sketcher-log p { margin: 0; max-width: 90%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #sketcher-log p.you { align-self: flex-end; background: rgba(216,242,106,.14); }
-  #sketcher-log p.sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
-  #sketcher-log p.wait { color: rgba(232,239,224,.6); }
-  #sketcher-log p.err { color: #FF6B5E; }
+  #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #sketcher-log > .you { align-self: flex-end; background: rgba(216,242,106,.14); }
+  #sketcher-log > .sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
+  #sketcher-log > .wait { color: rgba(232,239,224,.6); }
+  #sketcher-log > .err { color: #FF6B5E; }
+  /* Sketcher's formatted words (markdown.js): weight, slant, a faint tint and a thin rule. Nothing louder. */
+  #sketcher-log > .md { white-space: normal; }
+  #sketcher-log .md > * + *, #sketcher-log .md li > * + *, #sketcher-log .md blockquote > * + * { margin-top: 6px; }
+  #sketcher-log .md p, #sketcher-log .md ol, #sketcher-log .md ul, #sketcher-log .md pre, #sketcher-log .md blockquote { margin-bottom: 0; }
+  #sketcher-log .md p { margin-top: 0; }
+  #sketcher-log .md > :first-child, #sketcher-log .md li > :first-child, #sketcher-log .md blockquote > :first-child { margin-top: 0; }
+  #sketcher-log .md strong { font-weight: 600; color: inherit; }
+  #sketcher-log .md ol, #sketcher-log .md ul { padding-left: 1.4em; }
+  #sketcher-log .md li + li { margin-top: 2px; }
+  #sketcher-log .md code { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(232,239,224,.08); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+  #sketcher-log .md pre { max-width: 100%; overflow-x: auto; background: rgba(232,239,224,.08); border-radius: 8px; padding: 8px 10px; white-space: pre; }
+  #sketcher-log .md pre code { background: none; padding: 0; border-radius: 0; overflow-wrap: normal; }
+  #sketcher-log .md blockquote { margin-left: 0; margin-right: 0; padding-left: 10px; border-left: 2px solid rgba(232,239,224,.25); }
+  #sketcher-log .md a { color: var(--fly); text-decoration: underline; text-underline-offset: 2px; }
   #sketcher-form { display: flex; flex-direction: column; gap: 8px; }
   #sketcher-box { box-sizing: border-box; width: 100%; min-height: 72px; resize: none; border: 1px solid rgba(232,239,224,.14); border-radius: 12px;
     background: rgba(11,20,16,.7); color: inherit; font: inherit; padding: 10px 12px; }

@@ -21,13 +21,13 @@ const fail = msg => { console.error('FAIL', msg); process.exit(1); };
   await page.click('#handle');
   await page.fill('#sketcher-box', 'A calm chess coach for kids. Use the talks folder as knowledge.');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => { const p = document.querySelector('#sketcher-log p.sketcher:last-child'); return p && !p.classList.contains('wait'); }, null, { timeout: 180000 });
+  await page.waitForFunction(() => { const p = document.querySelector('#sketcher-log > .sketcher:last-child'); return p && !p.classList.contains('wait'); }, null, { timeout: 180000 });
   let agent;   // the first words are on screen; the turn is done once it is saved
   for (let t = 0; t < 180 && !(agent && agent.chat.length); t++) {
     agent = await fetch(`${base}/api/agents/${id}`).then(r => r.json());
     await new Promise(r => setTimeout(r, 1000));
   }
-  const answer = await page.textContent('#sketcher-log p.sketcher:last-child');
+  const answer = await page.textContent('#sketcher-log > .sketcher:last-child');
   if (/couldn.t answer/i.test(answer)) fail('Sketcher did not answer: ' + answer);
   console.log('answer:', answer.slice(0, 160).replace(/\n/g, ' '));
   if (!agent.draft.name) fail('the chat did not build the draft');
@@ -35,7 +35,7 @@ const fail = msg => { console.error('FAIL', msg); process.exit(1); };
 
   await page.reload();
   await page.waitForSelector('#handle.in');
-  const lines = await page.$$eval('#sketcher-log p', ps => ps.map(p => p.className));
+  const lines = await page.$$eval('#sketcher-log > div', ps => ps.map(p => p.classList[0]));
   if (lines.join() !== 'you,sketcher') fail('talk not shown after reload: ' + lines.join());
   await page.screenshot({ path: '.tmp-test/sketcher-chat.png' });
   console.log('PASS: real answer, draft built, talk kept over a reload');
