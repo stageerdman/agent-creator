@@ -49,7 +49,12 @@ const defaultEmbedder = () => createEmbedder({ cacheDir: join(defaultHome(), "mo
 export function createAgents({ store, engine, now = () => new Date(), readOriginal, embedder = defaultEmbedder() }) {
   const memory = createSourceMemory({ store, readOriginal });
   const knowledge = createKnowledgeBase({ store, memory, embedder });
-  const material = createMaterial({ store, memory, knowledge, now });
+  // A file gone for good leaves no copy and no chunks behind.
+  const forget = async (id, paths) => {
+    await memory.forgetCopies(id, paths);
+    await knowledge.forget(id, paths);
+  };
+  const material = createMaterial({ store, memory, forget, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),

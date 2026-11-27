@@ -4,7 +4,7 @@
 // "ok", or the reason it has none ("binary", "empty", "unreadable-pdf").
 
 import { readFile } from "node:fs/promises";
-import { CantExtract, NotFound } from "../errors.mjs";
+import { BadInput, CantExtract, NotFound } from "../errors.mjs";
 import { markFiles } from "../fileMarks.mjs";
 import { normalPath } from "../files.mjs";
 import { createLogger } from "../../log/logger.mjs";
@@ -34,6 +34,13 @@ export function createSourceMemory({ store, readOriginal = readFile }) {
   const saveMarks = (id, marks) =>
     markFiles(store, id, new Map([...marks].map(([path, text]) => [path, { text, embed: undefined }])));
 
+  async function knownPath(id, path) {
+    const clean = normalPath(path);
+    const record = await store.loadAgent(id);
+    if (!(record.files ?? []).some((file) => file.path === clean)) throw new NotFound(`No file "${clean}" in this agent.`);
+    return clean;
+  }
+
   // An original that can't be read now (moved, no access) gets no mark,
   // so the next change tries again.
   async function copyOne(id, file, traceId) {
@@ -61,12 +68,18 @@ export function createSourceMemory({ store, readOriginal = readFile }) {
 
     // Content the page hands over for a file already in the list. → { path, text }.
     async putSource(id, path, bytes) {
-      const clean = normalPath(path);
-      const record = await store.loadAgent(id);
-      if (!(record.files ?? []).some((file) => file.path === clean)) throw new NotFound(`No file "${clean}" in this agent.`);
+      const clean = await knownPath(id, path);
       const text = await keepText(id, clean, bytes);
       await saveMarks(id, new Map([[clean, text]]));
       return { path: clean, text };
+    },
+
+    // The user's own wording replaces the extracted copy. → the files.
+    async editCopy(id, path, text) {
+      if (typeof text !== "string" || !text.trim()) throw new BadInput("`text` must be non-empty: take the source out instead.");
+      const clean = await knownPath(id, path);
+      await store.writeText(id, sourceCopyOf(clean), text);
+      return saveMarks(id, new Map([[clean, "ok"]]));
     },
 
     readCopy: (id, path) => store.readText(id, sourceCopyOf(path)),

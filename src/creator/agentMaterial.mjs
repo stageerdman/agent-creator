@@ -3,27 +3,15 @@
 // Use cases over the store; the rules live in files.mjs and sections.mjs.
 // Every change answers with `dna`, so the screen redraws without asking again.
 
-import { addFiles, dnaOf, normalPath } from "./files.mjs";
+import { addFiles, normalPath } from "./files.mjs";
+import { changeFiles as changeFileList } from "./fileList.mjs";
 import { scanPaths } from "./folderScan.mjs";
 import { assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles } from "./sections.mjs";
 
-const dnaOfRecord = (record, files = record.files ?? []) => dnaOf(files, record.createdAt || record.updatedAt);
-
 // `memory` (sourceText/memory.mjs) keeps the used files' plain-text copies;
-// `knowledge` (knowledge/knowledgeBase.mjs) their chunks, until they go.
-export function createMaterial({ store, memory, knowledge, now = () => new Date() }) {
-  async function forget(id, paths) {
-    await memory.forgetCopies(id, paths);
-    await knowledge.forget(id, paths);
-  }
-
-  // Loads, changes and saves the file list; `change(files, record)` → { files, ...answer }.
-  async function changeFiles(id, change) {
-    const record = await store.loadAgent(id);
-    const { files, ...answer } = change(record.files ?? [], record);
-    if (files !== record.files) await store.saveDraft(id, { files });
-    return { ...answer, files, dna: dnaOfRecord(record, files) };
-  }
+// `forget(id, paths)` lets go of a file's copy and chunks once it is gone.
+export function createMaterial({ store, memory, forget, now = () => new Date() }) {
+  const changeFiles = (id, change) => changeFileList(store, id, change);
 
   const material = {
     // Dropped or picked files join the DNA file list, unrouted. Never the chat.
