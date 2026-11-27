@@ -1,8 +1,8 @@
 // The prompt a kept agent answers with when the user talks to it (not the
 // Sketcher). The agent's own system prompt comes first; its skills,
-// knowledge and readable files follow as context, each under the name the
-// agent must use when it says it drew on it (`<used>`). No retrieval yet:
-// everything given is inline.
+// built knowledge and skill files follow whole, then the passages a search
+// of its Knowledge files found for this message, each under the name the
+// agent must use when it says it drew on it (`<used>`).
 
 import { USER_SAYS } from "./creatorPrompt.mjs";
 
@@ -17,11 +17,13 @@ export function agentIdentity({ systemPrompt, draft }) {
 }
 
 // skills: [{ name, body }]; files: [{ path, text }] (the built knowledge.md
-// is one of them). Empty texts are left out.
-export function buildTalkPrompt({ systemPrompt, draft, skills = [], files = [] }) {
+// is one of them); excerpts: [{ file, text }], best first. Empty texts are
+// left out.
+export function buildTalkPrompt({ systemPrompt, draft, skills = [], files = [], excerpts = [] }) {
   const context = [
     ...skills.filter(({ body }) => body.trim()).map(({ name, body }) => section("skill", name, body)),
     ...files.filter(({ text }) => text.trim()).map(({ path, text }) => section("file", path, text)),
+    ...(excerpts.length ? [knowledgeBlock(excerpts)] : []),
   ];
   const parts = [agentIdentity({ systemPrompt, draft })];
   if (context.length) parts.push(`What you know and can do:\n\n${context.join("\n\n")}`, USED_RULE);
@@ -37,12 +39,19 @@ export function buildTalkMessage({ message, talk = [] }) {
 }
 
 // The agent's `<used>` patch → [{ kind, name }], only names it was given.
-export function usedOf(patch, { skills = [], files = [] }) {
+export function usedOf(patch, { skills = [], files = [], excerpts = [] }) {
   const known = (names, given) => (Array.isArray(names) ? [...new Set(names)].filter((name) => given.includes(name)) : []);
+  const fileNames = [...files.map((file) => file.path), ...excerpts.map((excerpt) => excerpt.file)];
   return [
     ...known(patch?.skills, skills.map((skill) => skill.name)).map((name) => ({ kind: "skill", name })),
-    ...known(patch?.files, files.map((file) => file.path)).map((name) => ({ kind: "file", name })),
+    ...known(patch?.files, fileNames).map((name) => ({ kind: "file", name })),
   ];
 }
 
 const section = (kind, name, text) => `<${kind} name=${JSON.stringify(name)}>\n${text.trim()}\n</${kind}>`;
+
+// Numbered, so the agent can tell passages apart; named by file for `<used>`.
+const knowledgeBlock = (excerpts) =>
+  `<knowledge>\nPassages from your knowledge files that may bear on this message:\n\n${excerpts
+    .map(({ file, text }, at) => `[${at + 1}] (from ${file})\n${text.trim()}`)
+    .join("\n\n")}\n</knowledge>`;

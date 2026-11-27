@@ -9,8 +9,14 @@ import { assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles 
 
 const dnaOfRecord = (record, files = record.files ?? []) => dnaOf(files, record.createdAt || record.updatedAt);
 
-// `memory` (sourceText/memory.mjs) keeps the used files' plain-text copies.
-export function createMaterial({ store, memory, now = () => new Date() }) {
+// `memory` (sourceText/memory.mjs) keeps the used files' plain-text copies;
+// `knowledge` (knowledge/knowledgeBase.mjs) their chunks, until they go.
+export function createMaterial({ store, memory, knowledge, now = () => new Date() }) {
+  async function forget(id, paths) {
+    await memory.forgetCopies(id, paths);
+    await knowledge.forget(id, paths);
+  }
+
   // Loads, changes and saves the file list; `change(files, record)` → { files, ...answer }.
   async function changeFiles(id, change) {
     const record = await store.loadAgent(id);
@@ -61,7 +67,7 @@ export function createMaterial({ store, memory, now = () => new Date() }) {
     // a removed one is still baked in, so its copy stays until the rebuild.
     async removeFile(id, path) {
       const answer = await changeFiles(id, (files) => ({ ...removeFile(files, path), path }));
-      if (answer.state === "gone") await memory.forgetCopies(id, [normalPath(path)]);
+      if (answer.state === "gone") await forget(id, [normalPath(path)]);
       return answer;
     },
 
@@ -73,7 +79,7 @@ export function createMaterial({ store, memory, now = () => new Date() }) {
     async rebuilt(id) {
       const { dropped, ...answer } = await changeFiles(id, (files) =>
         ({ files: rebuilt(files), dropped: files.filter((file) => file.removed).map((file) => file.path) }));
-      await memory.forgetCopies(id, dropped);
+      await forget(id, dropped);
       return answer;
     },
   };

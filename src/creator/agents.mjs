@@ -8,6 +8,10 @@ import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { createTalk } from "./agentTalk.mjs";
 import { createSourceMemory } from "./sourceText/memory.mjs";
+import { createKnowledgeBase } from "./knowledge/knowledgeBase.mjs";
+import { createEmbedder } from "./knowledge/embedder.mjs";
+import { defaultHome } from "./agentStore.mjs";
+import { join } from "node:path";
 
 // The home's one-line description: the first sentence of persona, else of
 // instructions, cut to about 80 characters. Empty when neither has text.
@@ -35,17 +39,25 @@ export const withTurn = (chat = [], message, say) =>
   [...chat, { who: "you", text: message }, { who: "sketcher", text: say }].slice(-CHAT_KEEP);
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
+// The local model, kept next to the agents; loaded only when first used.
+const defaultEmbedder = () => createEmbedder({ cacheDir: join(defaultHome(), "models") });
+
 // Files, sections and texts are their own use cases (agentMaterial.mjs,
 // agentTexts.mjs), offered here so callers hold one object. `readOriginal`
 // reads a file's original bytes once, to keep its copy (sourceText/memory.mjs).
-export function createAgents({ store, engine, now = () => new Date(), readOriginal }) {
+// `embedder` turns Knowledge copies into the agent's searchable store.
+export function createAgents({ store, engine, now = () => new Date(), readOriginal, embedder = defaultEmbedder() }) {
   const memory = createSourceMemory({ store, readOriginal });
-  const material = createMaterial({ store, memory, now });
+  const knowledge = createKnowledgeBase({ store, memory, embedder });
+  const material = createMaterial({ store, memory, knowledge, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),
-    ...createTalk({ store, engine, memory }),
+    ...createTalk({ store, engine, memory, knowledge }),
     putSource: memory.putSource,
+    // Call after any change that may bring new Knowledge copies (chat, a
+    // drop, putSource). → [{ type: "embedded" | "embed-failed", file, reason? }].
+    embedKnowledge: knowledge.embedFiles,
 
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {

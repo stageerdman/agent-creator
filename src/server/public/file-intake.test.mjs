@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "../../creator/index.mjs";
 import { createApp } from "../app.mjs";
+import { createFakeEmbedder } from "../../creator/knowledge/fakeEmbedder.mjs";
 import { chunks, createIntake, entriesOfDrop, entriesOfFiles, httpApi, isHidden } from "./file-intake.js";
 
 // The real server and store, in a temp home: the intake's whole path to the DNA.
 const home = await mkdtemp(join(tmpdir(), "agent-creator-intake-"));
-const server = createApp({}, { store: createAgentStore({ home }) }).listen(0);
+const server = createApp({}, { store: createAgentStore({ home }), embedder: createFakeEmbedder() }).listen(0);
 const base = `http://localhost:${server.address().port}`;
 after(async () => {
   server.close();

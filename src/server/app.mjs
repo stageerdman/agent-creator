@@ -27,8 +27,9 @@ function staticFile(name, contentType) {
   };
 }
 
-export function createApp(engine, { store = createAgentStore() } = {}) {
-  const agents = createAgents({ store, engine });
+// `embedder` defaults to the local model (agents.mjs); tests pass a fake.
+export function createApp(engine, { store = createAgentStore(), embedder } = {}) {
+  const agents = createAgents({ store, engine, embedder });
   const routes = {
     "GET /": staticFile("agent-home.html", "text/html; charset=utf-8"),
     "GET /new": staticFile("new-agent.html", "text/html; charset=utf-8"),

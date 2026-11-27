@@ -4,6 +4,7 @@
 
 import { allocations } from "../../creator/index.mjs";
 import { readJson, requireMessage, sendJson, streamEvents } from "../http.mjs";
+import { embedEvents } from "./embeds.mjs";
 
 export function agentRoutes(agents) {
   return {
@@ -17,7 +18,8 @@ export function agentRoutes(agents) {
 
     // SSE: delta* → draft { draft, changed } and/or files { files, changed }
     // (each only if something changed), then allocate { file, section } per
-    // changed file and section it now goes to ("none" if it feeds nothing) → ready { type, ready: true }
+    // changed file and section it now goes to ("none" if it feeds nothing) → embedded { file } or
+    // embed-failed { file, reason } per Knowledge file newly searchable or not → ready { type, ready: true }
     // only when the creator flags the agent ready (never once kept) → done { say, sessionId, ready } | error.
     "POST /api/agents/:id/chat": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
@@ -28,6 +30,7 @@ export function agentRoutes(agents) {
         if (turn.changed.length) send("draft", { draft: turn.draft, changed: turn.changed });
         if (turn.filesChanged.length) send("files", { files: turn.files, changed: turn.filesChanged });
         for (const allocation of allocations(turn.files, turn.filesChanged)) send("allocate", allocation);
+        if (turn.filesChanged.length) for (const event of await embedEvents(agents, params.id, traceId)) send(event.type, event);
         if (turn.ready) send("ready", { type: "ready", ready: true });
         send("done", { say: turn.say, sessionId: turn.sessionId, ready: turn.ready });
       });

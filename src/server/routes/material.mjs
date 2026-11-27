@@ -4,6 +4,7 @@
 // "knowledge" or "skill:<skillId>" (encode the colon or not, both work).
 
 import { BadRequest, readBytes, readJson, requireFiles, sendJson, streamEvents } from "../http.mjs";
+import { embedEvents } from "./embeds.mjs";
 
 export function materialRoutes(agents) {
   return {
@@ -29,20 +30,22 @@ export function materialRoutes(agents) {
     },
 
     // A file the page read itself (no path on disk): raw bytes, ?path=notes/a.pdf
-    // → { path, text } with text "ok" or why no .txt copy could be made.
-    "PUT /api/agents/:id/sources": async (req, res, { params, query }) => {
+    // → { path, text, embeds } with text "ok" or why no .txt copy could be
+    // made, and embeds the embedded / embed-failed events (as the chat's).
+    "PUT /api/agents/:id/sources": async (req, res, { params, query, traceId }) => {
       const path = requireQuery(query, "path");
-      sendJson(res, 200, await agents.putSource(params.id, path, await readBytes(req)));
+      const source = await agents.putSource(params.id, path, await readBytes(req));
+      sendJson(res, 200, { ...source, embeds: await embedEvents(agents, params.id, traceId) });
     },
 
     "GET /api/agents/:id/sections/:section/files": async (_req, res, { params }) =>
       sendJson(res, 200, { files: await agents.sectionFiles(params.id, params.section) }),
 
-    // Dropped onto a section: { files: [{ path, size }] } → { files, changed, dna },
+    // Dropped onto a section: { files: [{ path, size }] } → { files, changed, dna, embeds },
     // `files` being the section's files after the drop.
-    "POST /api/agents/:id/sections/:section/files": async (req, res, { params }) => {
+    "POST /api/agents/:id/sections/:section/files": async (req, res, { params, traceId }) => {
       const { section, changed, dna } = await agents.assign(params.id, params.section, requireFiles(await readJson(req)));
-      sendJson(res, 200, { files: section, changed, dna });
+      sendJson(res, 200, { files: section, changed, dna, embeds: await embedEvents(agents, params.id, traceId) });
     },
 
     "GET /api/agents/:id/system-prompt": async (_req, res, { params }) =>

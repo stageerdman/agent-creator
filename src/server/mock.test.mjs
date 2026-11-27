@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "./app.mjs";
 import { createAgentStore } from "../creator/index.mjs";
+import { createFakeEmbedder } from "../creator/knowledge/fakeEmbedder.mjs";
 import { demo, demoAgents, scripts } from "./mock/demoAgents.mjs";
 
 let server, base, home;
@@ -15,7 +16,7 @@ let server, base, home;
 before(async () => {
   home = await mkdtemp(join(tmpdir(), "ac-mock-"));
   const engine = { checkCli: async () => ({ installed: true }) };
-  server = createApp(engine, { store: createAgentStore({ home }) });
+  server = createApp(engine, { store: createAgentStore({ home }), embedder: createFakeEmbedder() });
   await new Promise((resolve) => server.listen(0, resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 });

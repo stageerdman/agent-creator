@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "../creator/index.mjs";
 import { createApp } from "./app.mjs";
+import { createFakeEmbedder } from "../creator/knowledge/fakeEmbedder.mjs";
 import { parseSse } from "./testing/sse.mjs";
 
 // The real creator over a temp store; these routes never reach the engine.
 const home = await mkdtemp(join(tmpdir(), "agent-creator-material-"));
-const server = createApp({}, { store: createAgentStore({ home: join(home, "store") }) }).listen(0);
+const server = createApp({}, { store: createAgentStore({ home: join(home, "store") }), embedder: createFakeEmbedder() }).listen(0);
 const base = `http://localhost:${server.address().port}`;
 after(async () => {
   server.close();

@@ -7,6 +7,7 @@ import { askAgent, checkCli } from "../engine/index.mjs";
 import { fakeSpawn } from "../engine/testing/fakeSpawn.mjs";
 import { createAgentStore } from "../creator/index.mjs";
 import { createApp } from "./app.mjs";
+import { createFakeEmbedder } from "../creator/knowledge/fakeEmbedder.mjs";
 import { parseSse } from "./testing/sse.mjs";
 import { streamChat } from "./public/left-side.js";
 
@@ -24,7 +25,7 @@ const engine = {
   checkCli: () => checkCli({ binary: "claude", spawn: fakeSpawn("version") }),
 };
 const home = await mkdtemp(join(tmpdir(), "agent-creator-server-"));
-const server = createApp(engine, { store: createAgentStore({ home }) }).listen(0);
+const server = createApp(engine, { store: createAgentStore({ home }), embedder: createFakeEmbedder() }).listen(0);
 const base = `http://localhost:${server.address().port}`;
 after(async () => {
   server.close();
@@ -335,7 +336,7 @@ test("a missing CLI is an error event with kind not-installed", async () => {
     askAgent: (input, options) => askAgent(input, { ...options, binary: "/nonexistent/claude" }),
     checkCli: engine.checkCli,
   };
-  const other = createApp(broken, { store: createAgentStore({ home }) }).listen(0);
+  const other = createApp(broken, { store: createAgentStore({ home }), embedder: createFakeEmbedder() }).listen(0);
   try {
     const response = await fetch(`http://localhost:${other.address().port}/api/agents/${id}/chat`, {
       method: "POST",

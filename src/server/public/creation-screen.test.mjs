@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore, createAgents } from "../../creator/index.mjs";
 import { createApp } from "../app.mjs";
+import { createFakeEmbedder } from "../../creator/knowledge/fakeEmbedder.mjs";
 import {
   BELT_CAP, CLUSTER_H, EMPTY, FIELD_CAP, RED, ROW, SHINE_MAX, applyRemove, clusterSpot, dotLook, dropPlan,
   fieldLayout, flightPath, nextName, orderedSpot, postInBatches, sectionLine, skillName, spotOf, wanderAt, wanderParams,
@@ -17,7 +18,7 @@ import { FLY } from "./firefly-orbit.js";
 // The real server and store in a temp home, so the screen's requests are checked against the real endpoints.
 const home = await mkdtemp(join(tmpdir(), "agent-creator-creation-"));
 const store = createAgentStore({ home });
-const server = createApp({}, { store }).listen(0);
+const server = createApp({}, { store, embedder: createFakeEmbedder() }).listen(0);
 const base = `http://localhost:${server.address().port}`;
 const agents = createAgents({ store, engine: {} }); // only to mark files used, which has no endpoint
 after(async () => {

@@ -1,11 +1,12 @@
 // Talking to a kept agent (G4): the agent itself answers, from its system
-// prompt, skill bodies, knowledge and readable files (talkPrompt.mjs). The
+// prompt, skill bodies and files, and the passages of its Knowledge files
+// that a search finds for the message (talkPrompt.mjs). The
 // talk is kept in the record; it never changes the draft or the files.
 
 import { askWithBlock } from "./askWithBlock.mjs";
 import { buildTalkMessage, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
 import { createLogger } from "../log/logger.mjs";
-import { BadInput } from "./errors.mjs";
+import { BadInput, CantEmbed } from "./errors.mjs";
 
 const log = createLogger("agentTalk");
 export const TALK_KEEP = 200;
@@ -13,11 +14,24 @@ const TALK_CONTEXT = 40; // earlier lines the agent sees again
 const FILE_CAP = 100_000; // characters per file
 const TOTAL_CAP = 400_000; // characters over all files
 
-const feedsTalk = (file) => !file.removed && file.text === "ok" && file.feeds.some((feed) => feed === "rag" || feed.startsWith("skill:"));
+// Knowledge files are searched, not inlined: only skill files go in whole.
+const feedsTalk = (file) => !file.removed && file.text === "ok" && file.feeds.some((feed) => feed.startsWith("skill:"));
 
 // `memory` (sourceText/memory.mjs) holds the files' plain-text copies:
-// talk reads those, never the originals.
-export function createTalk({ store, engine, memory }) {
+// talk reads those, never the originals. `knowledge` finds the passages
+// of the agent's Knowledge files closest to what the user says.
+export function createTalk({ store, engine, memory, knowledge }) {
+  // A model that can't run leaves the answer without excerpts, never fails it.
+  async function excerptsFor(id, message, traceId) {
+    try {
+      return (await knowledge.retrieve(id, message)).map(({ file, text }) => ({ file, text }));
+    } catch (error) {
+      if (!(error instanceof CantEmbed)) throw error;
+      log.warn("excerptsFor", "model can't run, no excerpts", { id, reason: error.reason, error: error.cause ?? error, traceId });
+      return [];
+    }
+  }
+
   async function skillsOf(id, record) {
     return Promise.all((record.skills ?? []).map(async (skill) => ({ name: skill.name, body: await store.readText(id, `skills/${skill.id}/SKILL.md`) })));
   }
@@ -58,12 +72,13 @@ export function createTalk({ store, engine, memory }) {
       const systemPrompt = await store.readText(id, "system-prompt.md");
       const skills = await skillsOf(id, record);
       const files = await filesOf(id, record, traceId);
+      const excerpts = await excerptsFor(id, message, traceId);
       const input = {
         message: buildTalkMessage({ message, talk: (record.talk ?? []).slice(-TALK_CONTEXT) }),
-        systemPrompt: buildTalkPrompt({ systemPrompt, draft: record.draft, skills, files }),
+        systemPrompt: buildTalkPrompt({ systemPrompt, draft: record.draft, skills, files, excerpts }),
       };
       const reply = await askWithBlock(engine, input, "used", { onSay, signal, traceId });
-      const used = usedOf(reply.patch, { skills, files });
+      const used = usedOf(reply.patch, { skills, files, excerpts });
       const latest = await store.loadAgent(id);
       const talk = [...(latest.talk ?? []), { who: "you", text: message }, { who: "agent", text: reply.say, used }].slice(-TALK_KEEP);
       await store.saveDraft(id, { talk });
