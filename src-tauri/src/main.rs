@@ -7,7 +7,8 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::window::Color;
+use tauri::utils::config::WindowEffectsConfig;
+use tauri::window::{Effect, EffectState, EffectsBuilder};
 use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
 /// Holds the server for the app's life; taking it out stops the server.
@@ -70,11 +71,33 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
         .disable_drag_drop_handler()
         .visible(false)
         .center()
+        .initialization_script(GLASS_PAGE)
+        .transparent(true)
+        // Dark glass in both system themes: the Fireflies field is dark, and a
+        // dark material keeps light text readable over a bright desktop. It
+        // also means a launch shows dark glass first, never a white frame.
+        .theme(Some(Theme::Dark))
+        .effects(glass())
         .build()?;
-    // Paint the home's Fireflies field first, so a launch never flashes white.
-    window.set_background_color(Some(canvas(window.theme()?)))?;
     window.show()
 }
+
+/// The desktop shows through, blurred by macOS's own vibrancy. It stays glass
+/// when the window is in the background too, so it never turns flat grey.
+fn glass() -> WindowEffectsConfig {
+    EffectsBuilder::new().effect(Effect::UnderWindowBackground).state(EffectState::Active).build()
+}
+
+/// Tells each page it sits on glass (`html.glass`), so it tints its field
+/// instead of painting it solid. Runs before the page's own markup is parsed.
+const GLASS_PAGE: &str = r#"(() => {
+  const mark = () => {
+    const root = document.documentElement;
+    if (root) root.classList.add("glass");
+    return Boolean(root);
+  };
+  if (!mark()) new MutationObserver((_, watch) => { if (mark()) watch.disconnect(); }).observe(document, { childList: true });
+})();"#;
 
 /// Hands an http, https or mailto link to macOS (`open`), so it lands in the
 /// user's default browser or mail app. Returns whether it was handed off.
@@ -105,10 +128,4 @@ mod tests {
             assert!(!external(&no.parse().unwrap()), "{no}");
         }
     }
-}
-
-/// The home's Fireflies field (#0B1410). It is dark in both themes, so the
-/// native window is too: a light-mode Mac must not show a white first frame.
-fn canvas(_theme: Theme) -> Color {
-    Color(0x0B, 0x14, 0x10, 0xff)
 }

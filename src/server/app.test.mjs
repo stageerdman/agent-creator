@@ -73,6 +73,16 @@ test("GET /agents/:id serves a page, not raw JSON", async () => {
   assert.match(html, /html \{ background: var\(--field\); \}/);
 });
 
+// The Mac shell marks each page html.glass. A page without the rule paints
+// solid over the glass window; one that is see-through without it shows white in a browser.
+test("every page is solid in a browser and see-through on the Mac app's glass", async () => {
+  for (const path of ["/", "/new", "/agents/some-agent"]) {
+    const html = await (await fetch(`${base}${path}`)).text();
+    assert.match(html, /html \{ background: var\(--field\); \}/, path);
+    assert.match(html, /html\.glass \{ background: transparent; --field: rgba\([^)]*\); --shadow: rgba\([^)]*\); \}/, path);
+  }
+});
+
 test("GET serves the screens' scripts", async () => {
   for (const [path, type] of [["/agent-list.js", "javascript"], ["/firefly-gather.js", "javascript"], ["/firefly-orbit.js", "javascript"],["/fireflies-dna.js", "javascript"], ["/left-side.js", "javascript"]]) {
     const response = await fetch(`${base}${path}`);
