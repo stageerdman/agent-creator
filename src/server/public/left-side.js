@@ -70,6 +70,9 @@ export function blinkAllowed(store, id, which, { processed = 0, waited = 0 } = {
 /* The look-back: one notice on close, only if the mark changed while the panel was open. */
 export const lookBack = (changed, reduced) => !!changed && !reduced;
 
+/* On close: a whole flash held while the panel was open, or the look-back. Either way, ONE flash. */
+export const closeFlash = ({ changed = false, held = false, reduced = false } = {}) => !!held || lookBack(changed, reduced);
+
 /* Every transition the left side sets, in ms (all 0 under Reduce Motion). */
 export const timings = reduced => reduced
   ? { handle: 0, label: 0, open: 0, close: 0, flight: 0 }
@@ -86,8 +89,14 @@ export const dotsOf = list => Math.min(PLACED, (list || []).reduce((n, f) => n +
 /* Sketcher proposes Keep in the creator's own words, "press Keep" (or tap / hit / click Keep). */
 export const saysReady = text => /\b(press|tap|hit|click)\s+(on\s+)?keep\b/i.test(String(text || ''));
 
+/* The agent is kept (the server's draft status "saved"). */
+export const isKept = a => !!(a && a.draft && a.draft.status === 'saved');
+
 /* Keep happens once: never again once the draft is saved (or this browser saw it kept). */
-export const kept = (store, a) => !!a && ((a.draft && a.draft.status === 'saved') || store['left.kept.' + a.id] === '1');
+export const kept = (store, a) => isKept(a) || (!!a && store['left.kept.' + a.id] === '1');
+
+/* Show Keep: only when Sketcher proposes it and the agent is not and never was kept. */
+export const showKeep = (text, kept) => !kept && saysReady(text);
 
 /* Server-sent events, as text arrives: → [{ event, data }] and the unfinished rest. */
 export function parseEvents(buf) {
@@ -99,6 +108,28 @@ export function parseEvents(buf) {
   return { events: out, rest };
 }
 
+/* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
+   onText(all text so far) as it streams; onChange() when the draft or the files changed.
+   → Sketcher's whole answer. Throws on any failure (no answer counts as one). */
+export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {} }) {
+  const r = await fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
+  if (!r.ok || !r.body) throw new Error(`chat: status ${r.status}`);
+  const rd = r.body.getReader(), dec = new TextDecoder();
+  let buf = '', text = '';
+  for (;;) {
+    const { value, done } = await rd.read(); if (done) break;
+    const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
+    for (const { event, data } of out.events) {
+      if (event === 'delta' && data && data.text) onText(text += data.text);
+      else if (event === 'files' || event === 'draft') onChange();
+      else if (event === 'done' && data && data.say) { if (data.say !== text) onText(text = data.say); }   // the final text is the truth
+      else if (event === 'error') throw new Error(`chat: ${(data && data.error) || 'error'}`);
+    }
+  }
+  if (!text) throw new Error('chat: empty answer');
+  return text;
+}
+
 /* ------------------------------------------------------------------ the page ---- */
 export function mountLeftSide({ doc = document, reduced = false, store = localStorage, fetchAgent, refresh }) {
   const win = doc.defaultView, $ = s => doc.querySelector(s), now = () => win.performance.now();
@@ -108,7 +139,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
-  let open = false, changedWhileOpen = false, wholeWhileOpen = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
+  let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
   const geo = () => { const W = win.innerWidth, H = win.innerHeight, fw = Math.max(160, W - MENU_W), L = markSize(fw, H); return { W, H, fw, L, cx: fw / 2, cy: H / 2 }; };
@@ -131,8 +162,8 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     markEl.style.transition = reduced || fresh ? 'none' : '';
     markEl.style.transform = grow === 1 ? '' : `scale(${grow.toFixed(4)})`;
     if (wholeDue(store, id, { shown: list.length, live: prev.live, atStart: fresh })) {
-      if (open) wholeWhileOpen = true;   // held behind the glass: the close plays it, once
-      else later(() => mark.notice(reduced), WHOLE_WAIT);
+      if (open) heldWhole = true;   // held: the one flash plays on close
+      else later(() => { if (open) heldWhole = true; else mark.notice(reduced); }, WHOLE_WAIT);
     }
     kick();
   }
@@ -141,7 +172,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function onDna(a, { still = false } = {}) {
     const next = a.dna || [];
     if (a.id !== id) return start(a, still);
-    if (kept(store, a)) { store['left.kept.' + id] = '1'; create.hidden = true; }
+    if (kept(store, a)) { wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; }   // once kept, Keep never comes back
     const nm = nameOf(a);
     if (nm !== name) { name = nm; setMark(applied, true); }
     const t = now(), g = geo();
@@ -162,10 +193,11 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function refreshHidden() { if (api.hide) api.hide([...flown]); }
 
   function start(a, still) {
-    timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = []; wholeWhileOpen = false;
-    create.hidden = true;
+    timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = [];
     id = a.id; name = nameOf(a); files = a.dna || [];
-    if (kept(store, a)) store['left.kept.' + id] = '1';
+    heldWhole = false; wasKept = kept(store, a); create.hidden = true;
+    if (wasKept) store['left.kept.' + id] = '1';
+    log.replaceChildren(); for (const m of a.chat || []) line(m.who === 'you' ? 'you' : 'sketcher', m.text);   // the talk so far, after a reload too
     known = new Map(files.map(f => [f.id, f.state]));
     const res = gatheredFiles(files); prev = { shown: res.shown, live: res.live };
     flown = new Set(files.filter(f => f.state === 'processed').map(f => f.id));
@@ -205,10 +237,10 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     panel.style.transition = `transform ${T().close}ms cubic-bezier(.4,0,1,1)`;
     panel.classList.remove('open'); panel.setAttribute('inert', ''); handle.setAttribute('aria-expanded', 'false');
     handle.focus();
-    const end = () => {   // one flash at most: the held whole flash or the look-back, never both
+    const end = () => {
       if (!open) panel.hidden = true;
-      if (wholeWhileOpen || lookBack(changedWhileOpen, reduced)) mark.notice(reduced);
-      changedWhileOpen = false; wholeWhileOpen = false;
+      if (mark && closeFlash({ changed: changedWhileOpen, held: heldWhole, reduced })) mark.notice(reduced);
+      changedWhileOpen = false; heldWhole = false;
     };
     if (T().close) later(end, T().close); else end();
   }
@@ -225,27 +257,16 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const message = box.value.trim(); if (!message || busy || !id) return;
-    busy = true; box.value = ''; line('you', message);
-    const reply = line('sketcher wait', 'Sketching…'); let text = '';
+    busy = true; box.value = ''; const mine = line('you', message);
+    const reply = line('sketcher wait', 'Sketching…');
+    const onText = text => { reply.textContent = text; reply.classList.remove('wait'); log.scrollTop = log.scrollHeight; };
     try {
-      const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
-      if (!r.ok || !r.body) throw new Error(String(r.status));
-      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
-      for (;;) {
-        const { value, done } = await rd.read(); if (done) break;
-        const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
-        for (const { event, data } of out.events) {
-          if (event === 'delta' && data && data.text) { text += data.text; reply.textContent = text; reply.classList.remove('wait'); }
-          else if (event === 'files' || event === 'draft') pull();
-          else if (event === 'done' && data && data.say && !text) { text = data.say; reply.textContent = text; reply.classList.remove('wait'); }
-          else if (event === 'error') throw new Error('error');
-        }
-      }
-      if (!text) throw new Error('empty');
-      if (saysReady(text) && store['left.kept.' + id] !== '1') create.hidden = false;
+      const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange: pull });
+      if (showKeep(text, wasKept)) create.hidden = false;
     } catch {
-      reply.textContent = 'Sketcher couldn’t answer. Try again.'; reply.className = 'sketcher err';
-      if (!box.value) box.value = message;   // trying again is one Enter, not a retype
+      // The message goes back in the box, so Enter tries again (no retyping, no retry button).
+      mine.remove(); if (!box.value) box.value = message;
+      reply.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; reply.className = 'sketcher err';
       box.focus(); box.setSelectionRange(box.value.length, box.value.length);
     }
     busy = false; log.scrollTop = log.scrollHeight;
@@ -254,8 +275,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     create.disabled = true;
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/save`, { method: 'POST' });
-      if (!r.ok) throw new Error();
-      store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
+      if (!r.ok) throw new Error(); wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
     } catch { line('sketcher err', 'Couldn’t keep it. Try again.'); }
     create.disabled = false;
   });
@@ -308,7 +328,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     setReduced(v) { reduced = !!v; kick(); },
     isOpen: () => open,
     info: () => ({
-      agent: id, grow, kept: store['left.kept.' + id] === '1', shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
+      agent: id, grow, kept: wasKept, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
       handle: { shown: !handle.hidden && handle.classList.contains('in'), blinks, blinkAt },
       panel: { open, hidden: panel.hidden }, mark: mark ? mark.info() : null,
       rect: (() => { const r = markEl.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })(),

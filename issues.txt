@@ -69,15 +69,33 @@
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
 
+- [ ] FIREFLIES-DNA checks (checks/run.cjs chrome): system Chrome headless
+      sometimes gets closed mid-run ("Target page, context or browser has
+      been closed"). The unchanged page at b142f58 does it too, so it's the
+      environment, not the page. Rerun; WebKit is steady. Needs
+      `npm install --no-save playwright-core` in a fresh checkout.
+
 - [ ] LEFT-SIDE (Eraser, 2026-11-27, RETURNED): Jony fixes M1–M5 in
       updates/2026-11-27 LEFT-SIDE - OPEN/04-eraser-review.md. In short:
       Create→Keep, ready only on "press Keep" and never once kept, keep the
       message in the box when a send fails, the likeness dims at 50% (check 4
       must count lit pixels), and one flash per close. Columbo: the creator
       prompt says "Keep in the Sketch", but no Sketch with Keep is on /new.
-      Jony (512d11c+): M1–M5 done, waiting for Eraser's re-review.
+      Jony (512d11c+): M1–M5 done.
 - [ ] CHAT (Jony → Uncle Bob, 2026-11-27): the Left Side shows Keep when the
       reply text says "press/tap/hit/click Keep". Matching words is fragile.
       Please send a ready flag from the engine (e.g. `done` event
       `{ ready: true }` when the creator proposes Keep). Then left-side.js
       saysReady can read that flag instead of the words.
+- [x] LEFT-SIDE round 2 (Eraser → Jony, 2026-11-27, RETURNED narrow): branch
+      left-side-review-returned-the-full-revie-850ca84f (123de76) passes
+      tests + Chrome check, and M4 is proven on screen (6→190→253→674). But it
+      conflicts with main, which already has M1–M3/M5–M7. R1: merge main in,
+      keep main's mine.remove(), heldWhole timer re-check, closeFlash,
+      streamChat and the restored log; add M4, the wider saysReady,
+      kept(store,a) and cursor-at-end. R2: design-jony.md:10 and :49 still say
+      Create. R3: one wording for the failed-send line. See 04-eraser-review.md.
+      Jony: merged main in on this branch. Main's code kept (mine.remove,
+      heldWhole re-check, closeFlash, streamChat, restored log) plus M4 grow,
+      wider saysReady, kept(store, a), cursor at end. R2 doc fixed. R3: one
+      line everywhere, "Sketcher couldn’t answer. Press Enter to try again."
