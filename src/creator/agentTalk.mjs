@@ -2,7 +2,6 @@
 // prompt, skill bodies, knowledge and readable files (talkPrompt.mjs). The
 // talk is kept in the record; it never changes the draft or the files.
 
-import { readFile } from "node:fs/promises";
 import { askWithBlock } from "./askWithBlock.mjs";
 import { buildTalkMessage, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
 import { createLogger } from "../log/logger.mjs";
@@ -14,39 +13,32 @@ const TALK_CONTEXT = 40; // earlier lines the agent sees again
 const FILE_CAP = 100_000; // characters per file
 const TOTAL_CAP = 400_000; // characters over all files
 
-const feedsTalk = (file) => !file.removed && file.source && file.feeds.some((feed) => feed === "rag" || feed.startsWith("skill:"));
+const feedsTalk = (file) => !file.removed && file.text === "ok" && file.feeds.some((feed) => feed === "rag" || feed.startsWith("skill:"));
 
-export const defaultReadSource = (path) => readFile(path, "utf8");
-
-export function createTalk({ store, engine, readSource = defaultReadSource }) {
+// `memory` (sourceText/memory.mjs) holds the files' plain-text copies:
+// talk reads those, never the originals.
+export function createTalk({ store, engine, memory }) {
   async function skillsOf(id, record) {
     return Promise.all((record.skills ?? []).map(async (skill) => ({ name: skill.name, body: await store.readText(id, `skills/${skill.id}/SKILL.md`) })));
   }
 
-  // The built knowledge.md first, then each readable source until the cap.
+  // The built knowledge.md first, then each kept copy until the cap. A copy
+  // gone missing is logged and left out, never fatal.
   async function filesOf(id, record, traceId) {
     const files = [{ path: "knowledge.md", text: await store.readText(id, "knowledge.md") }];
     let total = files[0].text.length;
     for (const file of (record.files ?? []).filter(feedsTalk)) {
       if (total >= TOTAL_CAP) break;
-      const text = await readable(file, traceId);
-      if (!text) continue;
+      const text = await memory.readCopy(id, file.path);
+      if (!text) {
+        log.warn("filesOf", "copy missing, left out", { id, path: file.path, traceId });
+        continue;
+      }
       const kept = text.slice(0, Math.min(FILE_CAP, TOTAL_CAP - total));
       files.push({ path: file.path, text: kept });
       total += kept.length;
     }
     return files;
-  }
-
-  // Binary or unreadable files are left out of the context, never fatal.
-  async function readable(file, traceId) {
-    try {
-      const text = await readSource(file.source);
-      return text.includes("\0") ? "" : text;
-    } catch (error) {
-      log.warn("readable", "skipped unreadable file", { path: file.path, error, traceId });
-      return "";
-    }
   }
 
   // Only a created agent talks; a draft gets a plain 400 before any stream.

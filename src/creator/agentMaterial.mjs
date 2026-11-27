@@ -3,13 +3,14 @@
 // Use cases over the store; the rules live in files.mjs and sections.mjs.
 // Every change answers with `dna`, so the screen redraws without asking again.
 
-import { addFiles, dnaOf } from "./files.mjs";
+import { addFiles, dnaOf, normalPath } from "./files.mjs";
 import { scanPaths } from "./folderScan.mjs";
 import { assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles } from "./sections.mjs";
 
 const dnaOfRecord = (record, files = record.files ?? []) => dnaOf(files, record.createdAt || record.updatedAt);
 
-export function createMaterial({ store, now = () => new Date() }) {
+// `memory` (sourceText/memory.mjs) keeps the used files' plain-text copies.
+export function createMaterial({ store, memory, now = () => new Date() }) {
   // Loads, changes and saves the file list; `change(files, record)` → { files, ...answer }.
   async function changeFiles(id, change) {
     const record = await store.loadAgent(id);
@@ -45,24 +46,36 @@ export function createMaterial({ store, now = () => new Date() }) {
 
     // Dropped onto a section: new files join the list, then all go into it.
     // → { section: [section files], changed: [paths newly in it], dna }.
-    assign: (id, section, entries) =>
-      changeFiles(id, (files, record) => {
+    // Their plain-text copies are kept before answering.
+    async assign(id, section, entries) {
+      const { feed, changed, dna } = await changeFiles(id, (files, record) => {
         const feed = feedFor(section, record.skills);
         const joined = addFiles(files, entries, now().toISOString()).files;
-        const assigned = assignFiles(joined, feed, entries.map((entry) => entry.path));
-        return { files: assigned.files, section: sectionFiles(assigned.files, feed), changed: assigned.changed };
-      }),
+        return { ...assignFiles(joined, feed, entries.map((entry) => entry.path)), feed };
+      });
+      const files = await memory.copySources(id);
+      return { files, section: sectionFiles(files, feed), changed, dna };
+    },
 
-    // → { path, state: "gone" | "removed", dna }.
-    removeFile: (id, path) =>
-      changeFiles(id, (files) => ({ ...removeFile(files, path), path })),
+    // → { path, state: "gone" | "removed", dna }. A gone file's copy goes too;
+    // a removed one is still baked in, so its copy stays until the rebuild.
+    async removeFile(id, path) {
+      const answer = await changeFiles(id, (files) => ({ ...removeFile(files, path), path }));
+      if (answer.state === "gone") await memory.forgetCopies(id, [normalPath(path)]);
+      return answer;
+    },
 
     // The builder's reports (no endpoint yet): these files are now in `section`…
     markProcessed: (id, section, paths) =>
       changeFiles(id, (files, record) => ({ files: markProcessed(files, feedFor(section, record.skills), paths) })),
 
     // …and a full rebuild is done: removed files are gone, the rest green.
-    rebuilt: (id) => changeFiles(id, (files) => ({ files: rebuilt(files) })),
+    async rebuilt(id) {
+      const { dropped, ...answer } = await changeFiles(id, (files) =>
+        ({ files: rebuilt(files), dropped: files.filter((file) => file.removed).map((file) => file.path) }));
+      await memory.forgetCopies(id, dropped);
+      return answer;
+    },
   };
   return material;
 }
