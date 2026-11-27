@@ -37,6 +37,16 @@ export class CantEmbed extends Error {
   }
 }
 
+// The model answered, but not in the shape asked for (no block, a field
+// that isn't text). Nothing is saved from such an answer.
+export class BadOutput extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BadOutput";
+    this.kind = "bad-output";
+  }
+}
+
 // Input the creator can't use, e.g. a file with no path.
 export class BadInput extends Error {
   constructor(message) {

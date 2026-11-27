@@ -66,7 +66,8 @@ function keepPointerRule(status) {
 }
 
 // The lines the user typed in by hand: a rewrite keeps what each one says.
-function userLines(handLines) {
+// Shared with the persona builder (persona/personaPrompt.mjs).
+export function userLines(handLines) {
   const rows = Object.entries(handLines).flatMap(([field, lines]) => lines.map((line) => `- ${field}: ${line}`));
   if (!rows.length) return "";
   return [
@@ -75,7 +76,7 @@ function userLines(handLines) {
   ].join("\n");
 }
 
-function currentDraft(draft, handEdited) {
+export function currentDraft(draft, handEdited) {
   const { name, persona, instructions, status } = draft;
   const edited = handEdited.length ? handEdited.join(", ") : "none";
   return [
