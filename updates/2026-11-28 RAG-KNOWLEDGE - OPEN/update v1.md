@@ -45,4 +45,4 @@ Talk puts the best chunks for the user's message first in the system prompt.
 
 ## Status
 
-- [x] Spike  - [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4  - [ ] Phase 5
+- [x] Spike  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4  - [ ] Phase 5
