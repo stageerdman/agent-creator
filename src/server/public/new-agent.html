@@ -26,10 +26,8 @@
   #pick span { opacity: 0; text-shadow: 0 0 6px rgba(216,242,106,.55), 0 0 18px rgba(216,242,106,.22); white-space: nowrap; pointer-events: none; }
   body.answered #pick { cursor: default; pointer-events: none; }
   body.answered #pick:focus-visible { box-shadow: none; }
-  /* First light: the new agent's own DNA logo, centred. */
-  #logo { position: fixed; left: 50%; top: 50%; width: 56px; height: 56px; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; }
-  #field, #logo, #pick { transition: opacity 600ms ease; }
-  body.split #field, body.split #logo, body.split #pick { opacity: 0; pointer-events: none; }
+  /* After the signal the field draws the flies; the orbit's canvas and the word step aside. */
+  body.split #field, body.split #pick { pointer-events: none; }
 
   /* ---------- the creation screen: the field (left) ---------- */
   /* Fireflies are not things to arrange: the field takes no pointer at all. */
@@ -116,7 +114,7 @@
   #sheet .err { margin: 0; min-height: 1em; color: #FF6B5E; font-size: 12px; }
   #sheet .close { align-self: flex-end; min-height: 36px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
   @media (prefers-reduced-motion: reduce) {
-    #menu, #note, #field, #logo, #pick, #name, #menu .swarm, #menu .row, #menu section.open .row, i.d { transition: none; }
+    #menu, #note, #name, #menu .swarm, #menu .row, #menu section.open .row, i.d { transition: none; }
     i.d, i.d::after { animation: none; }
   }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
@@ -127,7 +125,6 @@
 <canvas id="field" aria-hidden="true"></canvas>
 <main aria-label="New agent">
   <button id="pick" type="button" aria-label="Select Folder"><span aria-hidden="true">Select Folder</span></button>
-  <canvas id="logo" aria-hidden="true"></canvas>
   <p id="status" class="vh" role="status"></p>
   <input id="folder" type="file" webkitdirectory multiple hidden tabindex="-1">
 </main>
@@ -173,9 +170,9 @@
   </form>
 </dialog>
 <script type="module">
-import { createOrbit, entriesOfFiles, entriesOfDrop } from '/firefly-orbit.js';
-import { nameOf } from '/agent-list.js';
-import { mountCreation, postInBatches } from '/creation-screen.js';
+import { createOrbit } from '/firefly-orbit.js';
+import { createIntake, httpApi, entriesOfFiles, entriesOfDrop } from '/file-intake.js';
+import { mountCreation } from '/creation-screen.js';
 
 const $ = s => document.querySelector(s);
 const pick = $('#pick'), input = $('#folder');
@@ -193,65 +190,47 @@ if (already) {
           () => { history.replaceState(null, '', '/new'); location.reload(); });
 }
 
-/* The call from home fades into the ring (home only writes it when motion is on). */
-let call = false;
-try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); call = !!c && Date.now() - c.t < 2000; } catch {}
+/* The call from home: its epoch keeps the ring's clock, so this page goes on from the home's last frame. */
+let epoch = null;
+try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); if (c && Date.now() - c.t < 2000) epoch = c.epoch; } catch {}
 
-const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, logo: $('#logo'), reduced: rmq.matches, call: call && !rmq.matches });
+const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, reduced: rmq.matches, epoch: rmq.matches ? null : epoch });
 if (!already) orbit.start();
 rmq.addEventListener('change', e => orbit.setReduced(e.matches));
 window.orbit = { info: () => orbit.info() };   // read-only, for checks
 
-/* ---------- the one path after a choice ---------- */
-async function json(method, url, body) {
-  const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  if (!r.ok) throw new Error(method + ' ' + url + ' ' + r.status);
-  return r.json();
-}
-/* Create the agent and hand over the paths and sizes in batches: a firefly lands on the field per file
-   as each batch is saved, while the orbit keeps spinning. Then read its DNA for the logo. */
-let made = null;
-async function save(entries) {
-  const list = await entries;
-  if (!list.length) throw new Error('nothing came');
-  const { id } = await json('POST', '/api/agents');
-  try { await postInBatches(list, part => json('POST', `/api/agents/${id}/files`, { files: part }), r => screen.grow(r.dna)); }
-  catch (e) { fetch(`/api/agents/${id}`, { method: 'DELETE' }).catch(() => {}); throw e; }   // a failed save leaves no agent
-  try { made = await json('GET', `/api/agents/${id}`); } catch { made = { id, dna: [] }; }
-  return { name: nameOf(made), files: made.dna || [] };
-}
-/* First light, a breath, then the split: the orbit fades and the menu comes in beside the field. */
-function split() {
-  if (orbit.info().state !== 'first-light') return setTimeout(split, 100);
-  setTimeout(() => {
-    document.body.classList.add('split');
-    setTimeout(() => orbit.stop(), 600);
-    history.replaceState(null, '', `/new?agent=${encodeURIComponent(made.id)}`);
-    screen.open(made);
-  }, rmq.matches ? 400 : 1200);
-}
-/* Pick and drop both end here. entries: [{ path, size }] (or a promise of it, for a big drop still being read). */
-function onChosen(entries) {
-  if (orbit.busy()) return;
-  const work = save(entries);
-  orbit.answer(work);
-  document.body.classList.add('answered');
-  work.then(() => { $('#status').textContent = 'New agent'; split(); },
-            () => { setTimeout(() => document.body.classList.remove('answered'), 900); });
-}
+/* ---------- the one intake: pick and drop both end here ---------- */
+/* At the first real file the orbit lets go of its 30 live fireflies and the field flies them out;
+   every file found lights on the field at once; the saved agent fills the menu. */
+const intake = createIntake({
+  api: httpApi(),
+  emit(type, d) {
+    if (type === 'start') { document.body.classList.add('answered'); screen.adopt(orbit.release()); }
+    else if (type === 'found') screen.feed(d.entries);
+    else if (type === 'done') {
+      history.replaceState(null, '', `/new?agent=${encodeURIComponent(d.agentId)}`);
+      $('#status').textContent = 'New agent';
+      screen.open(d.agent);
+    } else if (type === 'error') {
+      if (d.started) { screen.fail(); orbit.restore(); document.body.classList.remove('answered'); }
+      else { orbit.calm(); orbit.hold(false); }
+    }
+  },
+});
+const free = () => !already && !screen.isOpen() && !orbit.busy() && !intake.isBusy();
 
 /* ---------- click: the Finder folder picker ---------- */
 let picking = false;
 function settlePick() { if (!picking) return; picking = false; orbit.hold(false); }
 pick.addEventListener('click', () => {
-  if (screen.isOpen() || picking || orbit.busy()) return;          // a second click while Finder is open does nothing
+  if (picking || !free()) return;          // a second click while Finder is open does nothing
   picking = true; orbit.hold(true); input.value = ''; input.click();
 });
 input.addEventListener('change', () => {
   const entries = entriesOfFiles(input.files);
   picking = false;
-  if (!entries.length) { orbit.hold(false); return; }   // an empty folder: as if cancelled
-  onChosen(entries);
+  if (!entries.length || !free()) { orbit.hold(false); return; }   // an empty folder: as if cancelled
+  intake.take('pick', async found => { found(entries); return entries; });
 });
 input.addEventListener('cancel', settlePick);
 // Fallback for webviews without the cancel event: the window gets focus back and no change came.
@@ -270,14 +249,13 @@ addEventListener('dragover', e => { if (screen.isOpen()) return; e.preventDefaul
 addEventListener('drop', e => {
   if (screen.isOpen()) return;
   e.preventDefault();
-  if (orbit.busy() || already) return;
+  if (!free()) return;
   const dt = e.dataTransfer;
   const hasFile = [...(dt && dt.items || [])].some(i => i.kind === 'file') || (dt && dt.files && dt.files.length > 0);
   if (!hasFile) { orbit.calm(); return; }          // a link or text: settle back, nothing made
-  // The answer starts at the first real file found; the rest is read inside it. Nothing found: settle back.
-  let started = false;
-  const entries = entriesOfDrop(dt, () => { started = true; onChosen(entries); });
-  entries.then(list => { if (!started || !list.length) orbit.calm(); }, () => orbit.calm());
+  // Read now, inside the handler (the items die after it). The flow starts at the first real file;
+  // nothing found comes back as an error without a start, and the ring settles.
+  intake.take('drop', found => entriesOfDrop(dt, found));
 });
 
 /* ---------- leaving ---------- */
