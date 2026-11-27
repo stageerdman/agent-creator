@@ -17,15 +17,17 @@ export function agentIdentity({ systemPrompt, draft }) {
 }
 
 // skills: [{ name, body }]; files: [{ path, text }]; excerpts: [{ file,
-// text }], best first. Empty texts are left out.
-export function buildTalkPrompt({ systemPrompt, draft, skills = [], files = [], excerpts = [] }) {
-  const context = [
+// text }], best first. Empty texts are left out. `context` is the person's
+// background (persona/personaBuilder.mjs), right after the identity.
+export function buildTalkPrompt({ systemPrompt, draft, context = "", skills = [], files = [], excerpts = [] }) {
+  const known = [
     ...skills.filter(({ body }) => body.trim()).map(({ name, body }) => section("skill", name, body)),
     ...files.filter(({ text }) => text.trim()).map(({ path, text }) => section("file", path, text)),
     ...(excerpts.length ? [knowledgeBlock(excerpts)] : []),
   ];
   const parts = [agentIdentity({ systemPrompt, draft })];
-  if (context.length) parts.push(`What you know and can do:\n\n${context.join("\n\n")}`, USED_RULE);
+  if (context.trim()) parts.push(`<background>\n${context.trim()}\n</background>`);
+  if (known.length) parts.push(`What you know and can do:\n\n${known.join("\n\n")}`, USED_RULE);
   return parts.join("\n\n");
 }
 

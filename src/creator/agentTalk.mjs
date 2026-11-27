@@ -7,6 +7,7 @@ import { askWithBlock } from "./askWithBlock.mjs";
 import { buildTalkMessage, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
 import { createLogger } from "../log/logger.mjs";
 import { BadInput, CantEmbed } from "./errors.mjs";
+import { CONTEXT_FILE } from "./persona/personaBuilder.mjs";
 
 const log = createLogger("agentTalk");
 export const TALK_KEEP = 200;
@@ -71,12 +72,13 @@ export function createTalk({ store, engine, memory, knowledge }) {
     async talk(id, message, { onSay, signal, traceId } = {}) {
       const record = await canTalk(id);
       const systemPrompt = await store.readText(id, "system-prompt.md");
+      const context = await store.readText(id, CONTEXT_FILE);
       const skills = await skillsOf(id, record);
       const files = await filesOf(id, record, traceId);
       const excerpts = await excerptsFor(id, message, traceId);
       const input = {
         message: buildTalkMessage({ message, talk: (record.talk ?? []).slice(-TALK_CONTEXT) }),
-        systemPrompt: buildTalkPrompt({ systemPrompt, draft: record.draft, skills, files, excerpts }),
+        systemPrompt: buildTalkPrompt({ systemPrompt, draft: record.draft, context, skills, files, excerpts }),
       };
       const reply = await askWithBlock(engine, input, "used", { onSay, signal, traceId });
       const used = usedOf(reply.patch, { skills, files, excerpts });
