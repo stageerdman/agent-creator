@@ -64,4 +64,12 @@ Module: `src/creator/capability/` — `capabilityPrompt.mjs` (pure),
 
 ## Status
 
-- [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
+
+Final shape (backend): `src/creator/capability/` holds `capabilityPrompt.mjs`,
+`capabilitySources.mjs` (roles, usable copies, fingerprint),
+`capabilityBuilder.mjs` and `capabilityContext.mjs` (the creator-turn block);
+`src/server/routes/capabilities.mjs` holds the two routes as designed.
+`src/server/capabilities.test.mjs` locks in that talk never reads the map.
+Still open, for the screen: call `GET` after materials change and build when
+`stale`; show the map as a card at launch.
