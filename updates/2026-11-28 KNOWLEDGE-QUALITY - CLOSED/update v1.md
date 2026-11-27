@@ -80,7 +80,11 @@ Knowledge files are actually cut with.
 
 ## Status
 
-- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4
+
+Phase 4 note: `POST /api/agents/:id/quality/build` streams
+`progress { done, total }*` then `done { report }` (or `error { kind }`);
+`GET /api/agents/:id/quality` returns the report without calling the AI.
 
 Phase 3 note: each saved score keeps the agent fingerprint it was judged
 against (`quality.json` → `files[path] = { score, reason, fingerprint,
