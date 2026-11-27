@@ -4,7 +4,7 @@ import { mkdtemp, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
-import { createAgents, shortDescription, summary } from "./agents.mjs";
+import { CHAT_KEEP, createAgents, shortDescription, summary, withTurn } from "./agents.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { emptyDraft } from "./draft.mjs";
 import { ClaudeCliError } from "../engine/index.mjs";
@@ -18,6 +18,15 @@ function ticking() {
   return () => new Date((t += 1000));
 }
 const freshStore = async () => createAgentStore({ home: await mkdtemp(join(home, "h-")), now: ticking() });
+
+test("withTurn adds the user's line and Sketcher's, and keeps only the newest CHAT_KEEP", () => {
+  assert.deepEqual(withTurn(undefined, "hi", "hello"), [{ who: "you", text: "hi" }, { who: "sketcher", text: "hello" }]);
+  let chat = [];
+  for (let i = 0; i < CHAT_KEEP; i++) chat = withTurn(chat, `q${i}`, `a${i}`);
+  assert.equal(chat.length, CHAT_KEEP);
+  assert.deepEqual(chat.at(-1), { who: "sketcher", text: `a${CHAT_KEEP - 1}` });
+  assert.equal(chat[0].who, "you", "a cut never starts on an answer");
+});
 
 // An engine that replays a scripted reply and records what it was asked.
 function scriptedEngine(deltas, { sessionId = "sess-1", text = deltas.join("") } = {}) {
@@ -129,7 +138,8 @@ test("agents: a chat turn applies the patch, autosaves it and keeps the session"
   const turn = await agents.chat(id, "a loud coach");
   assert.deepEqual(turn.changed, ["name", "persona"]);
   assert.equal(turn.say, "Sketched.");
-  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], dna: [] });
+  const chat = [{ who: "you", text: "a loud coach" }, { who: "sketcher", text: "Sketched." }];
+  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], chat, dna: [] });
 });
 
 test("agents: dropped files are stamped by the clock and show up as dna on the list and the view", async () => {

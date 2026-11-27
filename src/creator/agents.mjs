@@ -24,8 +24,13 @@ export function summary({ id, draft, files, createdAt, updatedAt }) {
     createdAt: born, updatedAt, dna: dnaOf(files, born),
   };
 }
-const view = ({ id, draft, sessionId, files = [], createdAt, updatedAt }) =>
-  ({ id, draft, sessionId, files, dna: dnaOf(files, createdAt || updatedAt) });
+const view = ({ id, draft, sessionId, files = [], chat = [], createdAt, updatedAt }) =>
+  ({ id, draft, sessionId, files, chat, dna: dnaOf(files, createdAt || updatedAt) });
+
+// The chat as the panel shows it again after a reload; the oldest lines go first.
+export const CHAT_KEEP = 200;
+export const withTurn = (chat = [], message, say) =>
+  [...chat, { who: "you", text: message }, { who: "sketcher", text: say }].slice(-CHAT_KEEP);
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
 // Files, sections and texts are their own use cases (agentMaterial.mjs,
@@ -62,7 +67,8 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       const routed = routeFiles(latest.files ?? [], turn.patch?.files);
       const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
-      await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId });
+      const chat = withTurn(latest.chat, message, turn.say);
+      await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
       return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId };
     },
 

@@ -8,6 +8,7 @@ import { fakeSpawn } from "../engine/testing/fakeSpawn.mjs";
 import { createAgentStore } from "../creator/index.mjs";
 import { createApp } from "./app.mjs";
 import { parseSse } from "./testing/sse.mjs";
+import { streamChat } from "./public/left-side.js";
 
 // The real engine and creator, with the CLI swapped for the fake and the
 // agents kept in a temp folder.
@@ -83,6 +84,34 @@ test("dropped files land in the DNA list, never the chat; the creator routes the
   assert.deepEqual(events.at(-2).data.changed, ["notes/deep/a.md", "bio.pdf"]);
   const saved = await json("GET", `/api/agents/${id}`);
   assert.deepEqual(saved.files.map((f) => [f.path, f.feeds]), [["notes/deep/a.md", ["rag"]], ["bio.pdf", ["instructions"]]]);
+});
+
+// The Left Side's own client (streamChat) against this server: the panel talks to the real creator.
+const pageFetch = (path, options) => fetch(`${base}${path}`, options);
+
+test("the Sketcher panel: streams the answer, routes files, and the talk is there after a reload", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "bio.pdf" }] });
+  const seen = [];
+  let changes = 0;
+  const message = '{"name":"Tony","files":{"bio.pdf":"instructions"}}';
+  const text = await streamChat({ fetch: pageFetch, id, message, onText: (t) => seen.push(t), onChange: () => changes++ });
+  assert.equal(text, "Here's a first sketch.");
+  assert.equal(seen.at(-1), text);
+  assert.equal(changes, 2, "one draft and one files event");
+  const saved = await json("GET", `/api/agents/${id}`);
+  assert.equal(saved.draft.name, "Tony");
+  assert.deepEqual(saved.files[0].feeds, ["instructions"]);
+  assert.deepEqual(saved.chat, [{ who: "you", text: message }, { who: "sketcher", text }]);
+});
+
+test("the Sketcher panel: an engine failure throws and leaves the saved talk alone", async () => {
+  scenario = "stream-fail";
+  const id = await newAgent();
+  await assert.rejects(streamChat({ fetch: pageFetch, id, message: "hi" }), /chat: /);
+  assert.deepEqual((await json("GET", `/api/agents/${id}`)).chat, []);
+  await assert.rejects(streamChat({ fetch: pageFetch, id: "0123456789ab", message: "hi" }), /status 404/);
 });
 
 test("a files body without paths is 400", async () => {

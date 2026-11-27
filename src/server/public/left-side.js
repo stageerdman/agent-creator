@@ -100,6 +100,28 @@ export function parseEvents(buf) {
   return { events: out, rest };
 }
 
+/* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
+   onText(all text so far) as it streams; onChange() when the draft or the files changed.
+   → Sketcher's whole answer. Throws on any failure (no answer counts as one). */
+export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {} }) {
+  const r = await fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
+  if (!r.ok || !r.body) throw new Error(`chat: status ${r.status}`);
+  const rd = r.body.getReader(), dec = new TextDecoder();
+  let buf = '', text = '';
+  for (;;) {
+    const { value, done } = await rd.read(); if (done) break;
+    const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
+    for (const { event, data } of out.events) {
+      if (event === 'delta' && data && data.text) onText(text += data.text);
+      else if (event === 'files' || event === 'draft') onChange();
+      else if (event === 'done' && data && data.say) { if (data.say !== text) onText(text = data.say); }   // the final text is the truth
+      else if (event === 'error') throw new Error(`chat: ${(data && data.error) || 'error'}`);
+    }
+  }
+  if (!text) throw new Error('chat: empty answer');
+  return text;
+}
+
 /* ------------------------------------------------------------------ the page ---- */
 export function mountLeftSide({ doc = document, reduced = false, store = localStorage, fetchAgent, refresh }) {
   const win = doc.defaultView, $ = s => doc.querySelector(s), now = () => win.performance.now();
@@ -163,6 +185,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = [];
     id = a.id; name = nameOf(a); files = a.dna || [];
     heldWhole = false; kept = isKept(a); create.hidden = true;
+    log.replaceChildren(); for (const m of a.chat || []) line(m.who === 'you' ? 'you' : 'sketcher', m.text);   // the talk so far, after a reload too
     known = new Map(files.map(f => [f.id, f.state]));
     const res = gatheredFiles(files); prev = { shown: res.shown, live: res.live };
     flown = new Set(files.filter(f => f.state === 'processed').map(f => f.id));
@@ -223,22 +246,10 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     e.preventDefault();
     const message = box.value.trim(); if (!message || busy || !id) return;
     busy = true; box.value = ''; const mine = line('you', message);
-    const reply = line('sketcher wait', 'Sketching…'); let text = '';
+    const reply = line('sketcher wait', 'Sketching…');
+    const onText = text => { reply.textContent = text; reply.classList.remove('wait'); log.scrollTop = log.scrollHeight; };
     try {
-      const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
-      if (!r.ok || !r.body) throw new Error(String(r.status));
-      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
-      for (;;) {
-        const { value, done } = await rd.read(); if (done) break;
-        const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
-        for (const { event, data } of out.events) {
-          if (event === 'delta' && data && data.text) { text += data.text; reply.textContent = text; reply.classList.remove('wait'); }
-          else if (event === 'files' || event === 'draft') pull();
-          else if (event === 'done' && data && data.say && !text) { text = data.say; reply.textContent = text; reply.classList.remove('wait'); }
-          else if (event === 'error') throw new Error('error');
-        }
-      }
-      if (!text) throw new Error('empty');
+      const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange: pull });
       if (showKeep(text, kept)) create.hidden = false;
     } catch {
       // The message goes back in the box, so Enter tries again (no retyping, no retry button).
