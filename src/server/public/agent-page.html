@@ -5,36 +5,88 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent · Agent Creator</title>
 <style>
-  /* The agent's page, on the Fireflies background (same on html and body: no white flash).
-     For now it says who the agent is; talking to it lands here later. */
+  /* The agent's page (design/agent-page.md): who it is, what it's made of, and Talk.
+     On the Fireflies background (same on html and body: no white flash). */
   :root {
-    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A; --text: #E6EEE8; --quiet: #8C9A90;
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A; --text: #E6EEE8; --quiet: #8C9A90; --line: rgba(232,239,224,.12);
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   }
   html { background: var(--field); }
   /* In the Mac app the window is glass: the field tints the blurred desktop, dark enough for text. */
   html.glass { background: transparent; --field: rgba(11, 20, 16, .62); --shadow: rgba(6, 11, 8, .8); }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
     background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
-    color: var(--text); font: 15px/1.5 var(--font); overflow: hidden; -webkit-font-smoothing: antialiased;
+    color: var(--text); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased;
   }
   :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
-  .back { position: fixed; top: 20px; left: 20px; color: var(--quiet); text-decoration: none; font-size: 13px; padding: 6px 4px; }
-  .back:hover { color: var(--text); }
-  main { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 48px)); text-align: center; }
+  [hidden] { display: none !important; }
+  .top { position: fixed; top: 20px; color: var(--quiet); text-decoration: none; font-size: 13px; padding: 6px 4px; z-index: 2; }
+  .top:hover { color: var(--text); }
+  .back { left: 20px; } #edit { right: 20px; }
+  main { width: min(560px, calc(100vw - 48px)); margin: 0 auto; padding: 72px 0 140px; }
+  header { text-align: center; }
   h1 { margin: 0; font-size: 34px; font-weight: 500; letter-spacing: .02em; overflow-wrap: anywhere; }
   .logo { display: block; width: 112px; height: 112px; margin: 0 auto 16px; }
-  .logo[hidden] { display: none; }
-  p { margin: 8px 0 0; color: var(--quiet); overflow-wrap: anywhere; }
+  #desc { margin: 8px 0 0; color: var(--quiet); overflow-wrap: anywhere; }
+  /* One quiet switch: Profile | DNA. */
+  .switch { display: flex; width: max-content; margin: 28px auto 20px; padding: 2px; border-radius: 9px; background: rgba(232,239,224,.06); }
+  .switch button { font: 13px/1 var(--font); color: var(--quiet); background: none; border: 0; border-radius: 7px; padding: 8px 18px; min-height: 32px; cursor: pointer; }
+  .switch button[aria-selected="true"] { color: var(--text); background: rgba(232,239,224,.12); }
+  dl { margin: 0; }
+  .row { display: grid; grid-template-columns: 128px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; }
+  dt { color: var(--quiet); } dd { margin: 0; overflow-wrap: anywhere; }
+  .part + .part { margin-top: 22px; }
+  h2 { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--quiet); }
+  .names { margin: 0; padding: 0; list-style: none; } .names li { overflow-wrap: anywhere; }
+  .none, .quality { margin: 0; } .none { color: var(--quiet); }
+  .instructions { max-height: 40vh; overflow: auto; padding-right: 4px; }
+  #not-yet { margin: 32px 0 0; text-align: center; color: var(--quiet); }
+  /* Talk: the log, then the box, held at the bottom of the window. */
+  #talk { margin-top: 36px; }
+  #talk-log > div { margin-top: 14px; overflow-wrap: anywhere; }
+  #talk-log .you { color: var(--quiet); white-space: pre-wrap; }
+  #talk-log .wait .md { color: var(--quiet); }
+  .used { margin: 4px 0 0; font-size: 12px; color: var(--quiet); }
+  #talk-form { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(560px, calc(100vw - 48px)); }
+  #talk-box { box-sizing: border-box; width: 100%; resize: none; font: 15px/1.4 var(--font); color: var(--text); background: rgba(11,20,16,.86);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  #talk-box::placeholder { color: var(--quiet); }
+  #talk-err { margin: 6px 2px 0; font-size: 12px; color: #F2A08C; }
+  .md > * + *, .md li > * + *, .md blockquote > * + * { margin-top: 6px; }
+  .md p, .md ol, .md ul, .md pre, .md blockquote { margin-bottom: 0; } .md p { margin-top: 0; }
+  .md > :first-child { margin-top: 0; }
+  .md strong { font-weight: 600; } .md ol, .md ul { padding-left: 1.4em; }
+  .md code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(232,239,224,.08); padding: 1px 4px; border-radius: 4px; }
+  .md pre { overflow-x: auto; background: rgba(232,239,224,.08); border-radius: 8px; padding: 8px 10px; } .md pre code { background: none; padding: 0; }
+  .md blockquote { margin-left: 0; margin-right: 0; padding-left: 10px; border-left: 2px solid rgba(232,239,224,.25); }
+  .md a { color: var(--fly); text-underline-offset: 2px; }
 </style>
 </head>
 <body>
-<a class="back" href="/">← Agents</a>
-<main aria-live="polite"><canvas class="logo" id="logo" aria-hidden="true" hidden></canvas><h1 id="name"></h1><p id="desc"></p></main>
+<a class="top back" href="/">← Agents</a>
+<a class="top" id="edit" href="/new" hidden>Edit</a>
+<main>
+  <header aria-live="polite"><canvas class="logo" id="logo" aria-hidden="true" hidden></canvas><h1 id="name"></h1><p id="desc"></p></header>
+  <div id="views" hidden>
+    <div class="switch" role="tablist" aria-label="View">
+      <button id="tab-profile" role="tab" aria-controls="profile" aria-selected="true">Profile</button>
+      <button id="tab-dna" role="tab" aria-controls="dna" aria-selected="false" tabindex="-1">DNA</button>
+    </div>
+    <section id="profile" role="tabpanel" aria-labelledby="tab-profile"><dl id="profile-list"></dl></section>
+    <section id="dna" role="tabpanel" aria-labelledby="tab-dna" hidden></section>
+    <p id="not-yet" hidden>Not created yet. Edit it to finish, then talk to it here.</p>
+    <section id="talk" aria-label="Talk" hidden>
+      <div id="talk-log" aria-live="polite"></div>
+      <form id="talk-form"><textarea id="talk-box" rows="1" aria-label="Message"></textarea><p id="talk-err" role="alert" hidden>It couldn’t answer. Press Enter to try again.</p></form>
+    </section>
+  </div>
+</main>
 <script type="module">
-import { nameOf, descOf } from '/agent-list.js';
+import { nameOf } from '/agent-list.js';
 import { createDna } from '/fireflies-dna.js';
+import { mountAgentPage } from '/agent-page.js';
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = mq.matches, busy = true;
 mq.addEventListener('change', e => { reduced = e.matches; busy = true; });
@@ -51,11 +103,13 @@ function face(a) {
 const id = decodeURIComponent(location.pathname.split('/').pop() || '');
 const demo = new URLSearchParams(location.search).get('demo');
 const back = document.querySelector('.back'); if (demo != null) back.href = '/?demo=' + encodeURIComponent(demo);
-const show = (name, desc) => { document.getElementById('name').textContent = name; document.getElementById('desc').textContent = desc; document.title = name + ' · Agent Creator'; };
+const show = (name, desc) => { document.getElementById('name').textContent = name; document.getElementById('desc').textContent = desc; };
 try {
-  const r = await fetch(demo != null ? '/mock/home/' + encodeURIComponent(demo) : '/api/agents');
-  const a = r.ok ? (await r.json()).find(x => x.id === id) : null;
-  if (a) { face(a); show(nameOf(a), descOf(a)); } else show('This agent isn’t here', 'It may have been removed.');
+  let a = null;
+  if (demo != null) { const r = await fetch('/mock/home/' + encodeURIComponent(demo)); a = r.ok ? (await r.json()).find(x => x.id === id) : null; }
+  else { const r = await fetch('/api/agents/' + encodeURIComponent(id)); a = r.ok ? await r.json() : null; }
+  if (a) { face(a); await mountAgentPage({ a, demo: demo != null }); document.getElementById('views').hidden = false; }
+  else show('This agent isn’t here', 'It may have been removed.');
 } catch { show('Couldn’t open this agent', 'Go back and try again.'); }
 </script>
 </body>
