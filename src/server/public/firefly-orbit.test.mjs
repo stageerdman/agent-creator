@@ -149,3 +149,11 @@ test("entries: a dropped folder is walked in batches; onFirst fires once; a link
   assert.equal(first, 1);
   assert.deepEqual(await entriesOfDrop({ items: [{ kind: "string" }], files: [] }), []);
 });
+
+test("entries: loose files without the entry API still answer, and onFirst comes after the call returns", async () => {
+  let entries = null, seen = null;
+  entries = entriesOfDrop({ items: [{ kind: "file" }], files: [{ name: "note.md", size: 5 }] }, () => { seen = entries; });
+  assert.equal(seen, null);
+  assert.deepEqual(await entries, [{ path: "note.md", size: 5 }]);
+  assert.equal(seen, entries);
+});

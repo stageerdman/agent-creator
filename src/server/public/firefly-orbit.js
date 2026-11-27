@@ -321,7 +321,8 @@ export async function entriesOfDrop(dataTransfer, onFirst = () => {}) {
   const roots = items.map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
   const out = [];
   let told = false;
-  const push = e => { if (!e.path || isHidden(e.path)) return; out.push(e); if (!told) { told = true; onFirst(); } };
+  // onFirst always runs after this call has returned its promise, even for loose files found at once.
+  const push = e => { if (!e.path || isHidden(e.path)) return; out.push(e); if (!told) { told = true; queueMicrotask(onFirst); } };
   const fileOf = entry => new Promise(res => entry.file(res, () => res(null)));
   const readAll = dir => new Promise(res => {
     const reader = dir.createReader(), all = [];

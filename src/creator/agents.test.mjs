@@ -201,6 +201,16 @@ test("agents: empty agents are hidden from the list and reused by create (R8)", 
   assert.deepEqual(list.map((a) => a.draft), [{ name: "Tony", status: "draft", description: "" }]);
 });
 
+test("agents: an agent built from a folder (files, no words) is on the list, not reused", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]) });
+  const { id } = await agents.create();
+  await agents.addFiles(id, [{ path: "Recipes/soup.md", size: 30 }]);
+  const list = await agents.list();
+  assert.deepEqual(list.map((a) => [a.id, a.dna.length]), [[id, 1]]);
+  assert.notEqual((await agents.create()).id, id);
+});
+
 test("agents: the list carries a short description from persona, else instructions", async () => {
   const store = await freshStore();
   const agents = createAgents({ store, engine: scriptedEngine([]) });

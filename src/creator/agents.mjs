@@ -34,8 +34,9 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       return { id: (unused ?? (await store.createAgent())).id };
     },
 
-    // Empty agents are left out of the switcher (R8).
-    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft)).map(summary),
+    // Empty agents are left out of the switcher (R8). One built from a folder
+    // (files, no words yet) is not empty: home shows it at the top.
+    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft) || r.files?.length).map(summary),
 
     get: async (id) => view(await store.loadAgent(id)),
 

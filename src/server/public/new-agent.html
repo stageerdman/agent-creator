@@ -68,7 +68,7 @@ async function save(entries) {
   const { id } = await json('POST', '/api/agents');
   try { await json('POST', `/api/agents/${id}/files`, { files: list }); }
   catch (e) { fetch(`/api/agents/${id}`, { method: 'DELETE' }).catch(() => {}); throw e; }   // a failed save leaves no agent
-  try { const a = (await json('GET', '/api/agents')).find(x => x.id === id); return { name: nameOf(a), files: (a && a.dna) || [] }; }
+  try { const a = await json('GET', `/api/agents/${id}`); return { name: nameOf(a), files: a.dna || [] }; }
   catch { return { name: 'Untitled', files: [] }; }
 }
 /* Pick and drop both end here. entries: [{ path, size }] (or a promise of it, for a big drop still being read). */
