@@ -10,6 +10,7 @@ import { createTalk } from "./agentTalk.mjs";
 import { createSourceMemory } from "./sourceText/memory.mjs";
 import { createKnowledgeBase } from "./knowledge/knowledgeBase.mjs";
 import { createEmbedder } from "./knowledge/embedder.mjs";
+import { createKnowledgeBuilder } from "./knowledge/knowledgeBuilder.mjs";
 import { defaultHome } from "./agentStore.mjs";
 import { join } from "node:path";
 
@@ -59,6 +60,7 @@ export function createAgents({ store, engine, now = () => new Date(), readOrigin
     ...material,
     ...createTexts({ store, material, now }),
     ...createTalk({ store, engine, memory, knowledge }),
+    ...createKnowledgeBuilder({ store, memory, knowledge, forget, now }),
     putSource: memory.putSource,
     // Call after any change that may bring new Knowledge copies (chat, a
     // drop, putSource). → [{ type: "embedded" | "embed-failed", file, reason? }].

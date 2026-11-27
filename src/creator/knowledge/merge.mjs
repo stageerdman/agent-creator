@@ -3,6 +3,8 @@
 // title (else its path), naming where it came from, with the user's note
 // quoted above its text. Pure, so a Build and a test agree on the result.
 
+export const KNOWLEDGE_FILE = "knowledge.md";
+
 // parts: [{ path, title?, note?, text }] → markdown ("" when there are none).
 export function mergeKnowledge(parts) {
   return parts.map(sectionOf).join("\n");

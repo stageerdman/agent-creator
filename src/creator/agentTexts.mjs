@@ -7,9 +7,9 @@ import { randomBytes } from "node:crypto";
 import { feedOf, normalPath } from "./files.mjs";
 import { BadInput, NotFound } from "./errors.mjs";
 import { sectionFiles, skillFeed } from "./sections.mjs";
+import { KNOWLEDGE_FILE } from "./knowledge/merge.mjs";
 
 const SYSTEM_PROMPT = "system-prompt.md";
-const KNOWLEDGE = "knowledge.md";
 const skillBody = (skillId) => `skills/${skillId}/SKILL.md`;
 
 // `material` (agentMaterial.mjs) puts a new skill's dropped files into it.
@@ -30,7 +30,7 @@ export function createTexts({ store, material, now = () => new Date() }) {
       return { text };
     },
 
-    getKnowledge: async (id) => ({ text: await store.readText(id, KNOWLEDGE) }),
+    getKnowledge: async (id) => ({ text: await store.readText(id, KNOWLEDGE_FILE)}),
 
     // → [{ id, name, createdAt, updatedAt, fileCount }].
     async listSkills(id) {

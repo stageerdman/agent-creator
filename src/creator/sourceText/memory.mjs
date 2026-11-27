@@ -14,6 +14,12 @@ const log = createLogger("sourceMemory");
 
 export const sourceCopyOf = (path) => `sources/${path}.txt`;
 
+// A copy the user writes must say something; an empty one is a take-out.
+export function requireCopyText(text) {
+  if (typeof text !== "string" || !text.trim()) throw new BadInput("`text` must be non-empty: take the source out instead.");
+  return text;
+}
+
 const isUsed = (file) => !file.removed && file.feeds.length > 0;
 const needsCopy = (file) => isUsed(file) && !file.text && file.source;
 
@@ -76,7 +82,7 @@ export function createSourceMemory({ store, readOriginal = readFile }) {
 
     // The user's own wording replaces the extracted copy. → the files.
     async editCopy(id, path, text) {
-      if (typeof text !== "string" || !text.trim()) throw new BadInput("`text` must be non-empty: take the source out instead.");
+      requireCopyText(text);
       const clean = await knownPath(id, path);
       await store.writeText(id, sourceCopyOf(clean), text);
       return saveMarks(id, new Map([[clean, "ok"]]));
