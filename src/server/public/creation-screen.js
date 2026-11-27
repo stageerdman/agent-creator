@@ -256,7 +256,7 @@ async function call(method, url, body) {
   return data;
 }
 
-export function mountCreation({ doc = document, reduced = false } = {}) {
+export function mountCreation({ doc = document, reduced = false, onDna = null } = {}) {
   const $ = s => doc.querySelector(s);
   const body = doc.body, win = doc.defaultView;
   const field = createField($('#flies'), () => reduced);
@@ -289,6 +289,7 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     agent = a; opened = true;
     field.set(a.dna || [], { still });
     nameEl.textContent = nameOf(a);
+    if (onDna) onDna(a, { still });
     if (!splitDue) body.classList.add('split');
     menu.removeAttribute('inert');
     reloadMenu();
@@ -298,7 +299,7 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     const a = await call('GET', `/api/agents/${encodeURIComponent(agent.id)}`);
     agent = a; setDna(a.dna || []);
   }
-  function setDna(dna) { agent.dna = dna; field.set(dna); }
+  function setDna(dna) { agent.dna = dna; field.set(dna); if (onDna) onDna(agent, { still: false }); }
 
   /* ---- the name: click it and type; Enter or a click elsewhere saves, Esc puts it back ---- */
   let nameWas = '', cancelName = false;
@@ -490,6 +491,9 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
 
   return {
     grow, adopt, feed, fail, open, isOpen: () => opened,
+    /* For the Left Side: a newer copy of the agent (its DNA refresh), and the files no longer drawn here. */
+    refresh(a) { if (!agent || !a || a.id !== agent.id) return; agent = a; if (doc.activeElement !== nameEl) nameEl.textContent = nameOf(a); setDna(a.dna || []); },
+    hide: ids => field.hide(ids),
     setReduced(v) { reduced = !!v; field.redraw(); },
     info: () => ({ split: opened, field: field.info(), sections: Object.fromEntries(Object.entries(sections).map(([s, f]) => [s, f.map(x => ({ path: x.path, state: x.state }))])), skills: skills.map(k => k.name) }),
   };
@@ -502,6 +506,7 @@ export function createField(canvas, isReduced) {
   const now = () => win.performance.now();
   let dna = [], ids = new Set(), dots = [], lay = null, layKey = '', raf = 0;
   const born = new Map(), params = new Map(), spots = new Map(), flown = new Set(), waiting = new Set();
+  let hidden = new Set();                                  // files the Left Side has taken (flown into the mark)
   let queue = [], qi = 0;                                  // files waiting to light in place, in read order
   let hand = null, flyers = [], adoptT = 0, failAt = null, failTimer = 0, sprite = null;
   const P = id => { let p = params.get(id); if (!p) params.set(id, p = wanderParams(id)); return p; };
@@ -556,7 +561,7 @@ export function createField(canvas, isReduced) {
     return new Promise(res => { failTimer = win.setTimeout(() => { reset(); res(); }, FAIL_MS); });
   }
   function reset() {
-    dna = []; ids = new Set(); lay = null; born.clear(); flown.clear(); waiting.clear(); queue = []; qi = 0;
+    dna = []; ids = new Set(); lay = null; born.clear(); hidden = new Set(); flown.clear(); waiting.clear(); queue = []; qi = 0;
     hand = null; flyers = []; failAt = null; redraw();
   }
 
@@ -600,7 +605,7 @@ export function createField(canvas, isReduced) {
     let busy = failAt != null || qi < queue.length;
     const ar = area(fw, H);
     for (const d of dots) {
-      const b = born.get(d.id); if (b == null) continue;
+      const b = born.get(d.id); if (b == null || hidden.has(d.id)) continue;
       const age = t - b; if (age < 0) continue;
       const look = dotLook(d.state), m = still ? d : wanderAt(d.id, t, ar, false, P(d.id)), glow = age < SHINE_AFTER || still ? 0 : m.glow;
       let a = look.alpha;
@@ -630,8 +635,9 @@ export function createField(canvas, isReduced) {
   let lastFlying = 0;
   return {
     set, feed, adopt, fail, redraw, total: () => dna.length,
+    hide(ids) { hidden = new Set(ids); redraw(); },
     info: () => ({
-      total: dna.length, drawn: dots.length, moving: !isReduced(), lit: [...born.values()].filter(b => b <= now()).length,
+      total: dna.length, drawn: dots.length, hidden: hidden.size, moving: !isReduced(), lit: [...born.values()].filter(b => b <= now()).length,
       flyers: flyers.length, flying: lastFlying, queued: queue.length - qi,
       dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })),
       at: (t = now()) => {                                   // where the first 50 are drawn at t (home spots when reduced)
