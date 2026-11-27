@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
 import { createAgents } from "./agents.mjs";
 import { saysReady, splitReply } from "./creatorReply.mjs";
-import { agentIdentity } from "./talkPrompt.mjs";
+import { agentIdentity, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
+import { createFakeEmbedder } from "./knowledge/fakeEmbedder.mjs";
 
 const home = await mkdtemp(join(tmpdir(), "agent-creator-talk-"));
 after(() => rm(home, { recursive: true, force: true }));
@@ -28,6 +29,15 @@ test("agentIdentity: the written system prompt, else persona and instructions", 
   assert.equal(agentIdentity({ systemPrompt: "", draft: { persona: "Calm.", instructions: " " } }), "Calm.");
 });
 
+test("buildTalkPrompt numbers retrieved passages by file; usedOf accepts their file names", () => {
+  const excerpts = [{ file: "a.md", text: "one " }, { file: "b.md", text: "two" }];
+  const prompt = buildTalkPrompt({ systemPrompt: "Be.", draft: {}, excerpts });
+  assert.match(prompt, /<knowledge>\n.*\n\n\[1\] \(from a\.md\)\none\n\n\[2\] \(from b\.md\)\ntwo\n<\/knowledge>/);
+  assert.match(prompt, /<used>/, "the used rule comes with passages alone");
+  assert.equal(buildTalkPrompt({ systemPrompt: "Be.", draft: {} }), "Be.");
+  assert.deepEqual(usedOf({ files: ["b.md", "x.md"] }, { excerpts }), [{ kind: "file", name: "b.md" }]);
+});
+
 test("talk reads the kept copies of knowledge and skill files; no copy, unrouted or removed ones are left out", async () => {
   const store = createAgentStore({ home });
   const { id } = await store.createAgent();
@@ -46,12 +56,14 @@ test("talk reads the kept copies of knowledge and skill files; no copy, unrouted
   }
   await store.markSaved(id); // only a created agent talks
   const engine = echoEngine("Hi.");
-  const agents = createAgents({ store, engine, readOriginal: () => assert.fail("talk never reads an original") });
-  assert.deepEqual(await agents.talk(id, "hello"), { say: "Hi.", used: [] });
+  const agents = createAgents({ store, engine, embedder: createFakeEmbedder(), readOriginal: () => assert.fail("talk never reads an original") });
+  await agents.embedKnowledge(id);
+  assert.deepEqual(await agents.talk(id, "alpha"), { say: "Hi.", used: [] });
   const prompt = engine.seen[0].systemPrompt;
-  assert.match(prompt, /<file name="a\.md">\nalpha/);
-  assert.match(prompt, /<file name="big\.md">\nz{100000}\n<\/file>/, "cut to the per-file cap");
-  for (const name of ["b.bin", "lost.md", "rules.md", "old.md"]) assert.ok(!prompt.includes(`"${name}"`), name);
+  assert.match(prompt, /<knowledge>[\s\S]*\[1\] \(from a\.md\)\nalpha/, "knowledge comes as a retrieved passage");
+  assert.ok(!prompt.includes('<file name="a.md">'), "knowledge is never inlined whole");
+  assert.match(prompt, /<file name="big\.md">\nz{100000}\n<\/file>/, "skill copies are cut to the per-file cap");
+  for (const name of ["b.bin", "lost.md", "rules.md", "old.md"]) assert.ok(!prompt.includes(name), name);
   assert.equal(engine.seen[0].resumeSessionId, undefined, "a talk is never resumed");
 });
 
@@ -61,11 +73,12 @@ test("a file dropped into knowledge still answers after its original is gone", a
   const originals = new Map([["/u/notes.md", Buffer.from("the moon is cheese")]]);
   const readOriginal = async (path) => originals.get(path) ?? Promise.reject(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
   const engine = echoEngine("Cheese.");
-  const agents = createAgents({ store, engine, readOriginal });
+  const agents = createAgents({ store, engine, embedder: createFakeEmbedder(), readOriginal });
   const { section } = await agents.assign(id, "knowledge", [{ path: "notes.md", size: 18, source: "/u/notes.md" }]);
   assert.equal(section[0].text, "ok");
   originals.clear(); // the user moved or deleted it
+  assert.deepEqual(await agents.embedKnowledge(id), [{ type: "embedded", file: "notes.md" }]);
   await agents.keep(id);
   await agents.talk(id, "what is the moon?");
-  assert.match(engine.seen[0].systemPrompt, /<file name="notes\.md">\nthe moon is cheese/);
+  assert.match(engine.seen[0].systemPrompt, /\(from notes\.md\)\nthe moon is cheese/);
 });

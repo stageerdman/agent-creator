@@ -102,6 +102,17 @@ test("routing files sends one allocate { file, section } per changed file, in or
   ]);
 });
 
+test("a file the creator routes to knowledge is embedded: embedded { file } follows the allocates", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  const source = join(home, "soup.md");
+  await writeFile(source, "Soup is best served hot.");
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "soup.md", size: 24, source }] });
+  const events = await chat(id, '{"files":{"/":"rag"}}');
+  assert.deepEqual(events.map((e) => e.event).slice(-3), ["allocate", "embedded", "done"]);
+  assert.deepEqual(events.find((e) => e.event === "embedded").data, { type: "embedded", file: "soup.md" });
+});
+
 // The Left Side's own client (streamChat) against this server: the panel talks to the real creator.
 const pageFetch = (path, options) => fetch(`${base}${path}`, options);
 
@@ -179,7 +190,8 @@ test("talk: the agent itself answers, streams delta+done with what it used, and 
   await json("POST", `/api/agents/${id}/skills`, { name: "Plan a run" });
   const source = join(home, "week1.md");
   await writeFile(source, "Run 5k on Monday.");
-  await json("POST", `/api/agents/${id}/sections/knowledge/files`, { files: [{ path: "notes/week1.md", size: 17, source }] });
+  const drop = await json("POST", `/api/agents/${id}/sections/knowledge/files`, { files: [{ path: "notes/week1.md", size: 17, source }] });
+  assert.deepEqual(drop.embeds, [{ type: "embedded", file: "notes/week1.md" }], "a knowledge drop builds the index at once");
   await json("POST", `/api/agents/${id}/save`);
   const before = await json("GET", `/api/agents/${id}`);
 
@@ -194,7 +206,7 @@ test("talk: the agent itself answers, streams delta+done with what it used, and 
   });
   assert.match(systemPrompts.at(-1), /^You are Coach, short and kind\./);
   assert.match(systemPrompts.at(-1), /<skill name="Plan a run">/);
-  assert.match(systemPrompts.at(-1), /<file name="notes\/week1\.md">\nRun 5k on Monday\./);
+  assert.match(systemPrompts.at(-1), /<knowledge>[\s\S]*\(from notes\/week1\.md\)\nRun 5k on Monday\./, "knowledge comes as a retrieved passage");
 
   const after = await json("GET", `/api/agents/${id}`);
   assert.deepEqual([after.draft, after.files, after.chat], [before.draft, before.files, before.chat]);
