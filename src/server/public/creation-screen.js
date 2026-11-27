@@ -11,15 +11,17 @@
  *
  *   import { mountCreation } from '/creation-screen.js';
  *   const screen = mountCreation({ reduced });   // the markup lives in new-agent.html
- *   screen.grow(dna)        // during the upload: after each batch (the agent's whole DNA so far)
- *   screen.open(agent)      // the split: the menu comes in, the field stays
+ *   screen.adopt(orbit.release())   // the hand-over: the orbit's 30 live fireflies fly out to their files
+ *   screen.feed(entries)    // as entries are read: the field lights them (≤ 24 a frame), server not needed
+ *   screen.fail()           // a failed save: the lights fade where they are, the field is empty again
+ *   screen.open(agent)      // saved: the name and sections fill in; the field stays
  *
  * Spec: updates/2026-11-27 CREATION-SCREEN/03-jony-build.md. The pure helpers below are tested in
  * creation-screen.test.mjs; everything after mountCreation touches the DOM.
  */
 
 import { BATCH, chunks, entriesOfDrop } from './file-intake.js';
-import { FLY, hash, rng } from './firefly-orbit.js';
+import { FLY, WAKE, hash, rng, inQuad, outQuad, inOutQuad, clampR, dnaSprite } from './firefly-orbit.js';
 import { nameOf } from './agent-list.js';
 
 export const MENU_W = 380;        // the menu's width, css px; the field is the rest of the window
@@ -86,14 +88,61 @@ export function flyParams(id) {
 }
 
 /* Where a firefly is pushed and how much it shines at time t (ms). Reduced motion: still, no shine. */
-export function flyAt(id, t, reduced = false) {
+export function flyAt(id, t, reduced = false, p = null) {
   if (reduced) return { dx: 0, dy: 0, glow: 0 };
-  const p = flyParams(id);
+  p = p || flyParams(id);
   const dx = p.ax * Math.sin(6.2832 * t / p.px + p.phx), dy = p.ay * Math.sin(6.2832 * t / p.py + p.phy);
   const u = ((t / p.shineEvery + p.shineAt) % 1 + 1) % 1 * p.shineEvery;
   const glow = u < SHINE_MS ? SHINE_MAX * Math.sin(Math.PI * u / SHINE_MS) ** 2 : 0;
   return { dx, dy, glow };
 }
+
+/* ---------- pure: the hand-over from the orbit (Reports/one-flow-magic-moment.md §5–§7) ---------- */
+
+export const LEAVE_AFTER = 120;   // ms of wake before the first fly leaves the ring
+export const LEAVE_SPREAD = 240;  // ms from the left-most fly leaving to the right-most
+export const FLY_MS = 780;        // ms one fly's flight takes
+export const SETTLE_MS = 600;     // ms at the end of a flight in which its light settles to rest dim
+export const RETARGET = 400;      // ms a flight's end takes to slide to its file's real spot
+export const POUR_FROM = 500;     // ms after the signal the further files start to light in place
+export const POUR_MAX = 24;       // new lights per frame, at most
+export const SHINE_AFTER = 1500;  // ms after landing before a firefly may shine
+export const FAIL_MS = 900;       // ms the lights take to fade where they are after a failed save
+export const XFADE = 300;         // ms of the Reduce Motion cross-fade, ring to field
+export const LAND_R = 4.5;        // a flyer's sprite radius at landing: the look of a field dot
+export const MENU_AT = 300;       // ms after the signal the menu starts to slide in
+const clamp01 = x => Math.min(1, Math.max(0, x));
+
+/* An entry as read ({ path, size }) as the field's file, the same shape and id the server's DNA has. */
+export const asFile = e => ({ id: e.path, name: String(e.path).split('/').pop(), sizeBytes: e.size ?? null, state: 'unprocessed' });
+
+/* The flies' positions at the signal → [{ i, delay }] in leaving order: left side first, 0–240 ms. */
+export function leaveOrder(points) {
+  const xs = points.map(p => p.x), lo = Math.min(...xs), span = Math.max(...xs) - lo || 1;
+  return points.map((p, i) => ({ i, delay: LEAVE_AFTER + LEAVE_SPREAD * (p.x - lo) / span }))
+    .sort((a, b) => a.delay - b.delay || a.i - b.i);
+}
+
+/* Where a flight is at raw progress u (0..1): a cubic from `from` to `to` whose first control point
+   lies along the way it was moving (tan), so it leaves without stopping or turning back. */
+export function flightAt(from, tan, to, u) {
+  const k = inOutQuad(clamp01(u)), L = Math.hypot(to.x - from.x, to.y - from.y);
+  const c1 = { x: from.x + tan.x * L * .35, y: from.y + tan.y * L * .35 };
+  const c2 = { x: to.x + (c1.x - to.x) * .3, y: to.y + (c1.y - to.y) * .3 };
+  const v = 1 - k, a = v * v * v, b = 3 * v * v * k, c = 3 * v * k * k, d = k * k * k;
+  return { x: a * from.x + b * c1.x + c * c2.x + d * to.x, y: a * from.y + b * c1.y + c * c2.y + d * to.y };
+}
+
+/* A flyer's light at progress u: from its wake (.8) to the field's rest dim over the last SETTLE_MS.
+   extra (no file for it): it melts into the grass along the way. */
+export function flyerAlpha(u, { start = WAKE, rest = dotLook('unprocessed').alpha, extra = false } = {}) {
+  const tail = clamp01((clamp01(u) * FLY_MS - (FLY_MS - SETTLE_MS)) / SETTLE_MS);
+  const a = start + (rest - start) * inQuad(tail);
+  return extra ? a * (1 - inQuad(clamp01(u))) : a;
+}
+
+/* How many queued files light this frame: none before the pour starts, then at most POUR_MAX. */
+export const pourTake = (queued, t, from, max = POUR_MAX) => (t < from ? 0 : Math.min(queued, max));
 
 /* ---------- pure: the clusters (fix 5) and the flight (fix 6) ---------- */
 
@@ -201,9 +250,26 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   /* ---- the upload: fireflies arrive batch by batch ---- */
   function grow(dna) { field.set(dna || []); }
 
+  /* ---- the hand-over: the orbit's live fireflies fly out, the menu comes in at 300 ms ---- */
+  let splitTimer = 0;
+  function adopt(hand) {
+    field.adopt(hand);
+    win.clearTimeout(splitTimer);
+    splitTimer = win.setTimeout(() => body.classList.add('split'), reduced ? 0 : MENU_AT);
+  }
+  /* Entries as they are read ([{ path, size }]): the field lights them at once, before the server has them. */
+  function feed(entries) { field.feed(entries.map(asFile)); }
+  /* A failed save: the lights fade where they are and the menu goes; → a promise for when they are gone. */
+  function fail() {
+    win.clearTimeout(splitTimer); opened = false;
+    body.classList.remove('split'); menu.setAttribute('inert', '');
+    return field.fail();
+  }
+
   /* ---- the split ---- */
   function open(a, { still = false } = {}) {
     agent = a; opened = true;
+    win.clearTimeout(splitTimer);
     field.set(a.dna || [], { still });
     nameEl.textContent = nameOf(a);
     body.classList.add('split');
@@ -406,7 +472,7 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   win.addEventListener('resize', () => { field.redraw(); if (agent) Object.keys(sections).forEach(renderSection); });
 
   return {
-    grow, open, isOpen: () => opened,
+    grow, adopt, feed, fail, open, isOpen: () => opened,
     setReduced(v) { reduced = !!v; field.redraw(); },
     info: () => ({ split: opened, field: field.info(), sections: Object.fromEntries(Object.entries(sections).map(([s, f]) => [s, f.map(x => ({ path: x.path, state: x.state }))])), skills: skills.map(k => k.name) }),
   };
@@ -414,39 +480,142 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
 
 /* The field's canvas: every frame, each firefly drifts and now and then shines (flyAt).
    Reduced motion: drawn only when something changes, still. */
-function createField(canvas, isReduced) {
-  const ctx = canvas.getContext('2d'), win = canvas.ownerDocument.defaultView;
-  let dna = [], dots = [], raf = 0;
-  const born = new Map();
+export function createField(canvas, isReduced) {
+  const doc = canvas.ownerDocument, win = doc.defaultView, ctx = canvas.getContext('2d');
+  const now = () => win.performance.now();
+  let dna = [], ids = new Set(), dots = [], lay = null, layKey = '', raf = 0;
+  const born = new Map(), params = new Map(), spots = new Map(), flown = new Set(), waiting = new Set();
+  let queue = [], qi = 0;                                  // files waiting to light in place, in read order
+  let hand = null, flyers = [], adoptT = 0, failAt = null, failTimer = 0, sprite = null;
+  const P = id => { let p = params.get(id); if (!p) params.set(id, p = flyParams(id)); return p; };
+  const S = id => { let s = spots.get(id); if (!s) spots.set(id, s = spotOf(id)); return s; };
+  const PAD = 32;
+  const px = (s, fw, H) => ({ x: PAD + s.x * Math.max(0, fw - 2 * PAD), y: PAD + s.y * Math.max(0, H - 2 * PAD) });
+
+  /* The whole DNA (the server's): files already lit or queued keep their light; new ones fade in now. */
   function set(next, { still = false } = {}) {
-    const t = still ? -1e9 : win.performance.now();
-    for (const f of next) if (!born.has(f.id)) born.set(f.id, t);
-    dna = next; redraw();
+    const t = still ? -1e9 : now();
+    for (const f of next) if (!born.has(f.id) && !waiting.has(f.id)) born.set(f.id, t);
+    dna = next.slice(); ids = new Set(dna.map(f => f.id)); lay = null; redraw();
   }
+
+  /* A file found while reading: a flyer still in the air takes it (in leaving order), else it waits
+     its turn to light in place. Past FIELD_CAP it is counted, never drawn. */
+  function landingOf(f) { return adoptT + (isReduced() ? LEAVE_AFTER : f.delay + FLY_MS); }
+  function assign(id, t) {
+    const f = flyers.find(g => !g.id && landingOf(g) > t);
+    if (!f) return false;
+    f.id = id; f.gotAt = t;
+    if (isReduced()) born.set(id, landingOf(f));                 // the cross-fade: it fades in as the ring fades out
+    else { flown.add(id); born.set(id, landingOf(f)); }          // the same light lands and stays: no fade-in
+    return true;
+  }
+  function take(f, t) {
+    if (!hand) { born.set(f.id, t); return; }
+    if (assign(f.id, t)) return;
+    if (dna.length > FIELD_CAP) { born.set(f.id, -1e9); return; }
+    waiting.add(f.id); queue.push(f.id);
+  }
+  function feed(items) {
+    const t = now();
+    for (const f of items) { if (ids.has(f.id)) continue; ids.add(f.id); dna.push(f); take(f, t); }
+    lay = null; redraw();
+  }
+
+  /* The hand-over: the orbit's 30 live fireflies (orbit.release()) are this field's from now on. */
+  function adopt(h) {
+    if (!h) return;
+    win.clearTimeout(failTimer);
+    hand = h; adoptT = h.t; failAt = null; sprite = sprite || dnaSprite(doc);
+    flyers = leaveOrder(h.flies.map(f => h.at(f.i, h.t))).map(({ i, delay }, k) => ({ i, k, delay, id: null, gotAt: 0, from: null, prov: spotOf('provisional:' + k) }));
+    for (const f of dna) if (!born.has(f.id)) take(f, h.t);     // a picked folder is known at once
+    redraw();
+  }
+
+  /* A failed save: every light fades where it is, then the field is empty again. */
+  function fail() {
+    failAt = now(); redraw();
+    return new Promise(res => { failTimer = win.setTimeout(() => { reset(); res(); }, FAIL_MS); });
+  }
+  function reset() {
+    dna = []; ids = new Set(); lay = null; born.clear(); flown.clear(); waiting.clear(); queue = []; qi = 0;
+    hand = null; flyers = []; failAt = null; redraw();
+  }
+
+  /* Where flyer f is at t and how it looks, or null once it has landed (its file's dot goes on). */
+  function flyerAt(f, t, still, fw, H) {
+    const leave = adoptT + f.delay;
+    if (still) {
+      const k = clamp01((t - adoptT - LEAVE_AFTER) / XFADE);
+      if (k >= 1) return null;
+      const p = hand.at(f.i, t); return { x: p.x, y: p.y, r: p.r, a: p.a * (1 - k) };
+    }
+    if (t < leave) { const p = hand.at(f.i, t); return { x: p.x, y: p.y, r: p.r, a: p.a }; }
+    if (!f.from) f.from = hand.at(f.i, leave);
+    const u = (t - leave) / FLY_MS;
+    if (u >= 1) return null;
+    let to = px(f.prov, fw, H), known = 0;
+    if (f.id) {
+      const s = px(S(f.id), fw, H), m = flyAt(f.id, t, false, P(f.id));
+      known = f.gotAt <= leave ? 1 : outQuad(clamp01((t - f.gotAt) / RETARGET));
+      to = { x: to.x + (s.x + m.dx - to.x) * known, y: to.y + (s.y + m.dy - to.y) * known };
+    }
+    const p = flightAt(f.from, { x: f.from.tx, y: f.from.ty }, to, u), w = 2 * (1 - u) * Math.sin(u * 9.42 + f.k);
+    const full = flyerAlpha(u, { start: f.from.a }), melt = flyerAlpha(u, { start: f.from.a, extra: true });
+    return { x: p.x - f.from.ty * w, y: p.y + f.from.tx * w, r: clampR(f.from.r + (LAND_R - f.from.r) * inOutQuad(u)), a: melt + (full - melt) * known };
+  }
+
   function redraw() { if (!raf) raf = win.requestAnimationFrame(paint); }
   function paint(t) {
     raf = 0;
-    const W = win.innerWidth, H = win.innerHeight, dpr = Math.min(2, win.devicePixelRatio || 1);
+    const W = win.innerWidth, H = win.innerHeight, dpr = Math.min(2, win.devicePixelRatio || 1), fw = Math.max(160, W - MENU_W);
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
-    const lay = fieldLayout(dna, { width: Math.max(160, W - MENU_W), height: H }); dots = lay.dots;
+    const key = fw + 'x' + H;
+    if (!lay || key !== layKey) { lay = fieldLayout(dna, { width: fw, height: H, pad: PAD }); layKey = key; dots = lay.dots; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
     const still = isReduced();
-    let fading = false;
+    // the pour: further files light in place, a few per frame, once the flyers have the stage
+    const pour = pourTake(queue.length - qi, t, hand ? adoptT + (still ? LEAVE_AFTER : POUR_FROM) : -Infinity);
+    for (let j = 0; j < pour && failAt == null; j++) { const id = queue[qi++]; waiting.delete(id); born.set(id, t); }
+    if (qi && qi === queue.length) { queue = []; qi = 0; }
+    const gone = failAt == null ? 1 : 1 - inQuad(clamp01((t - failAt) / FAIL_MS));
+    let busy = failAt != null || qi < queue.length;
     for (const d of dots) {
-      const look = dotLook(d.state), age = t - (born.get(d.id) ?? -1e9), m = flyAt(d.id, t, still);
+      const b = born.get(d.id); if (b == null) continue;
+      const age = t - b; if (age < 0) continue;
+      const look = dotLook(d.state), m = flyAt(d.id, t, still, P(d.id)), glow = age < SHINE_AFTER ? 0 : m.glow;
       let a = look.alpha;
-      if (age < FADE_IN && !still) { a *= Math.max(0, age) / FADE_IN; fading = true; }
-      const x = d.x + m.dx, y = d.y + m.dy, halo = (look.halo ? a * .16 : 0) + m.glow * .4;
+      if (!flown.has(d.id) && age < FADE_IN) { a *= outQuad(age / FADE_IN); busy = true; }
+      a *= gone;
+      const x = d.x + m.dx, y = d.y + m.dy, halo = ((look.halo ? a * .16 : 0) + glow * .4) * gone;
       ctx.fillStyle = look.color;
       if (halo > .005) { ctx.globalAlpha = halo; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); }
-      ctx.globalAlpha = Math.min(1, a + m.glow); ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = Math.min(1, a + glow * gone); ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 6.2832); ctx.fill();
     }
+    let flying = 0;
+    if (hand) {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const f of flyers) {
+        const p = flyerAt(f, failAt == null ? t : Math.min(t, failAt), still, fw, H);
+        if (!p) continue;
+        flying++;
+        const a = p.a * gone;
+        if (a > .003) { ctx.globalAlpha = a; ctx.drawImage(sprite, p.x - p.r, p.y - p.r, 2 * p.r, 2 * p.r); }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    lastFlying = flying;
     ctx.globalAlpha = 1;
-    if (fading || (!still && dots.length)) redraw();
+    if (busy || flying || (!still && dots.length)) redraw();
   }
+  let lastFlying = 0;
   return {
-    set, redraw, total: () => dna.length,
-    info: () => ({ total: dna.length, drawn: dots.length, moving: !isReduced(), dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })) }),
+    set, feed, adopt, fail, redraw, total: () => dna.length,
+    info: () => ({
+      total: dna.length, drawn: dots.length, moving: !isReduced(), lit: [...born.values()].filter(b => b <= now()).length,
+      flyers: flyers.length, flying: lastFlying, queued: queue.length - qi,
+      dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })),
+    }),
   };
 }
 

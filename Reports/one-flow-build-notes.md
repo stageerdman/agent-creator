@@ -52,7 +52,12 @@ Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
       real entry, `found {entries, total}`, `progress {sent,total}`, `done {agentId, agent, added, dna}`, `error {message, started}`;
       a failed save removes the agent. `attachIntake`, `toEntries`, `walkEntries`, `dropSource` deleted (unused); orbit's walker deleted.
       creation-screen.js imports `entriesOfDrop` from file-intake.js.
-- [ ] creation-screen.js field adopt + pour + test
+- [x] creation-screen.js field adopt + pour + test (creation-field.test.mjs, fake canvas + clock) — screen API:
+      `adopt(hand)` (menu `body.split` at `MENU_AT` 300 ms, 0 under Reduce Motion), `feed(entries [{path,size}])`,
+      `fail()` → Promise (900 ms fade, field empty, split removed, menu inert), `open(agent)` unchanged.
+      `createField` exported; info() adds `lit, flyers, flying, queued`. Pure: `leaveOrder, flightAt, flyerAlpha, pourTake, asFile`.
+      Flyers drawn with the DNA sprite, radius → `LAND_R` 4.5, then the file's dot (no fade). A flyer takes the next file
+      only while still in the air; otherwise the file pours. Pour queue only up to FIELD_CAP.
 - [ ] new-agent.html wiring
 - [ ] checks/build-screen-check.cjs, checks/creation-screen-check.cjs
 - [ ] final notes, issues.txt (two intakes → resolved), Start check
