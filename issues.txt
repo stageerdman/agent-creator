@@ -81,3 +81,11 @@
       message in the box when a send fails, the likeness dims at 50% (check 4
       must count lit pixels), and one flash per close. Columbo: the creator
       prompt says "Keep in the Sketch", but no Sketch with Keep is on /new.
+- [ ] LEFT-SIDE round 2 (Eraser → Jony, 2026-11-27, RETURNED narrow): branch
+      left-side-review-returned-the-full-revie-850ca84f (123de76) passes
+      tests + Chrome check, and M4 is proven on screen (6→190→253→674). But it
+      conflicts with main, which already has M1–M3/M5–M7. R1: merge main in,
+      keep main's mine.remove(), heldWhole timer re-check, closeFlash,
+      streamChat and the restored log; add M4, the wider saysReady,
+      kept(store,a) and cursor-at-end. R2: design-jony.md:10 and :49 still say
+      Create. R3: one wording for the failed-send line. See 04-eraser-review.md.
