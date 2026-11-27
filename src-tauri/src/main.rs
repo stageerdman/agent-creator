@@ -7,7 +7,6 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::webview::NewWindowResponse;
 use tauri::window::Color;
 use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
@@ -53,20 +52,22 @@ fn start_server(app_dir: PathBuf) -> Result<server::Server, String> {
 }
 
 fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
-    let url = url.parse().expect("main: server URL is always valid");
+    let url: tauri::Url = url.parse().expect("main: server URL is always valid");
+    let origin = url.origin();
     let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+        // A chat link (http, https, mailto) opens in the default browser or
+        // mail app; the window itself never leaves the local app.
+        .on_navigation(move |to| !(to.origin() != origin && open_outside(to)))
+        .on_new_window(|to, _features| {
+            open_outside(&to);
+            tauri::webview::NewWindowResponse::Deny
+        })
         .title("Agent Creator")
         .inner_size(1200.0, 860.0)
         // Under 860 px the page switches to its one-pane layout; 640 also fits half a 13" screen.
         .min_inner_size(640.0, 640.0)
         // Let Finder drops reach the page's own dragenter/drop handlers.
         .disable_drag_drop_handler()
-        // Chat links are target="_blank": hand them to the default browser or
-        // mail app and keep the chat on screen.
-        .on_new_window(|url, _| {
-            open_outside(&url);
-            NewWindowResponse::Deny
-        })
         .visible(false)
         .center()
         .build()?;
@@ -75,30 +76,33 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
     window.show()
 }
 
-/// Web and mail links only; anything else (file:, javascript:, custom schemes) is dropped.
-fn opens_outside(url: &tauri::Url) -> bool {
-    matches!(url.scheme(), "https" | "http" | "mailto")
+/// Hands an http, https or mailto link to macOS (`open`), so it lands in the
+/// user's default browser or mail app. Returns whether it was handed off.
+fn open_outside(url: &tauri::Url) -> bool {
+    if !external(url) {
+        return false;
+    }
+    if let Err(e) = std::process::Command::new("/usr/bin/open").arg(url.as_str()).spawn() {
+        eprintln!("main: could not open {url}: {e}");
+    }
+    true
 }
 
-fn open_outside(url: &tauri::Url) {
-    if opens_outside(url) {
-        if let Err(e) = std::process::Command::new("/usr/bin/open").arg(url.as_str()).spawn() {
-            eprintln!("main: could not open {url}: {e}");
-        }
-    }
+fn external(url: &tauri::Url) -> bool {
+    matches!(url.scheme(), "http" | "https" | "mailto")
 }
 
 #[cfg(test)]
 mod tests {
-    use super::opens_outside;
+    use super::external;
 
     #[test]
     fn only_web_and_mail_links_leave_the_app() {
-        for ok in ["https://example.com/a", "http://example.com", "mailto:hi@example.com"] {
-            assert!(opens_outside(&ok.parse().unwrap()), "{ok}");
+        for ok in ["https://example.com/a", "http://example.com", "mailto:a@b.c"] {
+            assert!(external(&ok.parse().unwrap()), "{ok}");
         }
-        for no in ["file:///etc/passwd", "javascript:alert(1)", "ftp://x.y", "tel:123"] {
-            assert!(!opens_outside(&no.parse().unwrap()), "{no}");
+        for no in ["file:///etc/passwd", "javascript:alert(1)", "about:blank", "tauri://localhost"] {
+            assert!(!external(&no.parse().unwrap()), "{no}");
         }
     }
 }

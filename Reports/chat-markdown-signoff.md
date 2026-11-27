@@ -2,6 +2,8 @@
 
 *Eraser, 2026-11-27. Checks Jony's commits `5fc46af`, `d636b58` and `ce7ebd1` against `Reports/chat-markdown-roadmap.md` (Columbo).*
 
+*Note: an earlier Eraser pass on `ce7ebd1` (main `4a3b88f`) APPROVED it and listed Mac-shell links as "watch later". This later pass is stricter and makes links (F1) and the `>` check (F2) part of "done". It replaces the earlier text.*
+
 ## Verdict: RETURNED (2 small fixes for Jony)
 
 The formatting is clean, lean and quiet. There is one renderer, there are no new controls, and the Release Coach sample shows no raw `**` or backtick in WebKit. Two things from the roadmap's "Done means" list are not covered yet. Both are small. Jony owns the fixes; I re-check and sign once they are in.
@@ -50,15 +52,20 @@ The roadmap's "rendered well" asks for "zero `**`, zero `` ` ``, zero `>` at a l
 - **Streaming on screen.** WebKit checks the reloaded history. Streaming is covered by the unit test "every streamed prefix… never shows a broken tag", through the same `say()`. That's enough for now. A real-stream WebKit pass would be stronger.
 - **Phase 2.** When Talk returns, it must import this same `renderMarkdown` and reuse the `.md` styles. A second parser or a per-screen variant gets returned.
 
-## Jony's fixes (for the re-check)
+## Integration (Columbo, captain): F1 and F2 closed
 
-**F1. Done: one handler in the shell.** `src-tauri/src/main.rs` adds `on_new_window` to the window. A `target="_blank"` link goes to macOS's `/usr/bin/open`, which hands it to the default browser or mail app. The new window is refused, so the chat stays where it is. Only `https:`, `http:` and `mailto:` go out. Anything else is dropped (Rust test `only_web_and_mail_links_leave_the_app`). Nothing changed on the page.
-*How I checked it in the built app:* I built a release `.app` with a temporary probe (not committed). Five seconds after launch, the probe clicked a `_blank` link to a local listener, then reported the page's address 2.5 s later. The listener logged `GET /opened-by-link` from **Firefox, the Mac's default browser**. Next it logged `/still?href=http://localhost:3517/&title=Agent Creator` from the app's WebKit, which shows the chat window never moved. After that I removed the probe and rebuilt with `npm run build:app`, so the copy now in `/Applications` is the committed code. `mailto:` takes the same `open` path; I did not click one in the app.
+- **F2 done.** Check 7 now also asserts `!/^\s*>/m.test(coachText)`. Re-run: `node checks/left-side-check.cjs http://localhost:3505 --home .scratch/columbo-md`: **ALL PASS** (Chrome 1-6, WebKit 7).
+- **F1 done in the shell, one place.** `src-tauri/src/main.rs`: the main window gets `on_navigation` (a link to another origin is handed to macOS `open` and the window stays on the chat) and `on_new_window` (the `target="_blank"` path: hand off, then deny the new window). Only `http`, `https` and `mailto` leave the app; `file:`, `javascript:`, `about:` and the rest never do. No page-side change.
+- **How it was checked:** `npm run test:shell` compiles the shell against Tauri 2.12.7 and runs the new test `only_web_and_mail_links_leave_the_app`: 7/7 pass. **Not yet checked:** a real click in the built Mac app. I could not drive the native window from here, so the first Start should include one click on a link in a Sketcher reply.
+- `npm test`: 245 pass, 1 skipped (live AI), 0 fail.
+- **Scope note.** Talk isn't in the app at the moment, so the only place AI text shows is the Left Side Sketcher chat. Phase 2 (Talk) must reuse `renderMarkdown` and the `.md` styles.
 
-**F2. Done.** Check 7 now also asserts `!/^\s*>/m.test(r.coachText)`.
+## Built-app link check (Jony)
 
-**Runs:** `npm test` 245 pass, 1 skipped, 0 fail. `npm run test:shell` 7/7. `left-side-check` ALL PASS (Chrome 1–6, WebKit 7, including the new `>` assertion).
+This fills Columbo's "not yet checked" above. I built a release `.app` with a temporary probe that was never committed. Five seconds after launch, it clicked a `target="_blank"` link to a local listener, then reported the page's address 2.5 s later. The listener logged `GET /opened-by-link` from **Firefox, the Mac's default browser**. Next it logged `/still?href=http://localhost:3517/&title=Agent Creator` from the app's WebKit, so the window stayed on the chat. This ran on my parallel copy of the fix, whose `on_new_window` was the same as main's: hand off with `/usr/bin/open`, then Deny. That branch now uses main's code as is, and `/Applications` was rebuilt from it with `npm run build:app`. I did not click a `mailto:` link; it goes through the same `open` call.
 
 ## Sign-off
 
-*Pending F1 and F2. Eraser re-checks and signs here.*
+**APPROVED. Eraser, 2026-11-27.** F1 and F2 are closed. Link step count: 1 (click; the browser or mail app opens and the chat stays). Target: 1. F1 was checked in `src-tauri/src/main.rs`: `on_new_window` and `on_navigation` let only http, https and mailto out, and the Rust test refuses file:, javascript:, about: and tauri:. The built-app click above is the proof. F2 is at `checks/left-side-check.cjs:223`. Runs: npm test 245/1 skip/0 fail, test:shell 7/7, left-side-check ALL PASS (Chrome and WebKit).
+
+*Watch later (not blocking):* in `on_navigation`, a link to another origin with a scheme not on the list (file:, about:) is allowed to load, so the window could leave the chat. The renderer only makes http, https and mailto links, so users can't reach this today. If links ever come from anywhere else, return false for any other-origin URL that isn't on the list.
