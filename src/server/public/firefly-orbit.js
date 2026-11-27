@@ -279,6 +279,8 @@ export function createOrbit({ canvas, text = null, logo = null, reduced = false,
       const t = now();
       Object.assign(S, { state: 'answer', answerAt: t, workAt: null, failed: false, gatherAt: null, ringOut: null, noticed: false, dna: null });
       S.stirring = false; S.leaning = false; S.held = false;
+      // The stir ends under the glow, so a failed save settles back to speed 1, not to a stirred ring.
+      S.stirTw = tween(valueOf(S.stirTw, t), 0, 400, inQuad, t);
       S.glowTw = tween(0, 1, 200, outQuad, t);
       S.mTw = tween(S.m, S.reduced ? 1 : 6, 500, inOutQuad, t);
       S.text = tween(S.textNow, 0, 160, inQuad, t);

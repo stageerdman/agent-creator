@@ -119,6 +119,7 @@ test("the list hides empty agents and POST reuses the empty one", async () => {
   const empty = await newAgent();
   assert.equal(await newAgent(), empty);
   const list = await json("GET", "/api/agents");
+  // Listed agents have a name or files (a files-only agent stays reachable).
   assert.ok(list.every((a) => a.id !== empty && (a.draft.name || a.dna.length) && a.updatedAt));
   assert.deepEqual(list.map((a) => a.updatedAt), [...list.map((a) => a.updatedAt)].sort().reverse());
 });

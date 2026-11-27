@@ -59,6 +59,13 @@
       .lastBlink / .addedAt, dna.blinkPeriod(); addFiles accepts addedAt.
       Eraser's eye-check doesn't check out-of-step blinking yet. (Jony)
 
+- [ ] Two intakes for /new: main got file-intake.js (5d126fa, intake:* events)
+      while the + build screen (firefly-orbit.js) has its own entriesOfFiles /
+      entriesOfDrop + save(). Merging them, /new keeps the signed-off build
+      screen; file-intake.js is still served and tested but nothing on the page
+      imports it. Pick one (or have the build screen call attachIntake) and
+      delete the other. (Jony, 2026-11-27)
+
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
