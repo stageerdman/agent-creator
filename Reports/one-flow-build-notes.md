@@ -37,7 +37,11 @@ Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
 
 ## Steps
 
-- [ ] firefly-orbit.js + test
+- [x] firefly-orbit.js + test — API: `createOrbit({ canvas, text, reduced, epoch, now, wall, size })`;
+      `ringPos(f, tt, W, H, { phase, loosen, reduced })` pure (tt = ms since epoch; gather uses tt < 0);
+      `dnaSprite(doc)` exported; `release()` → `{ t, reduced, flies:[{i, ring, r0, a0, r}], at(i, t) → {x,y,tx,ty,v,r,a} }`
+      (orbit clears its canvas and stops; caller's field draws from then); `restore()`; `TEXT_REST` .24, `WAKE` .8.
+      `answer()`, logo, call dot, m = 6, first-light all deleted. new-agent.html still calls the old API (fixed in wiring step).
 - [ ] firefly-gather.js + agent-home.html + test
 - [ ] file-intake.js + test (walker moved in)
 - [ ] creation-screen.js field adopt + pour + test
