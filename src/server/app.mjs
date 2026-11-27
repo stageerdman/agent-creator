@@ -11,6 +11,7 @@ import { askRoute } from "./routes/ask.mjs";
 import { knowledgeRoutes } from "./routes/knowledge.mjs";
 import { materialRoutes } from "./routes/material.mjs";
 import { mockRoutes } from "./routes/mock.mjs";
+import { personaRoutes } from "./routes/persona.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
 import { summary } from "../creator/agents.mjs";
 import { homeAgents } from "./mock/demoAgents.mjs";
@@ -46,6 +47,7 @@ export function createApp(engine, { store = createAgentStore(), embedder } = {})
     ...agentRoutes(agents),
     ...materialRoutes(agents),
     ...knowledgeRoutes(agents),
+    ...personaRoutes(agents),
   };
 
   return createServer(async (req, res) => {
