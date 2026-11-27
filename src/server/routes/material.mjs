@@ -3,7 +3,7 @@
 // (agentMaterial.mjs, agentTexts.mjs). A section is "system-prompt",
 // "knowledge" or "skill:<skillId>" (encode the colon or not, both work).
 
-import { BadRequest, readBytes, readJson, requireFiles, sendJson, streamEvents } from "../http.mjs";
+import { BadRequest, readBytes, readJson, requireFiles, requireQuery, sendJson, streamEvents } from "../http.mjs";
 import { embedEvents } from "./embeds.mjs";
 
 export function materialRoutes(agents) {
@@ -54,9 +54,6 @@ export function materialRoutes(agents) {
     "PUT /api/agents/:id/system-prompt": async (req, res, { params }) =>
       sendJson(res, 200, await agents.setSystemPrompt(params.id, (await readJson(req)).text)),
 
-    "GET /api/agents/:id/knowledge": async (_req, res, { params }) =>
-      sendJson(res, 200, await agents.getKnowledge(params.id)),
-
     "GET /api/agents/:id/skills": async (_req, res, { params }) =>
       sendJson(res, 200, { skills: await agents.listSkills(params.id) }),
 
@@ -81,10 +78,4 @@ function requirePaths({ paths }) {
   const valid = Array.isArray(paths) && paths.length > 0 && paths.every((path) => typeof path === "string" && path.trim());
   if (!valid) throw new BadRequest("`paths` must be a non-empty list of absolute paths.");
   return paths;
-}
-
-function requireQuery(query, name) {
-  const value = query.get(name);
-  if (!value) throw new BadRequest(`\`?${name}=\` is required.`);
-  return value;
 }

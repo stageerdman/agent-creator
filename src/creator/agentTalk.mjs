@@ -36,11 +36,12 @@ export function createTalk({ store, engine, memory, knowledge }) {
     return Promise.all((record.skills ?? []).map(async (skill) => ({ name: skill.name, body: await store.readText(id, `skills/${skill.id}/SKILL.md`) })));
   }
 
-  // The built knowledge.md first, then each kept copy until the cap. A copy
+  // Each kept skill-file copy until the cap. knowledge.md is not here: it
+  // merges the Knowledge files, which reach talk as passages instead. A copy
   // gone missing is logged and left out, never fatal.
   async function filesOf(id, record, traceId) {
-    const files = [{ path: "knowledge.md", text: await store.readText(id, "knowledge.md") }];
-    let total = files[0].text.length;
+    const files = [];
+    let total = 0;
     for (const file of (record.files ?? []).filter(feedsTalk)) {
       if (total >= TOTAL_CAP) break;
       const text = await memory.readCopy(id, file.path);

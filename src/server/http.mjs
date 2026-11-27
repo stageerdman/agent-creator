@@ -50,6 +50,17 @@ export function requireFiles(body) {
   return files;
 }
 
+export function requireFile({ file }) {
+  if (typeof file?.path !== "string" || !file.path.trim()) throw new BadRequest("`file` must be { path, size }.");
+  return file;
+}
+
+export function requireQuery(query, name) {
+  const value = query.get(name);
+  if (!value) throw new BadRequest(`\`?${name}=\` is required.`);
+  return value;
+}
+
 function openEventStream(res) {
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache", connection: "keep-alive" });
   return (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);

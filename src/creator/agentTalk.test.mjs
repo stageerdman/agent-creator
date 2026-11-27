@@ -54,6 +54,7 @@ test("talk reads the kept copies of knowledge and skill files; no copy, unrouted
   for (const [path, text] of [["a.md", "alpha"], ["big.md", "z".repeat(150_000)], ["rules.md", "r"], ["old.md", "o"]]) {
     await store.writeText(id, `sources/${path}.txt`, text);
   }
+  await store.writeText(id, "knowledge.md", "## a.md\n\nmerged alpha");
   await store.markSaved(id); // only a created agent talks
   const engine = echoEngine("Hi.");
   const agents = createAgents({ store, engine, embedder: createFakeEmbedder(), readOriginal: () => assert.fail("talk never reads an original") });
@@ -63,6 +64,7 @@ test("talk reads the kept copies of knowledge and skill files; no copy, unrouted
   assert.match(prompt, /<knowledge>[\s\S]*\[1\] \(from a\.md\)\nalpha/, "knowledge comes as a retrieved passage");
   assert.ok(!prompt.includes('<file name="a.md">'), "knowledge is never inlined whole");
   assert.match(prompt, /<file name="big\.md">\nz{100000}\n<\/file>/, "skill copies are cut to the per-file cap");
+  assert.ok(!prompt.includes("merged alpha"), "the built knowledge.md would repeat the passages");
   for (const name of ["b.bin", "lost.md", "rules.md", "old.md"]) assert.ok(!prompt.includes(name), name);
   assert.equal(engine.seen[0].resumeSessionId, undefined, "a talk is never resumed");
 });

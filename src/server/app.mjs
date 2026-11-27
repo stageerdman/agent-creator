@@ -8,6 +8,7 @@ import { BadRequest, sendJson } from "./http.mjs";
 import { matchRoute } from "./router.mjs";
 import { agentRoutes } from "./routes/agents.mjs";
 import { askRoute } from "./routes/ask.mjs";
+import { knowledgeRoutes } from "./routes/knowledge.mjs";
 import { materialRoutes } from "./routes/material.mjs";
 import { mockRoutes } from "./routes/mock.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
@@ -44,6 +45,7 @@ export function createApp(engine, { store = createAgentStore(), embedder } = {})
     "POST /api/ask": askRoute(engine),
     ...agentRoutes(agents),
     ...materialRoutes(agents),
+    ...knowledgeRoutes(agents),
   };
 
   return createServer(async (req, res) => {

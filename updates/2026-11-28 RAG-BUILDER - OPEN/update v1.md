@@ -54,4 +54,4 @@ sources that are really searchable, and those turn green (baked `rag`).
 
 ## Status
 
-- [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4

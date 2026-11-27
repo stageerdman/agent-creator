@@ -1,6 +1,6 @@
 // The prompt a kept agent answers with when the user talks to it (not the
-// Sketcher). The agent's own system prompt comes first; its skills,
-// built knowledge and skill files follow whole, then the passages a search
+// Sketcher). The agent's own system prompt comes first; its skills and
+// skill files follow whole, then the passages a search
 // of its Knowledge files found for this message, each under the name the
 // agent must use when it says it drew on it (`<used>`).
 
@@ -16,9 +16,8 @@ export function agentIdentity({ systemPrompt, draft }) {
   return [draft.persona, draft.instructions].map((text) => text.trim()).filter(Boolean).join("\n\n");
 }
 
-// skills: [{ name, body }]; files: [{ path, text }] (the built knowledge.md
-// is one of them); excerpts: [{ file, text }], best first. Empty texts are
-// left out.
+// skills: [{ name, body }]; files: [{ path, text }]; excerpts: [{ file,
+// text }], best first. Empty texts are left out.
 export function buildTalkPrompt({ systemPrompt, draft, skills = [], files = [], excerpts = [] }) {
   const context = [
     ...skills.filter(({ body }) => body.trim()).map(({ name, body }) => section("skill", name, body)),
