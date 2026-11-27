@@ -1,0 +1,429 @@
+{
+  "id": "045de8cf42cd",
+  "draft": {
+    "name": "",
+    "persona": "",
+    "instructions": "",
+    "status": "draft"
+  },
+  "sessionId": null,
+  "handEdited": [],
+  "createdAt": "2026-11-27T08:10:50.975Z",
+  "updatedAt": "2026-11-27T08:10:57.115Z",
+  "files": [
+    {
+      "path": "field0.md",
+      "name": "field0.md",
+      "size": 1,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field1.md",
+      "name": "field1.md",
+      "size": 2,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field2.md",
+      "name": "field2.md",
+      "size": 3,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field3.md",
+      "name": "field3.md",
+      "size": 4,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field4.md",
+      "name": "field4.md",
+      "size": 5,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field5.md",
+      "name": "field5.md",
+      "size": 6,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field6.md",
+      "name": "field6.md",
+      "size": 7,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field7.md",
+      "name": "field7.md",
+      "size": 8,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field8.md",
+      "name": "field8.md",
+      "size": 9,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field9.md",
+      "name": "field9.md",
+      "size": 10,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field10.md",
+      "name": "field10.md",
+      "size": 11,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field11.md",
+      "name": "field11.md",
+      "size": 12,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field12.md",
+      "name": "field12.md",
+      "size": 13,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field13.md",
+      "name": "field13.md",
+      "size": 14,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field14.md",
+      "name": "field14.md",
+      "size": 15,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field15.md",
+      "name": "field15.md",
+      "size": 16,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field16.md",
+      "name": "field16.md",
+      "size": 17,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field17.md",
+      "name": "field17.md",
+      "size": 18,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field18.md",
+      "name": "field18.md",
+      "size": 19,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field19.md",
+      "name": "field19.md",
+      "size": 20,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field20.md",
+      "name": "field20.md",
+      "size": 21,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field21.md",
+      "name": "field21.md",
+      "size": 22,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field22.md",
+      "name": "field22.md",
+      "size": 23,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field23.md",
+      "name": "field23.md",
+      "size": 24,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field24.md",
+      "name": "field24.md",
+      "size": 25,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field25.md",
+      "name": "field25.md",
+      "size": 26,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field26.md",
+      "name": "field26.md",
+      "size": 27,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field27.md",
+      "name": "field27.md",
+      "size": 28,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field28.md",
+      "name": "field28.md",
+      "size": 29,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field29.md",
+      "name": "field29.md",
+      "size": 30,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field30.md",
+      "name": "field30.md",
+      "size": 31,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field31.md",
+      "name": "field31.md",
+      "size": 32,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field32.md",
+      "name": "field32.md",
+      "size": 33,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field33.md",
+      "name": "field33.md",
+      "size": 34,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field34.md",
+      "name": "field34.md",
+      "size": 35,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field35.md",
+      "name": "field35.md",
+      "size": 36,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field36.md",
+      "name": "field36.md",
+      "size": 37,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field37.md",
+      "name": "field37.md",
+      "size": 38,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field38.md",
+      "name": "field38.md",
+      "size": 39,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "field39.md",
+      "name": "field39.md",
+      "size": 40,
+      "feeds": [],
+      "addedAt": "2026-11-27T08:10:50.978Z"
+    },
+    {
+      "path": "notes-0.md",
+      "name": "notes-0.md",
+      "size": 1,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-1.md",
+      "name": "notes-1.md",
+      "size": 2,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-2.md",
+      "name": "notes-2.md",
+      "size": 3,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-3.md",
+      "name": "notes-3.md",
+      "size": 4,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-4.md",
+      "name": "notes-4.md",
+      "size": 5,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-5.md",
+      "name": "notes-5.md",
+      "size": 6,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "notes-6.md",
+      "name": "notes-6.md",
+      "size": 7,
+      "feeds": [
+        "rag"
+      ],
+      "addedAt": "2026-11-27T08:10:55.307Z"
+    },
+    {
+      "path": "voice-0.md",
+      "name": "voice-0.md",
+      "size": 1,
+      "feeds": [
+        "instructions"
+      ],
+      "addedAt": "2026-11-27T08:10:56.210Z"
+    },
+    {
+      "path": "voice-1.md",
+      "name": "voice-1.md",
+      "size": 2,
+      "feeds": [
+        "instructions"
+      ],
+      "addedAt": "2026-11-27T08:10:56.210Z"
+    },
+    {
+      "path": "voice-2.md",
+      "name": "voice-2.md",
+      "size": 3,
+      "feeds": [
+        "instructions"
+      ],
+      "addedAt": "2026-11-27T08:10:56.210Z"
+    },
+    {
+      "path": "voice-3.md",
+      "name": "voice-3.md",
+      "size": 4,
+      "feeds": [
+        "instructions"
+      ],
+      "addedAt": "2026-11-27T08:10:56.210Z"
+    },
+    {
+      "path": "voice-4.md",
+      "name": "voice-4.md",
+      "size": 5,
+      "feeds": [
+        "instructions"
+      ],
+      "addedAt": "2026-11-27T08:10:56.210Z"
+    },
+    {
+      "path": "baking-0.md",
+      "name": "baking-0.md",
+      "size": 1,
+      "feeds": [
+        "skill:b1f82c07"
+      ],
+      "addedAt": "2026-11-27T08:10:57.113Z"
+    },
+    {
+      "path": "baking-1.md",
+      "name": "baking-1.md",
+      "size": 2,
+      "feeds": [
+        "skill:b1f82c07"
+      ],
+      "addedAt": "2026-11-27T08:10:57.113Z"
+    }
+  ],
+  "skills": [
+    {
+      "id": "b1f82c07",
+      "name": "baking-0",
+      "createdAt": "2026-11-27T08:10:57.114Z",
+      "updatedAt": "2026-11-27T08:10:57.114Z"
+    }
+  ]
+}
