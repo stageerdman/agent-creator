@@ -15,6 +15,12 @@ It is the same page, `/new` (`src/server/public/new-agent.html`). Today
 the drop ends on a calm placeholder (FIREFLIES-BUILD phase 2). This
 update replaces that placeholder.
 
+Magic moments, one per phase (Merlin, world **"Light is earned"**:
+shape says chosen, light says used): Phase 1 **Dusk**, Phase 2 **The
+landing**, Phase 3 **Handing over** (the "waiting mark" below is
+Merlin's thin hollow ring), Phase 4 **Earned light**. On-screen words
+are in §8 of the magic-moments report and in `magic-merlin.md` §6.
+
 Order of work: Columbo (research and this roadmap) → Merlin (magic
 moments, `Reports/creation-screen-magic-moments.md`) → Jony (design and
 build) → Eraser (sign-off).
