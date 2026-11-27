@@ -2,7 +2,8 @@
  *
  * Left, the field: one firefly per file of the new agent, added as each upload batch lands
  * (dim = not used yet, bright = used, red = removed but still baked in until a full rebuild).
- * Every firefly drifts a little and now and then shines, very dim; none can be dragged.
+ * Every firefly wanders the whole field, slowly, with pauses, and now and then shines, very dim;
+ * none can be dragged (wanderAt).
  * Right, the menu: the agent's name (click to rename), then System prompt, Knowledge and Skills.
  * System prompt and Knowledge hold a loose seeded cluster of fireflies; a tap flies each one to its
  * own ordered spot beside its file name, a second tap flies them back.
@@ -70,13 +71,40 @@ export function dotLook(state) {
   return { color: FLY, alpha: .32, halo: false };
 }
 
-/* ---------- pure: alive, but calm (fix 2) ---------- */
+/* ---------- pure: alive, but calm (fix 2; the wander: Reports/fireflies-wander-motion.md) ---------- */
 
-export const DRIFT_MAX = 3;       // px a firefly wanders from its spot, at most
 export const SHINE_MAX = .22;     // alpha a shine adds, at most: never a flash
 export const SHINE_MS = 2400;     // ms one shine takes, rise and fall
+const TAU = 2 * Math.PI;
+const BOUND_C = 1.3, BOUND_N = .94 / Math.sin(BOUND_C * .92);   // soft bounds: slow down and curve back near an edge
 
-/* A firefly's own slow rhythm, seeded by its id: the same file always moves the same way. */
+/* A field firefly's own wander, seeded by its id; the draws keep the recipe's order. Periods in ms. */
+export function wanderParams(id) {
+  const r = rng(hash('wander:' + id)), u = (a, b) => a + r() * (b - a);
+  const PX1 = u(120e3, 180e3), PY1 = u(120e3, 180e3), fX1 = u(0, TAU), fY1 = u(0, TAU);   // long sway
+  const PX2 = u(66e3, 96e3), PY2 = u(66e3, 96e3), fX2 = u(0, TAU), fY2 = u(0, TAU);       // medium sway
+  const PL = u(30e3, 44e3) * (r() < .5 ? -1 : 1), fL = u(0, TAU);                         // the loop
+  const Q1 = u(9e3, 15e3), p1 = u(0, TAU), Q2 = u(23e3, 35e3), p2 = u(0, TAU);             // pauses: the time warp
+  const sp = u(.45, .65), every = u(16e3, 32e3), at = r();                                // pace, the shine's clock
+  return { PX1, PY1, fX1, fY1, PX2, PY2, fX2, fY2, PL, fL, Q1, p1, Q2, p2, sp, every, at };
+}
+
+/* Where a field firefly is at t (ms) inside area { w, h, pad } and how much it shines: no state, the same
+   inputs always give the same place. Reduced motion: its fixed home spot (fieldLayout's), no shine. */
+export function wanderAt(id, t, { w, h, pad = 32 }, reduced = false, p = null) {
+  const iw = Math.max(0, w - 2 * pad), ih = Math.max(0, h - 2 * pad);
+  if (reduced) { const s = spotOf(id); return { x: pad + s.x * iw, y: pad + s.y * ih, glow: 0 }; }
+  p = p || wanderParams(id);
+  const tau = p.sp * (t - .5 * p.Q1 / TAU * Math.sin(TAU * t / p.Q1 + p.p1) - .25 * p.Q2 / TAU * Math.sin(TAU * t / p.Q2 + p.p2));
+  const L = TAU * tau / p.PL + p.fL;
+  const X = .46 * Math.sin(TAU * tau / p.PX1 + p.fX1) + .30 * Math.sin(TAU * tau / p.PX2 + p.fX2) + .16 * Math.cos(L);
+  const Y = .46 * Math.sin(TAU * tau / p.PY1 + p.fY1) + .30 * Math.sin(TAU * tau / p.PY2 + p.fY2) + .16 * Math.sin(L);
+  const x = pad + iw * (.5 + .5 * BOUND_N * Math.sin(BOUND_C * X)), y = pad + ih * (.5 + .5 * BOUND_N * Math.sin(BOUND_C * Y));
+  const v = ((t / p.every + p.at) % 1 + 1) % 1 * p.every;
+  return { x, y, glow: v < SHINE_MS ? SHINE_MAX * Math.sin(Math.PI * v / SHINE_MS) ** 2 : 0 };
+}
+
+/* A menu firefly's own slow rhythm (css drift and shine), seeded by its id. */
 export function flyParams(id) {
   const r = rng(hash('fly:' + id));
   return {
@@ -85,16 +113,6 @@ export function flyParams(id) {
     phx: r() * 6.2832, phy: r() * 6.2832,
     shineEvery: 12000 + r() * 12000, shineAt: r(),             // ms between shines, where in the cycle
   };
-}
-
-/* Where a firefly is pushed and how much it shines at time t (ms). Reduced motion: still, no shine. */
-export function flyAt(id, t, reduced = false, p = null) {
-  if (reduced) return { dx: 0, dy: 0, glow: 0 };
-  p = p || flyParams(id);
-  const dx = p.ax * Math.sin(6.2832 * t / p.px + p.phx), dy = p.ay * Math.sin(6.2832 * t / p.py + p.phy);
-  const u = ((t / p.shineEvery + p.shineAt) % 1 + 1) % 1 * p.shineEvery;
-  const glow = u < SHINE_MS ? SHINE_MAX * Math.sin(Math.PI * u / SHINE_MS) ** 2 : 0;
-  return { dx, dy, glow };
 }
 
 /* ---------- pure: the hand-over from the orbit (Reports/one-flow-magic-moment.md §5–§7) ---------- */
@@ -477,8 +495,8 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   };
 }
 
-/* The field's canvas: every frame, each firefly drifts and now and then shines (flyAt).
-   Reduced motion: drawn only when something changes, still. */
+/* The field's canvas: every frame, each firefly wanders and now and then shines (wanderAt).
+   Reduced motion: drawn only when something changes, each at its home spot. */
 export function createField(canvas, isReduced) {
   const doc = canvas.ownerDocument, win = doc.defaultView, ctx = canvas.getContext('2d');
   const now = () => win.performance.now();
@@ -486,9 +504,10 @@ export function createField(canvas, isReduced) {
   const born = new Map(), params = new Map(), spots = new Map(), flown = new Set(), waiting = new Set();
   let queue = [], qi = 0;                                  // files waiting to light in place, in read order
   let hand = null, flyers = [], adoptT = 0, failAt = null, failTimer = 0, sprite = null;
-  const P = id => { let p = params.get(id); if (!p) params.set(id, p = flyParams(id)); return p; };
-  const S = id => { let s = spots.get(id); if (!s) spots.set(id, s = spotOf(id)); return s; };
+  const P = id => { let p = params.get(id); if (!p) params.set(id, p = wanderParams(id)); return p; };
   const PAD = 32;
+  const area = (fw, H) => ({ w: fw, h: H, pad: PAD });
+  const S = id => { let s = spots.get(id); if (!s) spots.set(id, s = spotOf(id)); return s; };
   const px = (s, fw, H) => ({ x: PAD + s.x * Math.max(0, fw - 2 * PAD), y: PAD + s.y * Math.max(0, H - 2 * PAD) });
 
   /* The whole DNA (the server's): files already lit or queued keep their light; new ones fade in now. */
@@ -555,9 +574,9 @@ export function createField(canvas, isReduced) {
     if (u >= 1) return null;
     let to = px(f.prov, fw, H), known = 0;
     if (f.id) {
-      const s = px(S(f.id), fw, H), m = flyAt(f.id, t, false, P(f.id));
+      const s = wanderAt(f.id, t, area(fw, H), false, P(f.id));   // where it will be wandering when it lands
       known = f.gotAt <= leave ? 1 : outQuad(clamp01((t - f.gotAt) / RETARGET));
-      to = { x: to.x + (s.x + m.dx - to.x) * known, y: to.y + (s.y + m.dy - to.y) * known };
+      to = { x: to.x + (s.x - to.x) * known, y: to.y + (s.y - to.y) * known };
     }
     const p = flightAt(f.from, { x: f.from.tx, y: f.from.ty }, to, u), w = 2 * (1 - u) * Math.sin(u * 9.42 + f.k);
     const full = flyerAlpha(u, { start: f.from.a }), melt = flyerAlpha(u, { start: f.from.a, extra: true });
@@ -579,14 +598,15 @@ export function createField(canvas, isReduced) {
     if (qi && qi === queue.length) { queue = []; qi = 0; }
     const gone = failAt == null ? 1 : 1 - inQuad(clamp01((t - failAt) / FAIL_MS));
     let busy = failAt != null || qi < queue.length;
+    const ar = area(fw, H);
     for (const d of dots) {
       const b = born.get(d.id); if (b == null) continue;
       const age = t - b; if (age < 0) continue;
-      const look = dotLook(d.state), m = flyAt(d.id, t, still, P(d.id)), glow = age < SHINE_AFTER ? 0 : m.glow;
+      const look = dotLook(d.state), m = still ? d : wanderAt(d.id, t, ar, false, P(d.id)), glow = age < SHINE_AFTER || still ? 0 : m.glow;
       let a = look.alpha;
       if (!flown.has(d.id) && age < FADE_IN) { a *= outQuad(age / FADE_IN); busy = true; }
       a *= gone;
-      const x = d.x + m.dx, y = d.y + m.dy, halo = ((look.halo ? a * .16 : 0) + glow * .4) * gone;
+      const x = m.x, y = m.y, halo = ((look.halo ? a * .16 : 0) + glow * .4) * gone;
       ctx.fillStyle = look.color;
       if (halo > .005) { ctx.globalAlpha = halo; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); }
       ctx.globalAlpha = Math.min(1, a + glow * gone); ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 6.2832); ctx.fill();
@@ -614,6 +634,10 @@ export function createField(canvas, isReduced) {
       total: dna.length, drawn: dots.length, moving: !isReduced(), lit: [...born.values()].filter(b => b <= now()).length,
       flyers: flyers.length, flying: lastFlying, queued: queue.length - qi,
       dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })),
+      at: (t = now()) => {                                   // where the first 50 are drawn at t (home spots when reduced)
+        const fw = Math.max(160, win.innerWidth - MENU_W), ar = area(fw, win.innerHeight), still = isReduced();
+        return dots.slice(0, 50).map(d => { const m = still ? d : wanderAt(d.id, t, ar, false, P(d.id)); return { id: d.id, x: m.x, y: m.y }; });
+      },
     }),
   };
 }

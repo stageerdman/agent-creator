@@ -6,9 +6,11 @@ import { join } from "node:path";
 import { createAgentStore, createAgents } from "../../creator/index.mjs";
 import { createApp } from "../app.mjs";
 import {
-  BELT_CAP, CLUSTER_H, DRIFT_MAX, EMPTY, FIELD_CAP, RED, ROW, SHINE_MAX, applyRemove, clusterSpot, dotLook, dropPlan,
-  fieldLayout, flightPath, flyAt, nextName, orderedSpot, postInBatches, sectionLine, skillName, spotOf, zoneAt, zoneLabel,
+  BELT_CAP, CLUSTER_H, EMPTY, FIELD_CAP, RED, ROW, SHINE_MAX, applyRemove, clusterSpot, dotLook, dropPlan,
+  fieldLayout, flightPath, nextName, orderedSpot, postInBatches, sectionLine, skillName, spotOf, wanderAt, wanderParams,
+  zoneAt, zoneLabel,
 } from "./creation-screen.js";
+const hash32 = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 import * as screen from "./creation-screen.js";
 import { FLY } from "./firefly-orbit.js";
 
@@ -82,26 +84,60 @@ test("a section says nothing when it has files, only the empty hint when it has 
   assert.ok(BELT_CAP > 0);
 });
 
-/* ---------- fix 2: every firefly drifts slowly and now and then shines, very dim ---------- */
+/* ---------- every firefly wanders the whole field, slowly, and now and then shines, very dim ---------- */
 
-test("drift and shine: bounded, the same for the same file and time, still under reduced motion", () => {
-  for (const id of ["a.md", "b/c.md", "x"]) for (const t of [0, 1234, 60000, 1e6]) {
-    const m = flyAt(id, t);
-    assert.deepEqual(m, flyAt(id, t), "deterministic");
-    assert.ok(Math.abs(m.dx) <= DRIFT_MAX && Math.abs(m.dy) <= DRIFT_MAX, "a few px at most");
-    assert.ok(m.glow >= 0 && m.glow <= SHINE_MAX, "very dim");
-    assert.deepEqual(flyAt(id, t, true), { dx: 0, dy: 0, glow: 0 });
+const AREA = { w: 1060, h: 900, pad: 32 };
+
+test("wander: inside the field, the same for the same file and time, home spot and no glow under reduced motion", () => {
+  for (const id of ["a.md", "b/c.md", "x"]) {
+    const home = wanderAt(id, 0, AREA, true), s = spotOf(id);
+    assert.deepEqual(home, { x: 32 + s.x * 996, y: 32 + s.y * 836, glow: 0 }, "reduced: fieldLayout's home spot");
+    for (let t = 0; t < 600000; t += 997) {
+      const m = wanderAt(id, t, AREA);
+      assert.deepEqual(m, wanderAt(id, t, AREA), "deterministic");
+      assert.ok(m.x >= 32 && m.x <= 1028 && m.y >= 32 && m.y <= 868, `inside at t=${t}`);
+      assert.ok(m.glow >= 0 && m.glow <= SHINE_MAX, "very dim");
+      assert.deepEqual(wanderAt(id, t, AREA, true), home, "reduced: still");
+    }
   }
-  // Slow: in 100 ms a firefly moves a fraction of a px.
-  const a = flyAt("slow.md", 5000), b = flyAt("slow.md", 5100);
-  assert.ok(Math.hypot(a.dx - b.dx, a.dy - b.dy) < 0.3);
+});
+
+test("wander: every fly really roams (never stuck), turns gently, never jitters", () => {
+  const ids = Array.from({ length: 300 }, (_, i) => `w/f${i}.md`), dist = [];
+  let maxTurn = 0;
+  for (const id of ids) {
+    const p = wanderParams(id), t0 = (hash32(id) % 100) * 1000;
+    let d = 0, prev = wanderAt(id, t0, AREA, false, p), head = null;
+    for (let t = t0 + 1000 / 60; t <= t0 + 20000; t += 1000 / 60) {
+      const m = wanderAt(id, t, AREA, false, p), step = Math.hypot(m.x - prev.x, m.y - prev.y);
+      d += step;
+      if (step * 60 > 4) {
+        const h = Math.atan2(m.y - prev.y, m.x - prev.x);
+        if (head != null) { let dh = Math.abs(h - head); if (dh > Math.PI) dh = 2 * Math.PI - dh; maxTurn = Math.max(maxTurn, dh * 180 / Math.PI); }
+        head = h;
+      } else head = null;
+      prev = m;
+    }
+    dist.push(d);
+  }
+  dist.sort((a, b) => a - b);
+  assert.ok(dist[0] > 20, `every fly flies over 20 px in 20 s (least ${dist[0].toFixed(1)})`);
+  assert.ok(dist[150] > 120, `the median fly flies over 120 px in 20 s (${dist[150].toFixed(0)})`);
+  assert.ok(maxTurn <= 3, `heading change per frame ≤ 3° (max ${maxTurn.toFixed(2)}°)`);
+});
+
+test("wander: 10,000 flies cost little per frame", () => {
+  const ids = Array.from({ length: 10000 }, (_, i) => `big/f${i}.md`), ps = ids.map((id) => wanderParams(id));
+  const t = performance.now();
+  for (let i = 0; i < ids.length; i++) wanderAt(ids[i], 12345, AREA, false, ps[i]);
+  assert.ok(performance.now() - t < 30, "10,000 wanderAt calls well under a frame budget");
 });
 
 test("shine is rare: at any moment only a few of 3,000 fireflies glow, never all at once", () => {
   const ids = Array.from({ length: 3000 }, (_, i) => `n/f${i}.md`);
   let max = 0;
   for (const t of [0, 7000, 33000, 120000, 500000]) {
-    const g = ids.map((id) => flyAt(id, t).glow);
+    const g = ids.map((id) => wanderAt(id, t, AREA).glow);
     const on = g.filter((x) => x > 0).length / ids.length;
     assert.ok(on > 0 && on < 0.25, `shining share ${on.toFixed(2)} at t=${t}`);
     max = Math.max(max, ...g);
