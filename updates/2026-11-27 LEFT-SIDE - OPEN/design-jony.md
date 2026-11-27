@@ -36,7 +36,9 @@ You drop a folder and watch your agent take shape. Then, when you want to say wh
 
 ## Choices made without a teammate's answer (flag to Columbo)
 - **Chat endpoint**: assumed `POST /api/agents/:id/chat` streaming SSE `delta` / `files` / `draft` / `done` / `error`. This matches the current server.
-- **Create** posts `/api/agents/:id/save` (Keep). The creator prompt still says "press Keep" while the button says Create. Ready is detected with `/\bready\b|press keep/i`. The two words should become one.
+- **Keep** posts `/api/agents/:id/save`. The button now says **Keep**, the same word the creator prompt, the API and its tests already use, so there is one word for one action. (Eraser suggested renaming everything to "Create". That would change the creator's prompt and the server tests, which is outside the Left Side, so Columbo can decide if the whole app should switch.) Ready is detected with `/\bready\b|press keep/i`.
+- **Eraser's Q1/Q2 (can you make an agent without opening Sketcher?)**: yes. The agent exists and autosaves from the drop, and Keep only marks it kept. So the handle is never a hidden step on the main path.
+- The box has `enterkeyhint="send"`, so phone keyboards show Send.
 - **Panel width**: full window under 640 px, else 440 px.
 - `src/server/app.mjs` now serves `left-side.js`. Without it the page 404'd and went blank. This is a one-word change outside my files.
 

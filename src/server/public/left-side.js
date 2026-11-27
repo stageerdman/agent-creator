@@ -78,7 +78,7 @@ export const timings = reduced => reduced
 /* The handle's chevron opacity dt ms into a blink. */
 export const blinkLevel = (dt, reduced) => reduced ? (dt >= 0 && dt < STILL_BLINK ? 1 : .55) : .55 + .45 * flash(dt);
 
-/* Sketcher says the agent is ready: then it proposes Create. */
+/* Sketcher says the agent is ready: then it proposes Keep (the creator's own word: "press Keep"). */
 export const saysReady = text => /\bready\b|press keep/i.test(String(text || ''));
 
 /* Server-sent events, as text arrives: → [{ event, data }] and the unfinished rest. */
