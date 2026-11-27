@@ -4,7 +4,13 @@
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR, WEEK = 7 * DAY, MONTH = 30 * DAY, YEAR = 365 * DAY;
 
 export const nameOf = a => ((a && a.draft && a.draft.name) || '').trim() || 'Untitled';
-export const descOf = a => ((a && a.draft && a.draft.description) || '').trim();
+/* One plain line: markdown markers dropped (`**taxes**` reads taxes), links keep their words. */
+export const plainLine = s => String(s || '')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+[.)])\s+/gm, '')
+  .replace(/(\*\*|__|\*|_|~~|`+)(\S(?:.*?\S)?)\1/g, '$2')
+  .replace(/\s+/g, ' ').trim();
+export const descOf = a => plainLine(a && a.draft && a.draft.description);
 export const isLearning = a => !!(a && a.draft && a.draft.status === 'learning');
 const bornOf = a => Date.parse((a && (a.createdAt || a.updatedAt)) || '') || 0;
 

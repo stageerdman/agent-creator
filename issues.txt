@@ -100,6 +100,13 @@
       in its <draft> block; chat SSE sends `ready {type:"ready",ready:true}`
       before `done` (never once saved) and `done` carries `ready`. Left to
       Jony: retire the word match in left-side.js saysReady.
+      Jony (2026-11-28): done. Create shows only on ready / done.ready; the
+      agent page talks to the real /talk route. Browser checks now run on
+      the REAL server with only the CLI faked: checks/mock-engine-server.mjs
+      (left-side-check step 9: Create from the ready flag, pressed, saved;
+      agent-page-check: no page.route stub, talk saved and back after a
+      reload). Both ALL PASS, Chrome + WebKit. Home descriptions are plain
+      text now (descOf drops markdown markers).
 - [x] LEFT-SIDE round 2 (Eraser → Jony, 2026-11-27, RETURNED narrow): branch
       left-side-review-returned-the-full-revie-850ca84f (123de76) passes
       tests + Chrome check, and M4 is proven on screen (6→190→253→674). But it

@@ -2,8 +2,9 @@
 // Usage: node checks/left-side-check.cjs http://localhost:3505 --home <scratch home>
 // Needs playwright-core (npm install --no-save playwright-core).
 //
-// It CREATES an agent and marks its files used, so point it at a server started with a scratch home:
-//   AGENT_CREATOR_HOME=<scratch folder> PORT=3505 npm start
+// It CREATES an agent and marks its files used, so point it at the real server with only the CLI
+// faked (step 9 talks to the real chat route), started with a scratch home:
+//   AGENT_CREATOR_HOME=<scratch folder> PORT=3505 node checks/mock-engine-server.mjs
 // and pass the same folder as --home (used only to mark files used: there is no endpoint for that yet).
 const pw = require('playwright-core');
 const path = require('path');
@@ -218,6 +219,21 @@ async function run(agents, isLost, setLost) {
   ok(s8.took >= b.dna.length, '8. Knowledge took each one with a soft light', String(s8.took));
   ok((c8.sections.knowledge || []).length === b.dna.length, '8. the Knowledge section now lists them', JSON.stringify(Object.keys(c8.sections)));
   await page.unroute('**/api/agents/*/chat');
+
+  /* ---------- 9. F10: Create shows only on the server's ready flag (real chat route, fake CLI), then creates ---------- */
+  // Needs the server from checks/mock-engine-server.mjs: the fake creator's <draft> block is what we type.
+  const createShown = () => page.evaluate(() => !document.querySelector('#sketcher-create').hidden);
+  const turn = async text => { const n = await page.$$eval('#sketcher-log > div', d => d.length); await page.fill('#sketcher-box', text); await page.keyboard.press('Enter');
+    return until(async () => page.evaluate(n => { const d = document.querySelectorAll('#sketcher-log > div'); return d.length >= n + 2 && !d[d.length - 1].classList.contains('wait'); }, n), 8000); };
+  ok(await turn('{"name":"Tax Helper"}') >= 0 && !(await createShown()), '9. a turn without the ready flag: no Create');
+  ok(await turn('{"name":"Tax Helper","ready":true}') >= 0 && await until(createShown, 4000) >= 0, '9. the creator flags ready: Create shows');
+  await page.click('#sketcher-create');
+  const lastLine = () => page.evaluate(() => [...document.querySelectorAll('#sketcher-log > div')].pop().textContent);
+  const made = await until(async () => !(await createShown()) && (await lastLine()) === 'Created. You can keep changing it.', 6000);
+  const status = (await (await fetch(`${base}/api/agents/${id2}`)).json()).draft.status;
+  ok(made >= 0 && status === 'saved', '9. pressing Create keeps the agent and Create goes away', JSON.stringify({ made, status }));
+  ok((await lastLine()) === 'Created. You can keep changing it.', '9. Sketcher says Created');
+  ok(await turn('{"ready":true}') >= 0 && !(await createShown()), '9. once created, no Create again');
 
   ok(errors.length === 0, 'no page errors or failed requests', errors.slice(0, 5).join(' | '));
   if (isLost()) throw new Error('browser lost');

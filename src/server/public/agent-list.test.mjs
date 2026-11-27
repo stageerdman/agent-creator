@@ -65,3 +65,10 @@ test("nameOf/descOf: blank names read Untitled, missing descriptions are empty",
   assert.equal(nameOf({ draft: { name: "  " } }), "Untitled");
   assert.equal(descOf({ draft: {} }), "");
 });
+
+test("descOf: one plain line, no raw markdown markers", () => {
+  const d = (description) => descOf({ draft: { description } });
+  assert.equal(d("You help with **taxes**."), "You help with taxes.");
+  assert.equal(d("# Coach\n- runs *fast* with `pace`\n> [docs](http://x)"), "Coach runs fast with pace docs");
+  assert.equal(d("snake_case and 2 * 3 stay"), "snake_case and 2 * 3 stay");
+});
