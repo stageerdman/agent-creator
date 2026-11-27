@@ -118,8 +118,9 @@
   /* ---------- the Left Side: the likeness, the flights, the Sketcher handle and panel ---------- */
   canvas#mark { position: fixed; display: block; pointer-events: none; opacity: 0; transform-origin: 50% 50%; transition: opacity 600ms ease, transform 600ms cubic-bezier(.2,.8,.2,1); }
   body.left canvas#mark { opacity: 1; }
-  canvas#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  canvas#sky { position: fixed; inset: 0; z-index: 3; width: 100%; height: 100%; display: block; pointer-events: none; }   /* over the menu: a sorted file flies into its section */
   #menu { z-index: 2; }
+  #menu section.took { background: rgba(216,242,106,.08); }   /* the section takes the file Sketcher sorted */
   #handle { position: fixed; left: 0; top: 50%; z-index: 5; display: flex; align-items: center; gap: 6px; min-width: 44px; height: 48px;
     padding: 0 12px 0 10px; border: 0; border-radius: 0 12px 12px 0; background: rgba(6,11,8,.5); color: var(--fly); cursor: pointer;
     font: 500 13px/1 var(--font); transform: translateX(-100%); -webkit-tap-highlight-color: transparent; outline: none; }
@@ -193,7 +194,7 @@
   <div id="sketcher-log" aria-live="polite"></div>
   <form id="sketcher-form">
     <textarea id="sketcher-box" aria-label="Message to Sketcher" rows="3" enterkeyhint="send"></textarea>
-    <button id="sketcher-create" type="button" hidden>Keep</button>
+    <button id="sketcher-create" type="button" hidden>Create</button>
   </form>
 </aside>
 <main aria-label="New agent">
@@ -257,6 +258,7 @@ left = mountLeftSide({
   reduced: rmq.matches,
   fetchAgent: id => fetch(`/api/agents/${encodeURIComponent(id)}`).then(r => r.ok ? r.json() : null),
   refresh: a => screen.refresh(a),
+  reloadMenu: () => screen.reloadMenu(),
 });
 left.hide = ids => screen.hide(ids);
 rmq.addEventListener('change', e => { screen.setReduced(e.matches); left.setReduced(e.matches); });

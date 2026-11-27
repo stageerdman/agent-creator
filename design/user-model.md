@@ -9,6 +9,7 @@ These are people on a Mac who turn a folder of their own material (notes, docs, 
 3. **Fix a wrong placement:** remove a file, or move it to another section.
 4. **Adjust the words** of the system prompt or a skill.
 5. **Use the newest build,** never an older one.
+6. **Talk to the agent they made,** and come back later to change it (agent page: Talk, Edit).
 
 ## What they do (expected)
 - They drop a whole folder, sometimes a huge one (10k+ files), and wait for the screen to calm down.
@@ -19,4 +20,6 @@ These are people on a Mac who turn a folder of their own material (notes, docs, 
 - Users read "dim / bright / red" without a legend. To check: watch the first 3 users and see whether they ask what the colours mean.
 - Autosave without a Save button feels safe. To check: see whether anyone looks for Save.
 - Nobody needs to move fireflies with the keyboard alone. This is a risk for accessibility; a "Move to…" control may be needed.
+- Three words (Good at / Medium / Not trained for) say enough about an agent without numbers. To check: ask users what their agent is good at after seeing the Profile.
+- A quiet "Used · …" line is enough to trust an answer. To check: see whether anyone asks where an answer came from.
 - "Removed from Agent, not from your Mac" is enough to stop people worrying that files get deleted from disk.

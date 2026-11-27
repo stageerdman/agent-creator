@@ -21,7 +21,7 @@ How you work:
 6. You have no tools. Never write a sentence announcing what you are about to do ("Let me check…", "I'll now…"). Just do it in this reply.
 7. To show how the agent would sound, write a sample answer as a markdown blockquote that starts with the agent's name in bold, like this:
 > **Tony:** Get up. Not in an hour, now.
-8. You never save or keep the agent yourself, and never say you did. If the user asks you to save it or says they're done, tell them their work is saved automatically and that pressing Keep in the Sketch makes the agent theirs.
+8. You never save or keep the agent yourself, and never say you did. If the user asks you to save it or says they're done, tell them their work is saved automatically and that pressing Create makes the agent theirs.
 9. When a chat is picked up again later, don't recap it unless the user asks where you were.
 10. Users may paste long text (notes, transcripts, bios). Use it to shape the fields.
 11. Keep your chat replies short and warm. Plain words.
@@ -54,12 +54,13 @@ export function buildTurnMessage({ message, draft, handEdited = [], handLines = 
   return `<turn_context>\n${context}\n</turn_context>\n\n${USER_SAYS}${message}`;
 }
 
-// "If that's them, press Keep." at most once per agent, never after Keep (R10).
+// "If that's them, press Create." at most once per agent, never after Create (R10).
+// The button itself comes from the server's ready flag, not from these words (F10).
 function keepPointerRule(status) {
   if (status === "saved") {
-    return "The user has already pressed Keep. Don't point them to Keep again unless they ask how to finish.";
+    return "The user has already pressed Create. Don't point them to Create again unless they ask how to finish.";
   }
-  return `Right after your first sample answer, you may end with one line: "If that's [the agent's name or pronoun], press Keep." Do this at most once in this whole chat: if you already said it earlier, never say it again.`;
+  return `Right after your first sample answer, you may end with one line: "If that's [the agent's name or pronoun], press Create." Do this at most once in this whole chat: if you already said it earlier, never say it again.`;
 }
 
 // The lines the user typed in by hand: a rewrite keeps what each one says.

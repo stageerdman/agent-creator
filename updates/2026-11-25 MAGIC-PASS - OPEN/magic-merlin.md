@@ -5,7 +5,32 @@ For Jony (build), Eraser (cuts), Columbo (fits the parts). Built on
 the FULL-UX world (`updates/2026-11-25 FULL-UX - OPEN/magic-merlin.md`)
 and my SKETCH-REWORK notes (`merlin-magic.md`). No app code changed here.
 
-## 0. In one breath
+## Status, 28 Nov (G7): what exists on main
+
+The cleanup on 26 Nov (`793c876`) deleted the screens this pass was
+written for (`index.html`, `app.js`, `block-a…e.js`, `magic.css`: the
+Sketcher creator, Profile/DNA view, Talk, Know/Identity/Share). So
+**§1 to §9 below describe moments that are not in the app.** They stay
+as history and as a source for Jony's new Profile/DNA/Talk work; none of
+them counts as built. The app's magic today is the firefly world, and
+these are the only moments in it:
+
+| # | Moment | Where (file) | Reduce Motion |
+|---|---|---|---|
+| 1 | **Each agent's logo is a cluster of fireflies**, one dot per started MB of its files, each file blinking on its own beat; hover or focus flashes all dots once | `fireflies-dna.js` (home rows, agent page) | no blink or drift; dots just light |
+| 2 | **Home rows appear** with a 160 ms fade | `agent-home.html` | none |
+| 3 | **The + is a call:** the home's light turns into fireflies and gathers into the waiting ring of /new (1 s) | `firefly-gather.js` | plain 160 ms fade, ring at rest |
+| 4 | **The waiting ring** of 30 fireflies leans toward the pointer, holds while Finder is open, stirs on a drag, calms on an empty drop | `firefly-orbit.js` | only brightness changes |
+| 5 | **The hand-over:** on files, the ring's 30 fireflies fly out to their files in the field; a failed save fades them and the ring comes back | `firefly-orbit.js` `release/restore`, `creation-screen.js` `adopt/fail` | no flight |
+| 6 | **The field:** one firefly per file, wandering slowly with pauses, now and then a dim shine; dim = not used, bright = used, red = removed | `creation-screen.js`, `new-agent.html` | no drift, no shine |
+| 7 | **Menu clusters:** a tap on System prompt or Knowledge flies each firefly to its spot beside its file name (640 ms, 30 ms stagger); a second tap flies them back | `creation-screen.js` | no flight |
+| 8 | **Drop zones while dragging from Finder:** Adjust DNA, Adjust Knowledge, Create new skill | `creation-screen.js` | same, still |
+| 9 | **★ The sorting moment (new, F12/F13):** when the chat sorts a file (one `allocate {file, section}` event per file), that file's firefly glows (900 ms), a light flies from it into its menu section, and the section softly lights (600 ms). Each file glows on its own event, not on "processed". The menu reloads after a files change, so the file is then listed where it went | `left-side.js`, `new-agent.html` | no flight; the glow and the section light stay |
+
+Rules for all of them: no counts or status words (the fireflies say it),
+nothing blocks a click, no sound.
+
+## 0. In one breath (25 Nov, old screens: not on main)
 
 - **The world stays the portrait studio. The user is the witness.** Labels
   stay plain; the world lives only in microcopy, marks and motion.

@@ -494,6 +494,7 @@ export function mountCreation({ doc = document, reduced = false, onDna = null } 
     /* For the Left Side: a newer copy of the agent (its DNA refresh), and the files no longer drawn here. */
     refresh(a) { if (!agent || !a || a.id !== agent.id) return; agent = a; if (doc.activeElement !== nameEl) nameEl.textContent = nameOf(a); setDna(a.dna || []); },
     hide: ids => field.hide(ids),
+    reloadMenu: () => agent ? reloadMenu() : undefined,   // after Sketcher sorted files: the sections show them
     setReduced(v) { reduced = !!v; field.redraw(); },
     info: () => ({ split: opened, field: field.info(), sections: Object.fromEntries(Object.entries(sections).map(([s, f]) => [s, f.map(x => ({ path: x.path, state: x.state }))])), skills: skills.map(k => k.name) }),
   };

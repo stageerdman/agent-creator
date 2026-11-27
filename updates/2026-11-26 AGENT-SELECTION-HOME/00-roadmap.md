@@ -19,6 +19,13 @@ Order of work: Columbo (this roadmap + `01-columbo-report.md`) → Merlin
 3. **`src/server/public/glade-fireflies.html` stays byte for byte unchanged.**
    Copy from it; never edit it. Eraser checks its blob hash
    (`645922246274e3c5c695c59163e15824935d9245`).
+   **RETIRED 2026-11-28 (audit row C8, Eraser's ruling).** The page was
+   deleted in `793c876`. A reference page the user never sees isn't a user
+   requirement, and bringing it back would add a second Fireflies page.
+   Rule 2 still holds: the look lives on in `agent-home.html` and
+   `new-agent.html`. The blob-hash checks in §5 below no longer apply. The
+   original concept page is still kept at
+   `updates/2026-11-25 MAGIC-CONCEPTS/glade-fireflies.html`.
 4. **`createdAt` comes from the API.** The store already writes `createdAt` on
    new records (`agentStore.mjs`), but `summary()` in `src/creator/agents.mjs`
    drops it. Add it. An old record without `createdAt` falls back to

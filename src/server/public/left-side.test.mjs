@@ -2,8 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showKeep, isKept, timings, blinkLevel,
-  saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
+  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showCreate, isKept, timings, blinkLevel,
+  isReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
+  menuSectionOf, glowLevel, sortLeave, streamChat, GLOW_MS, TOOK_MS, SORT_GAP, STILL_BLINK,
 } from './left-side.js';
 
 test('M4. the likeness grows as it fills: half size at nothing, full when whole, rising at every step', () => {
@@ -121,9 +122,10 @@ test('10b. a whole flash while the panel is open is held: ONE flash plays on clo
   assert.equal(closeFlash({ held: false, changed: true, reduced: true }), false);
 });
 
-test('Keep shows only when proposed, and never once the agent is or was kept', () => {
-  assert.equal(showKeep('Press Keep when you like it.', false), true);
-  assert.equal(showKeep('Press Keep when you like it.', true), false);
+test('Create shows only on the server ready flag, and never once the agent is or was created', () => {
+  assert.equal(showCreate(true, false), true);
+  assert.equal(showCreate(true, true), false);
+  assert.equal(showCreate(false, false), false, 'no flag, no button, whatever Sketcher says');
   assert.equal(isKept({ draft: { status: 'saved' } }), true);
   assert.equal(isKept({ draft: { status: 'draft' } }), false);
   assert.equal(isKept(null), false);
@@ -143,13 +145,12 @@ test('the little ones: mark size, ready words, server events', () => {
   assert.equal(markSize(2000, 2000), 240);
   assert.equal(markSize(200, 200), 140);
   assert.equal(markSize(500, 900), 200);
-  assert.ok(saysReady('Ada is ready. Press Keep.'));
-  assert.ok(!saysReady('Tell me more about the readers.'));
-  assert.ok(!saysReady('Are you ready to tell me who reads it?'), 'only "press keep" proposes Keep, not "ready"');
-  assert.ok(!saysReady('Ready when you are. What should it read first?'));
-  assert.ok(!saysReady('Is it ready? Not yet.'));
-  assert.ok(saysReady('Looks good. Tap Keep when you like.') && saysReady('hit keep') && saysReady('Click on Keep.'));
-  assert.ok(!saysReady('I’ll keep that in mind.') && !saysReady('Press on, keeper.'));
+  assert.ok(isReady('ready', { type: 'ready', ready: true }));
+  assert.ok(isReady('done', { say: 'Hi', ready: true }));
+  assert.ok(!isReady('done', { say: 'Hi', ready: false }));
+  assert.ok(!isReady('done', { say: 'If that’s Ada, press Create.' }), 'words never bring the button');
+  assert.ok(!isReady('delta', { text: 'ready', ready: true }));
+  assert.ok(!isReady('ready', null));
   const store = {};
   assert.equal(kept(store, { id: 'a', draft: { status: 'draft' } }), false);
   assert.equal(kept(store, { id: 'a', draft: { status: 'saved' } }), true);
@@ -158,4 +159,56 @@ test('the little ones: mark size, ready words, server events', () => {
   const { events, rest } = parseEvents('event: delta\ndata: {"text":"Hi"}\n\nevent: done\ndata: {}\n\nevent: del');
   assert.deepEqual(events, [{ event: 'delta', data: { text: 'Hi' } }, { event: 'done', data: {} }]);
   assert.equal(rest, 'event: del');
+});
+
+test('F12. each sorted file names its menu section; none / missing → nowhere', () => {
+  assert.equal(menuSectionOf('knowledge'), 'knowledge');
+  assert.equal(menuSectionOf('transcript'), 'transcript');
+  assert.equal(menuSectionOf('skill:writing'), 'skills');
+  assert.equal(menuSectionOf('none'), null);
+  assert.equal(menuSectionOf(undefined), null);
+});
+
+test('F13. a firefly glows from its own allocate: 0 before, lit inside GLOW_MS, out after; Reduce Motion a plain step', () => {
+  assert.equal(glowLevel(-1, false), 0);
+  assert.ok(glowLevel(GLOW_MS / 4, false) > 0);
+  assert.equal(glowLevel(GLOW_MS, false), 0);
+  assert.equal(glowLevel(10, true), 1);
+  assert.equal(glowLevel(STILL_BLINK, true), 0);
+  assert.ok(TOOK_MS > 0);
+});
+
+test('F12. a burst of sorted files leaves one by one, never before the glow', () => {
+  const first = sortLeave(1000, -Infinity);
+  assert.ok(first > 1000);
+  const second = sortLeave(1000, first);
+  assert.equal(second - first, SORT_GAP);
+  assert.equal(sortLeave(5000, first), sortLeave(5000, -Infinity), 'a later burst is not held back by an old one');
+});
+
+test('F12/F13. streamChat: onAllocate once per allocate event, onChange on files', async () => {
+  const sse = [
+    ['delta', { text: 'Moving ' }], ['files', {}],
+    ['allocate', { file: 'a.md', section: 'knowledge' }], ['allocate', { file: 'b.md', section: 'knowledge' }],
+    ['allocate', { file: 'c.md' }], ['done', { say: 'Moving them.' }],
+  ].map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join('');
+  let sent;
+  const fetch = async (url, init) => { sent = JSON.parse(init.body); return new Response(sse); };
+  const changes = [], sorted = [];
+  const say = await streamChat({ fetch, id: 'x', message: 'move outstanding files to knowledge', onChange: e => changes.push(e), onAllocate: a => sorted.push(a) });
+  assert.equal(sent.message, 'move outstanding files to knowledge');
+  assert.deepEqual(changes, ['files']);
+  assert.deepEqual(sorted, [{ file: 'a.md', section: 'knowledge' }, { file: 'b.md', section: 'knowledge' }, { file: 'c.md', section: 'none' }]);
+  assert.equal(say, 'Moving them.');
+});
+
+test('F10. streamChat: onReady once from the server flag (ready event and/or done.ready), never from words', async () => {
+  const run = async events => {
+    const body = events.map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join('');
+    let n = 0; await streamChat({ fetch: async () => new Response(body), id: 'x', message: 'hi', onReady: () => n++ }); return n;
+  };
+  assert.equal(await run([['delta', { text: 'Hi' }], ['ready', { type: 'ready', ready: true }], ['done', { say: 'Hi', ready: true }]]), 1);
+  assert.equal(await run([['done', { say: 'Hi', ready: true }]]), 1);
+  assert.equal(await run([['done', { say: 'If that’s Ada, press Create.', ready: false }]]), 0);
+  assert.equal(await run([['done', { say: 'If that’s Ada, press Create.' }]]), 0);
 });
