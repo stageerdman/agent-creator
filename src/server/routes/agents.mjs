@@ -16,8 +16,10 @@ export function agentRoutes(agents) {
       sendJson(res, 200, { deleted: params.id });
     },
 
-    // SSE: delta* → draft { draft, changed } and/or files { files, changed }
-    // (each only if something changed), then allocate { file, section } per
+    // SSE: delta* → found { files }* per batch of a path read in from the chat →
+    // draft { draft, changed } and/or files { files, changed }
+    // (each only if something changed or came in) → intake { added, skipped,
+    // rules: [{ to, picked, only }] } once when paths or rules were asked, then allocate { file, section } per
     // changed file and section it now goes to ("none" if it feeds nothing) → embedded { file } or
     // embed-failed { file, reason } per Knowledge file newly searchable or not → ready { type, ready: true }
     // only when the creator flags the agent ready (never once kept) → done { say, sessionId, ready } | error.
@@ -26,9 +28,11 @@ export function agentRoutes(agents) {
       await agents.get(params.id); // 404 before the stream opens
       await streamEvents(res, traceId, async ({ send, signal }) => {
         const onSay = (text) => send("delta", { text });
-        const turn = await agents.chat(params.id, message, { onSay, signal, traceId });
+        const onFiles = (files) => send("found", { files });
+        const turn = await agents.chat(params.id, message, { onSay, onFiles, signal, traceId });
         if (turn.changed.length) send("draft", { draft: turn.draft, changed: turn.changed });
-        if (turn.filesChanged.length) send("files", { files: turn.files, changed: turn.filesChanged });
+        if (turn.filesChanged.length || turn.intake?.added) send("files", { files: turn.files, changed: turn.filesChanged });
+        if (turn.intake) send("intake", turn.intake);
         for (const allocation of allocations(turn.files, turn.filesChanged)) send("allocate", allocation);
         if (turn.filesChanged.length) for (const event of await embedEvents(agents, params.id, traceId)) send(event.type, event);
         if (turn.ready) send("ready", { type: "ready", ready: true });
