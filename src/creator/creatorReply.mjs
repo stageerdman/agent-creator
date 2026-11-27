@@ -41,7 +41,10 @@ function parsePatch(body) {
 // Stateful filter for streamed deltas: `push(delta)` returns the text that
 // is safe to show now; `flush()` returns what was held back at the end.
 // A tag split across deltas (`<dr` + `aft>`) is held until it's decided.
-export function streamFilter() {
+// `tag` picks the block to hide ("draft" by default; the talk hides "used").
+export function streamFilter(tag = "draft") {
+  const OPEN = `<${tag}>`;
+  const CLOSE = `</${tag}>`;
   let held = "";
   let inside = false;
 
@@ -49,15 +52,15 @@ export function streamFilter() {
     held += delta;
     let out = "";
     for (;;) {
-      const tag = inside ? CLOSE : OPEN;
-      const at = held.indexOf(tag);
+      const next = inside ? CLOSE : OPEN;
+      const at = held.indexOf(next);
       if (at !== -1) {
         if (!inside) out += held.slice(0, at);
-        held = held.slice(at + tag.length);
+        held = held.slice(at + next.length);
         inside = !inside;
         continue;
       }
-      const keep = partialTagLength(held, tag);
+      const keep = partialTagLength(held, next);
       if (!inside) out += held.slice(0, held.length - keep);
       held = held.slice(held.length - keep);
       return out;

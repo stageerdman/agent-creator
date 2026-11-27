@@ -6,6 +6,7 @@ import { dnaOf, routeFiles } from "./files.mjs";
 import { createMaterial } from "./agentMaterial.mjs";
 import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
+import { createTalk } from "./agentTalk.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
 // instructions, cut to about 80 characters. Empty when neither has text.
@@ -24,8 +25,8 @@ export function summary({ id, draft, files, createdAt, updatedAt }) {
     createdAt: born, updatedAt, dna: dnaOf(files, born),
   };
 }
-const view = ({ id, draft, sessionId, files = [], chat = [], createdAt, updatedAt }) =>
-  ({ id, draft, sessionId, files, chat, dna: dnaOf(files, createdAt || updatedAt) });
+const view = ({ id, draft, sessionId, files = [], chat = [], talk = [], createdAt, updatedAt }) =>
+  ({ id, draft, sessionId, files, chat, talk, dna: dnaOf(files, createdAt || updatedAt) });
 
 // The chat as the panel shows it again after a reload; the oldest lines go first.
 export const CHAT_KEEP = 200;
@@ -69,8 +70,13 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
       const chat = withTurn(latest.chat, message, turn.say);
       await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
-      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId };
+      // F10: Create shows when the creator says ready in its block, and only
+      // for a draft with something in it that was never created.
+      const ready = turn.patch?.ready === true && draft.status !== "saved" && !isEmpty(draft);
+      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId, ready };
     },
+
+    ...createTalk({ store, engine, now }),
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.
     async edit(id, fields) {

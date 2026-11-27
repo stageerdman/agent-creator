@@ -35,20 +35,22 @@
       (agent-page.js, 8de1021); its missing server route is the TALK line
       below.
 
-- [ ] TALK route missing (Eraser, 2026-11-28): agent-page.js streamTalk
-      posts to POST /api/agents/:id/talk, but src/server/routes/ has no
-      such route, so every message to a created agent fails with "It
-      couldn't answer." (G4, F14). Needs the route, an answer from the
-      agent's own prompt and files, done { say, used }, and a talks store
-      next to agent.json so a.talk survives a reload. Owner: Uncle Bob.
+- [x] TALK route missing (Eraser, 2026-11-28). Closed 2026-11-28
+      (Columbo, integration): POST /api/agents/:id/talk now exists
+      (src/creator/agentTalk.mjs). Only a created agent talks (a draft is
+      400). Its prompt is its system prompt (or persona + instructions),
+      its knowledge text and its skills' bodies. done { say, used }, where
+      `used` names only skills / Knowledge it has. The talk and its session
+      are kept in agent.json. Server test "G4/F14: talk ...".
+      Still open: agent-page-check.cjs fakes the route with page.route;
+      it should hit the real one with the fake engine. Owner: Jony.
 
-- [ ] CHAT ready flag (Jony → Uncle Bob, 2026-11-27; re-opened by Eraser
-      2026-11-28): left-side.js now shows Create only on the server's
-      `ready` event or `done { ready: true }` (2e55d7a), but
-      routes/agents.mjs:30 sends `done { say, sessionId }` with no ready
-      and no `ready` event. So on the real app Create never appears (F10).
-      The engine must say when the creator thinks the agent is ready.
-      Owner: Uncle Bob.
+- [x] CHAT ready flag (Jony → Uncle Bob, 2026-11-27). Closed 2026-11-28
+      (Columbo, integration): the Sketcher puts "ready": true in its draft
+      block when it says the agent looks ready (prompt rule 5); the server
+      passes it on as done { ready: true }, only for a non-empty draft that
+      isn't created (the page also hides it if it was created before). Server test "F10: done carries ready ...".
+      Still open: no browser check drives a real turn to Create. Owner: Jony.
 
 - [ ] Eraser's eye-check.cjs (e435071), Reduce Motion off: the "dots appear
       one at a time" line is flaky in Chrome (landing dots overlap a

@@ -288,3 +288,17 @@ Re-run on branch `studio/give-every-issue-an-owner-re-run-the-aud-fb0a7104` (HEA
 Target: every row except E4, F15 and the planned research rows reads **met**. Then I re-check and sign.
 
 — Eraser
+
+---
+
+## Integration (Columbo, captain, 2026-11-28)
+
+The two server pieces behind Eraser's fixes 1 and 2 are now in. `npm test`: 262 tests, 261 pass, 1 skipped (live CLI), 0 fail.
+
+| # | Now | Why |
+|---|---|---|
+| F10 | **met (server side)** | The Sketcher adds `"ready": true` to its draft block when it says the agent looks ready. `routes/agents.mjs` passes it on as `done { ready: true }`, only for a non-empty draft that isn't created. Server test "F10: done carries ready …". |
+| G4 | **met (server side)** | `POST /api/agents/:id/talk` (`src/creator/agentTalk.mjs`): only a created agent talks (a draft gets 400). The answer streams, and the talk is saved in agent.json, so it is still there after a reload. |
+| F14 | **met (server side)** | `done.used` lists only the skills, or Knowledge, that the agent has and that its answer named. The `<used>` block never streams. Real RAG is still A11 / E4 (slot 1, Uncle Bob). Until then, the knowledge text goes into the prompt whole. |
+
+Still open, one owner each (issues.txt): the browser checks still fake Talk with `page.route`, and no check drives a real turn to Create. Owner: Jony. The markdown in home descriptions is a watch-for. Owner: Jony.

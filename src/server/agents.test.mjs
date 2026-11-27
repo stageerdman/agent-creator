@@ -218,6 +218,43 @@ test("the home loads its modules: agent-list.js and firefly-gather.js", async ()
   assert.match(home.text, /from '\.\/agent-list\.js'/);
 });
 
+test("F10: done carries ready only when the creator says so, and never after Create", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  const plain = await chat(id, '{"name":"Tony","persona":"You are loud."}');
+  assert.equal(plain.at(-1).data.ready, undefined);
+  const ready = await chat(id, '{"instructions":"Coach daily.","ready":true}');
+  assert.equal(ready.at(-1).event, "done");
+  assert.equal(ready.at(-1).data.ready, true);
+  await call("POST", `/api/agents/${id}/save`);
+  const after = await chat(id, '{"ready":true}');
+  assert.equal(after.at(-1).data.ready, undefined);
+  const empty = await newAgent();
+  assert.equal((await chat(empty, '{"ready":true}')).at(-1).data.ready, undefined, "an empty draft is never ready");
+});
+
+test("G4/F14: talk answers a created agent, names only what it has, and keeps the talk", async () => {
+  const id = await newAgent();
+  scenario = "creator-patch";
+  await chat(id, '{"name":"Tony","persona":"You are loud.","instructions":"Coach daily."}');
+  scenario = "stream-ok";
+  assert.equal((await call("POST", `/api/agents/${id}/talk`, { message: "hi" })).status, 400, "a draft can't talk yet");
+  await call("POST", `/api/agents/${id}/save`);
+  await json("POST", `/api/agents/${id}/skills`, { name: "Tax" });
+
+  const events = parseSse((await call("POST", `/api/agents/${id}/talk`, { message: 'Hi <used>["Tax","Bogus","Knowledge"]</used>' })).text);
+  const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
+  assert.ok(!streamed.includes("<used>"), "the used block never streams");
+  assert.deepEqual(events.at(-1), { event: "done", data: { say: "Echo: Hi", used: [{ name: "Tax", kind: "skill" }] } });
+  assert.match(prompts.at(-1) ?? "", /Hi/);
+
+  const saved = await json("GET", `/api/agents/${id}`);
+  assert.deepEqual(saved.talk.map((t) => t.who), ["you", "agent"]);
+  assert.deepEqual(saved.talk[1].used, [{ name: "Tax", kind: "skill" }]);
+  assert.equal(saved.draft.status, "saved", "talking never turns it back into a draft");
+  assert.equal((await call("POST", "/api/agents/0123456789ab/talk", { message: "hi" })).status, 404);
+});
+
 test("a bad id is 404, an empty message is 400", async () => {
   assert.equal((await call("GET", "/api/agents/nope")).status, 404);
   assert.equal((await call("POST", "/api/agents/0123456789ab/chat", { message: "hi" })).status, 404);
