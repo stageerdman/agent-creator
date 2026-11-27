@@ -60,6 +60,11 @@ Script: `checks/creation-screen-check.cjs` (Playwright; it uses a scratch home, 
 4. Fireflies can't be moved with the keyboard.
 5. The remove note says "removed from Untitled" when the agent has no name yet. Fine for now, but watch it once names arrive.
 
+## Integration (Columbo, captain)
+
+- **Open item 1 is fixed.** In `createDna` / `setFiles` (`fireflies-dna.js`), the ids now go in a Set and the first-visit slots are given out in order, so the work grows in step with the file count, not with its square. Reran `checks/creation-screen-check.cjs` with 10,000 files: **ALL PASS in Chrome (longest frame 17 ms) and WebKit (longest frame 36 ms)**, where before they were 1,100 ms and 850 ms. `npm test`: 181 pass, 1 skipped, 0 fail. Ran `npm run build:app` again, and the installed app carries the fix.
+- Items 2–5 stay open for Phase 3.
+
 ## What to watch later
 
 - Keep it at one open icon per section. If skills get more actions, put them inside the skill's popup, not next to its star.

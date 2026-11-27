@@ -166,9 +166,12 @@ export function createDna(canvas, { name = '', files = [] } = {}) {
   const byTime = (a, b) => (timeOf(a.addedAt) ?? -Infinity) - (timeOf(b.addedAt) ?? -Infinity);
 
   /* On a visit, every file is already there: lit at rest, no landing. */
+  /* Ids in a Set and slots handed out in order: a 10,000-file folder stays linear (no long frame). */
+  const seenAtStart = new Set(); let nextSlot = 0;
   for (const f of [...files].sort(byTime).map(makeFile)) {
-    if (list.some(g => g.id === f.id)) continue;
-    list.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = freeSlot(); });
+    if (seenAtStart.has(f.id)) continue;
+    seenAtStart.add(f.id);
+    list.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = nextSlot < PLACED ? nextSlot++ : null; });
   }
   rebeat(); relayout(); shown = layout.scale;
 
@@ -181,10 +184,10 @@ export function createDna(canvas, { name = '', files = [] } = {}) {
       if (cur && !ids.has(cur.f.id)) cur = null;
       for (const d of litDots().sort((a, b) => a.litAt - b.litAt)) if (d.slot == null) { const s = freeSlot(); if (s == null) break; d.slot = s; }
     }
-    const now = clock();
+    const now = clock(), have = new Set(list.map(g => g.id));
     for (const f of [...(next || [])].sort(byTime).map(makeFile)) {
-      if (list.some(g => g.id === f.id)) continue;
-      f.queuedAt = now; list.push(f); queue.push(f);
+      if (have.has(f.id)) continue;
+      have.add(f.id); f.queuedAt = now; list.push(f); queue.push(f);
     }
     rebeat(); relayout(); still = false;
   }
