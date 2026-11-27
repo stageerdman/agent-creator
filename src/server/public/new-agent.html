@@ -5,48 +5,122 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New agent · Agent Creator</title>
 <style>
-  /* A blank page on the Fireflies background (same on html and body: no white flash). */
-  :root { --field: #0B1410; --shadow: #060B08; }
+  /* The Fireflies background (same on html and body: no white flash). */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --hit: max(112px, 20vmin);   /* 2 x hitR = 2 x max(56, .10 U) */
+  }
   html { background: var(--field); }
   html, body { margin: 0; height: 100%; }
   body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
-  canvas#field { position: fixed; inset: 0; display: block; }
+  canvas#field { position: fixed; inset: 0; display: block; pointer-events: none; }
+  /* The middle the fireflies circle: the one control. Transparent; it holds the faint word. */
+  #pick {
+    position: fixed; left: 50%; top: 50%; width: var(--hit); height: var(--hit); transform: translate(-50%, -50%);
+    border: 0; border-radius: 50%; padding: 0; margin: 0; background: transparent; cursor: pointer;
+    font: 500 15px/1 var(--font); letter-spacing: .02em; color: var(--fly);
+    -webkit-tap-highlight-color: transparent; outline: none;
+  }
+  #pick:focus-visible { box-shadow: 0 0 0 1px rgba(216,242,106,.38); }
+  #pick span { opacity: 0; text-shadow: 0 0 6px rgba(216,242,106,.55), 0 0 18px rgba(216,242,106,.22); white-space: nowrap; pointer-events: none; }
+  body.answered #pick { cursor: default; pointer-events: none; }
+  body.answered #pick:focus-visible { box-shadow: none; }
+  /* First light: the new agent's own DNA logo, centred. */
+  #logo { position: fixed; left: 50%; top: 50%; width: 56px; height: 56px; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
-<main aria-label="New agent"></main>
+<main aria-label="New agent">
+  <button id="pick" type="button" aria-label="Select Folder"><span aria-hidden="true">Select Folder</span></button>
+  <canvas id="logo" aria-hidden="true"></canvas>
+  <p id="status" class="vh" role="status"></p>
+  <input id="folder" type="file" webkitdirectory multiple hidden tabindex="-1">
+</main>
 <script type="module">
-/* Picked or dropped files go into the new agent's DNA; the screen listens to the intake:* events (file-intake.js). */
-import { attachIntake } from '/file-intake.js';
-window.intake = attachIntake();
-</script>
-<script>
-"use strict";
-/* The call fades where agents are born (02-merlin-motion.md §2, Arrival on /new). */
-let fresh = false;
-try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); fresh = !!c && Date.now() - c.t < 2000; } catch {}
-if (fresh && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  const cv = document.getElementById('field'), ctx = cv.getContext('2d');
-  const DPR = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(246,255,214,1)'); gr.addColorStop(.12, 'rgba(216,242,106,.85)'); gr.addColorStop(.32, 'rgba(216,242,106,.25)'); gr.addColorStop(1, 'rgba(216,242,106,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  const t0 = performance.now(), x = W / 2, y = H * .36;
-  const frame = t => {
-    const dt = t - t0; let b, alpha;
-    if (dt < 900) { const k = dt / 900; b = 1 - k * k; alpha = .14 + .8 * b; }
-    else { const k = Math.min(1, (dt - 900) / 600); b = 0; alpha = .14 * (1 - k * k); }
-    const size = 18 + 12 * b;
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
-    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha;
-    ctx.drawImage(s, x - size / 2, y - size / 2, size, size);
-    if (dt < 1500) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
-  };
-  requestAnimationFrame(frame);
+import { createOrbit, entriesOfFiles, entriesOfDrop } from '/firefly-orbit.js';
+import { nameOf } from '/agent-list.js';
+
+const $ = s => document.querySelector(s);
+const pick = $('#pick'), input = $('#folder');
+const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+
+/* The call from home fades into the ring (home only writes it when motion is on). */
+let call = false;
+try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); call = !!c && Date.now() - c.t < 2000; } catch {}
+
+const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, logo: $('#logo'), reduced: rmq.matches, call: call && !rmq.matches }).start();
+rmq.addEventListener('change', e => orbit.setReduced(e.matches));
+window.orbit = { info: () => orbit.info() };   // read-only, for checks
+
+/* ---------- the one path after a choice ---------- */
+async function json(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) throw new Error(method + ' ' + url + ' ' + r.status);
+  return r.json();
 }
+/* Create the agent, hand over the paths and sizes, then read its DNA for the logo home will show. */
+async function save(entries) {
+  const list = await entries;
+  if (!list.length) throw new Error('nothing came');
+  const { id } = await json('POST', '/api/agents');
+  try { await json('POST', `/api/agents/${id}/files`, { files: list }); }
+  catch (e) { fetch(`/api/agents/${id}`, { method: 'DELETE' }).catch(() => {}); throw e; }   // a failed save leaves no agent
+  try { const a = await json('GET', `/api/agents/${id}`); return { name: nameOf(a), files: a.dna || [] }; }
+  catch { return { name: 'Untitled', files: [] }; }
+}
+/* Pick and drop both end here. entries: [{ path, size }] (or a promise of it, for a big drop still being read). */
+function onChosen(entries) {
+  if (orbit.busy()) return;
+  const work = save(entries);
+  orbit.answer(work);
+  document.body.classList.add('answered');
+  work.then(() => { $('#status').textContent = 'New agent'; },
+            () => { setTimeout(() => document.body.classList.remove('answered'), 900); });
+}
+
+/* ---------- click: the Finder folder picker ---------- */
+let picking = false;
+function settlePick() { if (!picking) return; picking = false; orbit.hold(false); }
+pick.addEventListener('click', () => {
+  if (picking || orbit.busy()) return;          // a second click while Finder is open does nothing
+  picking = true; orbit.hold(true); input.value = ''; input.click();
+});
+input.addEventListener('change', () => {
+  const entries = entriesOfFiles(input.files);
+  picking = false;
+  if (!entries.length) { orbit.hold(false); return; }   // an empty folder: as if cancelled
+  onChosen(entries);
+});
+input.addEventListener('cancel', settlePick);
+// Fallback for webviews without the cancel event: the window gets focus back and no change came.
+addEventListener('focus', () => setTimeout(() => { if (picking && !input.files.length) settlePick(); }, 400));
+
+/* ---------- hover and keyboard focus: the lean ---------- */
+addEventListener('pointermove', e => orbit.pointer(e.clientX, e.clientY));
+document.documentElement.addEventListener('pointerleave', () => orbit.pointer(null));
+pick.addEventListener('focus', () => { if (pick.matches(':focus-visible')) orbit.focus(true); });
+pick.addEventListener('blur', () => orbit.focus(false));
+
+/* ---------- drop anywhere ---------- */
+addEventListener('dragenter', e => { e.preventDefault(); orbit.stir(); });
+addEventListener('dragover', e => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = orbit.busy() ? 'none' : 'copy'; orbit.stir(); });
+addEventListener('drop', e => {
+  e.preventDefault();
+  if (orbit.busy()) return;
+  const dt = e.dataTransfer;
+  const hasFile = [...(dt && dt.items || [])].some(i => i.kind === 'file') || (dt && dt.files && dt.files.length > 0);
+  if (!hasFile) { orbit.calm(); return; }          // a link or text: settle back, nothing made
+  // The answer starts at the first real file found; the rest is read inside it. Nothing found: settle back.
+  let started = false;
+  const entries = entriesOfDrop(dt, () => { started = true; onChosen(entries); });
+  entries.then(list => { if (!started || !list.length) orbit.calm(); }, () => orbit.calm());
+});
+
+/* ---------- leaving ---------- */
+addEventListener('keydown', e => { if (e.key === 'Escape' && !e.defaultPrevented) location.href = '/'; });
 </script>
 </body>
 </html>
