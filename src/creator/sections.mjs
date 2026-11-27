@@ -76,6 +76,40 @@ export function removeFile(files, path) {
   return { files: files.map((candidate) => (candidate === file ? removed : candidate)), state: "removed" };
 }
 
+// Takes a file out of one section only: it stays in the agent (and in the
+// DNA), baked where it was, so a section that used it shows it red until
+// rebuiltFeed(). → { files, changed: whether it was in that section }.
+export function unassignFile(files, feed, path) {
+  const clean = normalPath(path);
+  const file = files.find((candidate) => candidate.path === clean);
+  if (!file) throw new NotFound(`No file "${clean}" in this agent.`);
+  if (!file.feeds.includes(feed)) return { files, changed: false };
+  const next = { ...file, feeds: file.feeds.filter((other) => other !== feed) };
+  return { files: files.map((candidate) => (candidate === file ? next : candidate)), changed: true };
+}
+
+// After one section was rebuilt from exactly `builtPaths`: those are baked
+// into `feed`, every other file is not. A removed file baked nowhere any
+// more is gone for good. → { files, dropped: [paths] }.
+export function rebuiltFeed(files, feed, builtPaths) {
+  const built = new Set(builtPaths.map(normalPath));
+  const dropped = [];
+  const next = files.flatMap((file) => {
+    const rebaked = withBaked(file, feed, built.has(file.path) && !file.removed && file.feeds.includes(feed));
+    if (rebaked.removed && !rebaked.baked.length) {
+      dropped.push(file.path);
+      return [];
+    }
+    return [rebaked];
+  });
+  return { files: next, dropped };
+}
+
+function withBaked(file, feed, isBaked) {
+  const others = (file.baked ?? []).filter((other) => other !== feed);
+  return { ...file, baked: isBaked ? [...others, feed] : others };
+}
+
 // The builder's report: these files are now baked into `feed` (green).
 // Only files still meant for that feed count.
 export function markProcessed(files, feed, paths) {

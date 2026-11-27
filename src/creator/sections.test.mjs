@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { addFiles, dnaOf, routeFiles } from "./files.mjs";
-import { allocations, assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles } from "./sections.mjs";
+import { allocations, assignFiles, feedFor, markProcessed, rebuilt, rebuiltFeed, removeFile, sectionFiles, unassignFile } from "./sections.mjs";
 
 const skills = [{ id: "ab12cd34", name: "Coaching" }];
 const fresh = () => addFiles([], [{ path: "notes/a.md", size: 3 }, { path: "notes/b.md" }, { path: "bio.pdf" }]).files;
@@ -72,6 +72,28 @@ test("a file routed elsewhere after baking shows red in its old section", () => 
   const again = rebuilt(moved);
   assert.deepEqual(states(again, "rag"), []);
   assert.deepEqual(states(again, "instructions"), [["bio.pdf", "processed"]]);
+});
+
+test("unassignFile takes a file out of one section only; baked it shows red there, it stays in the DNA", () => {
+  const files = markProcessed(assignFiles(fresh(), "rag", ["notes/a.md", "bio.pdf"]).files, "rag", ["bio.pdf"]);
+  const out = unassignFile(files, "rag", "./bio.pdf");
+  assert.equal(out.changed, true);
+  assert.deepEqual(states(out.files, "rag"), [["notes/a.md", "unprocessed"], ["bio.pdf", "removed"]]);
+  assert.equal(out.files.length, 3);
+  assert.equal(unassignFile(out.files, "rag", "bio.pdf").changed, false);
+  assert.equal(unassignFile(out.files, "rag", "bio.pdf").files, out.files);
+  assert.throws(() => unassignFile(files, "rag", "ghost.md"), { kind: "not-found" });
+});
+
+test("rebuiltFeed bakes exactly the built files into one feed and drops removed files baked nowhere", () => {
+  const assigned = assignFiles(assignFiles(fresh(), "rag", ["notes/a.md", "notes/b.md", "bio.pdf"]).files, "instructions", ["notes/b.md"]).files;
+  const baked = markProcessed(markProcessed(assigned, "rag", ["notes/a.md", "notes/b.md", "bio.pdf"]), "instructions", ["notes/b.md"]);
+  const changed = removeFile(unassignFile(baked, "rag", "notes/a.md").files, "bio.pdf").files;
+  const { files, dropped } = rebuiltFeed(changed, "rag", ["notes/b.md", "notes/a.md", "bio.pdf"]);
+  assert.deepEqual(dropped, ["bio.pdf"]);
+  assert.deepEqual(files.map((file) => [file.path, file.baked]), [["notes/a.md", []], ["notes/b.md", ["instructions", "rag"]]]);
+  assert.deepEqual(states(files, "rag"), [["notes/b.md", "processed"]]);
+  assert.deepEqual(rebuiltFeed(files, "rag", []).files.find((file) => file.path === "notes/b.md").baked, ["instructions"]);
 });
 
 test("the creator's routing keeps skill feeds and skips removed files", () => {
