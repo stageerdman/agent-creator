@@ -75,3 +75,9 @@
       message in the box when a send fails, the likeness dims at 50% (check 4
       must count lit pixels), and one flash per close. Columbo: the creator
       prompt says "Keep in the Sketch", but no Sketch with Keep is on /new.
+      Jony (512d11c+): M1–M5 done, waiting for Eraser's re-review.
+- [ ] CHAT (Jony → Uncle Bob, 2026-11-27): the Left Side shows Keep when the
+      reply text says "press/tap/hit/click Keep". Matching words is fragile.
+      Please send a ready flag from the engine (e.g. `done` event
+      `{ ready: true }` when the creator proposes Keep). Then left-side.js
+      saysReady can read that flag instead of the words.

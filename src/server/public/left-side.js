@@ -83,8 +83,8 @@ export const blinkLevel = (dt, reduced) => reduced ? (dt >= 0 && dt < STILL_BLIN
 export const markGrow = (cur, whole) => !(whole > 0) || cur >= whole ? 1 : .5 + .5 * Math.sqrt(Math.max(0, cur) / whole);
 export const dotsOf = list => Math.min(PLACED, (list || []).reduce((n, f) => n + dotsFor(f.sizeBytes), 0));
 
-/* Sketcher proposes Keep only in the creator's own words: "press Keep". */
-export const saysReady = text => /press keep/i.test(String(text || ''));
+/* Sketcher proposes Keep in the creator's own words, "press Keep" (or tap / hit / click Keep). */
+export const saysReady = text => /\b(press|tap|hit|click)\s+(on\s+)?keep\b/i.test(String(text || ''));
 
 /* Keep happens once: never again once the draft is saved (or this browser saw it kept). */
 export const kept = (store, a) => !!a && ((a.draft && a.draft.status === 'saved') || store['left.kept.' + a.id] === '1');
@@ -246,7 +246,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     } catch {
       reply.textContent = 'Sketcher couldn’t answer. Try again.'; reply.className = 'sketcher err';
       if (!box.value) box.value = message;   // trying again is one Enter, not a retype
-      box.focus();
+      box.focus(); box.setSelectionRange(box.value.length, box.value.length);
     }
     busy = false; log.scrollTop = log.scrollHeight;
   });

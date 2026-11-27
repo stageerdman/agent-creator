@@ -37,7 +37,7 @@ You drop a folder and watch your agent take shape. Then, when you want to say wh
 
 ## Eraser's review (04-eraser-review.md): what changed
 - **M1** The button already said Keep. The lines now read "Couldn’t keep it. Try again." and "Yours. You can keep changing it."
-- **M2** Ready is only `/press keep/i`. Keep never shows when `draft.status === 'saved'` or after a Keep in this browser (`left.kept.<id>`).
+- **M2** Ready is only "press / tap / hit / click (on) Keep". If Sketcher words it some other way, the button stays hidden, but the agent is already autosaved, so nothing is lost. A ready signal from the engine (`done.ready`) would be safer than matching words. That's flagged in issues.txt for whoever wires the chat to the engine. Keep never shows when `draft.status === 'saved'` or after a Keep in this browser (`left.kept.<id>`).
 - **M3** A failed send puts the message back in the box and focuses it.
 - **M4** Cause: the shared logo shrinks each dot as the count grows (`sqrt(12/N)` above 12 dots) and zooms out to fit, so its lit area stays flat or falls from 50% to 100%. (The 323→210 reading was mostly one frame's blinks; averaged it was 233→414 from 25% to 50%.) The approved logo stays as it is. Instead, the Left Side scales the mark from half size up to full: `markGrow = .5 + .5·sqrt(placed/whole)`, a 600 ms ease (none under Reduce Motion), and the flyers land on the scaled mark. Check 4 now reads lit pixels on screen (canvas pixels × scale², averaged over 3 s) and needs them to rise at every step: 6 → 184 → 263 → 621.
 - **M5** A whole flash that comes while the panel is open is held. The close plays one flash.

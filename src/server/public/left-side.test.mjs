@@ -131,6 +131,8 @@ test('the little ones: mark size, ready words, server events', () => {
   assert.ok(!saysReady('Tell me more about the readers.'));
   assert.ok(!saysReady('Ready when you are. What should it read first?'));
   assert.ok(!saysReady('Is it ready? Not yet.'));
+  assert.ok(saysReady('Looks good. Tap Keep when you like.') && saysReady('hit keep') && saysReady('Click on Keep.'));
+  assert.ok(!saysReady('I’ll keep that in mind.') && !saysReady('Press on, keeper.'));
   const store = {};
   assert.equal(kept(store, { id: 'a', draft: { status: 'draft' } }), false);
   assert.equal(kept(store, { id: 'a', draft: { status: 'saved' } }), true);
