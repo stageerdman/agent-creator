@@ -251,17 +251,17 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   function grow(dna) { field.set(dna || []); }
 
   /* ---- the hand-over: the orbit's live fireflies fly out, the menu comes in at 300 ms ---- */
-  let splitTimer = 0;
+  let splitTimer = 0, splitDue = false;   // splitDue: the hand-over's menu is on its way (a fast save waits for it)
   function adopt(hand) {
     field.adopt(hand);
-    win.clearTimeout(splitTimer);
-    splitTimer = win.setTimeout(() => body.classList.add('split'), reduced ? 0 : MENU_AT);
+    win.clearTimeout(splitTimer); splitDue = true;
+    splitTimer = win.setTimeout(() => { splitDue = false; body.classList.add('split'); }, reduced ? 0 : MENU_AT);
   }
   /* Entries as they are read ([{ path, size }]): the field lights them at once, before the server has them. */
   function feed(entries) { field.feed(entries.map(asFile)); }
   /* A failed save: the lights fade where they are and the menu goes; → a promise for when they are gone. */
   function fail() {
-    win.clearTimeout(splitTimer); opened = false;
+    win.clearTimeout(splitTimer); splitDue = false; opened = false;
     body.classList.remove('split'); menu.setAttribute('inert', '');
     return field.fail();
   }
@@ -269,10 +269,9 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   /* ---- the split ---- */
   function open(a, { still = false } = {}) {
     agent = a; opened = true;
-    win.clearTimeout(splitTimer);
     field.set(a.dna || [], { still });
     nameEl.textContent = nameOf(a);
-    body.classList.add('split');
+    if (!splitDue) body.classList.add('split');
     menu.removeAttribute('inert');
     reloadMenu();
   }

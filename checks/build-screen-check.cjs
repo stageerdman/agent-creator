@@ -6,7 +6,7 @@
 //   AGENT_CREATOR_HOME=<scratch folder> PORT=3505 npm start
 // --read-only (for the installed app's own server, which holds real data): every agent-making call is
 // answered by the browser (page.route), so nothing reaches the server; it checks the screen, the motion,
-// the pick and drop paths up to first light, cancel, bad drops and Esc.
+// the + from home into the orbit, the pick and drop hand-over to the field, cancel, bad drops and Esc.
 const pw = require('playwright-core');
 const fs = require('fs'), os = require('os'), path = require('path');
 const base = process.argv[2] || 'http://localhost:3505';
@@ -79,8 +79,34 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   const browser = which === 'webkit' ? await pw.webkit.launch() : await pw.chromium.launch({ channel: 'chrome' });
   console.log('== ' + which + ' against ' + base + (readOnly ? ' (read-only: agent calls answered in the browser)' : ''));
 
-  /* ---------- 1. One way to do each thing ---------- */
+  /* ---------- 0. The + calls the fireflies into the orbit, not into the button ---------- */
   let page = await open(browser, false);
+  await page.goto(base + '/'); await page.waitForTimeout(800);
+  const plusBox = await page.evaluate(() => { const b = document.querySelector('#plus').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  await page.click('#plus');
+  await page.waitForTimeout(900);   // just before the call ends: where are the fireflies?
+  const ring = await page.evaluate(({ x, y }) => {
+    const cv = [...document.querySelectorAll('canvas')].pop(); if (!cv) return null;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, sx = cv.width / innerWidth, cx = innerWidth / 2, cy = innerHeight / 2;
+    let nearPlus = 0, nearMiddle = 0;
+    for (let py = 0; py < cv.height; py += 2) for (let px = 0; px < cv.width; px += 2) {
+      if (d[(py * cv.width + px) * 4 + 3] < 40) continue;
+      const X = px / sx, Y = py / sx;
+      if (Math.hypot(X - x, Y - y) < 40) nearPlus++;
+      const rr = Math.hypot(X - cx, Y - cy); if (rr > 30 && rr < Math.min(innerWidth, innerHeight) * .4) nearMiddle++;
+    }
+    return { nearPlus, nearMiddle };
+  }, plusBox);
+  ok(ring && ring.nearMiddle > 20 * Math.max(1, ring.nearPlus), '0. the + sends the fireflies to the ring round the middle, not into the button', JSON.stringify(ring));
+  await page.waitForURL(u => new URL(u).pathname === '/new', { timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(50);
+  const cont = await info(page);
+  ok(new URL(page.url()).pathname === '/new' && cont.epoch != null && cont.state === 'rest' && cont.flies.length === 30, '0. /new goes on from the home\'s ring (same clock, 30 flies, no fade-in)', JSON.stringify({ url: page.url(), epoch: cont.epoch, state: cont.state }));
+  ok(cont.flies.every(f => f.a > 0), '0. the ring is lit from its first frame', String(Math.min(...cont.flies.map(f => f.a))));
+  await page.close();
+
+  /* ---------- 1. One way to do each thing ---------- */
+  page = await open(browser, false);
   await page.goto(base + '/new'); await page.waitForTimeout(1200);
   const look = await page.evaluate(() => {
     const vis = e => { const s = getComputedStyle(e), b = e.getBoundingClientRect(); return !e.hidden && s.display !== 'none' && s.visibility !== 'hidden' && b.width > 0 && b.height > 0; };
@@ -92,17 +118,17 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
     const dropTargets = [...document.querySelectorAll('[ondrop], [ondragover], .drop, .dropzone, [class*=drop i], [id*=drop i]')].length;
     const pick = document.querySelector('#pick'), span = pick.querySelector('span');
     const fileInputs = [...document.querySelectorAll('input[type=file]')].map(i => ({ dir: i.webkitdirectory, hidden: i.hidden }));
-    return { controls, tabbable, words, dropTargets, fileInputs, canvases: document.querySelectorAll('canvas').length,
+    return { controls, tabbable, words, dropTargets, fileInputs, canvases: document.querySelectorAll('canvas').length, logo: !!document.querySelector('#logo'),
       sizeControls: document.querySelectorAll('input[type=range], select, [name*=size i], [id*=size i]').length,
-      label: pick.getAttribute('aria-label'), spanColor: getComputedStyle(span).color, imgs: document.querySelectorAll('img, svg').length };
+      label: pick.getAttribute('aria-label'), spanColor: getComputedStyle(span).color, imgs: [...document.querySelectorAll('img, svg')].filter(e => !e.closest('#menu')).length };   // the menu's icons are hidden until the split
   });
   ok(look.controls.length === 1 && look.controls[0] === 'pick', '1. exactly one control on screen: the middle', JSON.stringify(look.controls));
   ok(look.tabbable.length === 1 && look.tabbable[0] === 'pick', '1. one Tab stop', JSON.stringify(look.tabbable));
   ok(look.fileInputs.length === 1 && look.fileInputs[0].dir && look.fileInputs[0].hidden, '1. one folder picker (webkitdirectory), never shown', JSON.stringify(look.fileInputs));
   ok(look.dropTargets === 0, '1. no second drop target (drop works anywhere on the page)');
   ok(look.sizeControls === 0, '1. no size controls');
-  ok(look.imgs === 0 && look.canvases === 2, '1. nothing drawn but the field and the logo canvas', look.canvases + ' canvases, ' + look.imgs + ' img/svg');
-  ok(look.words.length === 1 && look.words[0].text === 'Select Folder' && look.words[0].op === 0, '1. no words at rest (the one word is invisible until hover)', JSON.stringify(look.words));
+  ok(look.imgs === 0 && look.canvases === 2 && !look.logo, '1. nothing drawn but the ring and the field (no logo, no icon)', look.canvases + ' canvases, ' + look.imgs + ' img/svg');
+  ok(look.words.length === 1 && look.words[0].text === 'Select Folder' && look.words[0].op <= .24, '1. one faint word at rest: Select Folder at .24', JSON.stringify(look.words));
   ok(look.label === 'Select Folder', '1. the middle is named "Select Folder" for VoiceOver');
 
   /* ---------- 2. Rest ---------- */
@@ -110,28 +136,28 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   let last = s[s.length - 1];
   ok(last.state === 'rest' && last.rs.length === 30, '2. rest: a ring of 30 fireflies', last.state + ', ' + last.rs.length);
   ok(radiiOk(s).ok, '2. rest: radii 2.5..6.0', radiiOk(s).range);
-  ok(s.every(x => x.text === 0), '2. rest: no word');
+  ok(s.every(x => Math.abs(x.text - .24) < .01), '2. rest: the word holds at .24', String(last.text));
   ok(s[0].xs.join() !== last.xs.join() && s.every(x => x.m === 1), '2. rest: the ring turns slowly at speed 1');
 
   /* ---------- 3. Hover: the faint word, in the firefly colour ---------- */
   await page.mouse.move(500, 400); await page.waitForTimeout(700);
   s = await watch(page, 600);
   const peakText = Math.max(...s.map(x => x.text));
-  ok(s[s.length - 1].state === 'lean', '3. hover on the middle: lean', s[s.length - 1].state);
+  ok(s[s.length - 1].state === 'rest' && s[s.length - 1].text > .3, '3. hover on the middle: the lean (word up)', s[s.length - 1].state + ' ' + s[s.length - 1].text);
   ok(peakText > .3 && peakText <= .36, '3. hover word peaks at ' + peakText + ' (<= .36: very faint)');
   ok(look.spanColor === 'rgb(216, 242, 106)', '3. the word is the firefly colour', look.spanColor);
   const spanOp = await page.evaluate(() => +getComputedStyle(document.querySelector('#pick span')).opacity);
   ok(spanOp <= .36, '3. the word as drawn has opacity ' + spanOp);
   ok(radiiOk(s).ok, '3. lean: radii 2.5..6.0', radiiOk(s).range);
   await page.mouse.move(40, 40); await page.waitForTimeout(800);
-  ok((await info(page)).textOpacity === 0, '3. leaving the middle fades the word away');
+  ok(Math.abs((await info(page)).textOpacity - .24) < .01, '3. leaving the middle puts the word back to .24');
 
   /* ---------- 4. Drag stir: no word, a little faster, back to rest ---------- */
   await page.mouse.move(500, 400); await page.waitForTimeout(500);
   const stirWatch = watch(page, 1100);
   await stirFor(page, 1000);
   s = await stirWatch;
-  const stirred = s.filter(x => x.state === 'stir');
+  const stirred = s.filter(x => x.m > 1);
   ok(stirred.length > 10, '4. a drag stirs the ring', stirred.length + ' frames in stir');
   // Hovering when the drag comes in: the word takes its normal 600 ms out-fade, then stays gone.
   const t0s = stirred.length ? stirred[0].t : 0;
@@ -139,7 +165,7 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   const mMax = Math.max(...s.map(x => x.m));
   ok(mMax > 1 && mMax <= 1.6, '4. stir speeds up a little: m up to ' + mMax);
   ok(radiiOk(s).ok, '4. stir: radii 2.5..6.0', radiiOk(s).range);
-  const back = await until(page, i => i.state !== 'stir', 1000);
+  const back = await until(page, i => i.m === 1, 1500);
   ok(back >= 0, '4. the stir ends on its own after the drag leaves', back + ' ms');
   await page.mouse.move(40, 40); await page.waitForTimeout(700);
 
@@ -158,36 +184,46 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   await page.mouse.move(40, 40);
   await page.waitForTimeout(500);
   const held = await info(page);
-  ok(held.state === 'lean' && held.textOpacity > .3, '6. while Finder is open the lean holds (pointer away)', held.state + ' text ' + held.textOpacity);
+  ok(held.state === 'rest' && held.textOpacity > .3, '6. while Finder is open the lean holds (pointer away)', held.state + ' text ' + held.textOpacity);
   await page.evaluate(() => document.querySelector('#folder').dispatchEvent(new Event('cancel')));
   s = await watch(page, 1300);
-  const fadeMs = (s.find(x => x.text === 0) || { t: -1 }).t;
-  ok(fadeMs >= 600 && s[s.length - 1].state === 'rest', '6. cancel: the word fades slowly (' + fadeMs + ' ms) and the ring rests');
+  const fadeMs = (s.find(x => Math.abs(x.text - .24) < .005) || { t: -1 }).t;
+  ok(fadeMs >= 600 && s[s.length - 1].state === 'rest', '6. cancel: the word settles slowly to .24 (' + fadeMs + ' ms) and the ring rests');
   ok(s.every(x => x.m === 1), '6. cancel: no speed change');
   ok(await countAgents() === n0, '6. cancel makes no agent');
   ok(page.errors.length === 0, '1-6. no page errors', JSON.stringify(page.errors));
   await page.close();
 
-  /* ---------- 7. Pick a folder: answer, then first light ---------- */
+  /* ---------- 7. Pick or drop: the same 30 fireflies leave the ring for the field, one screen ---------- */
+  // Every frame: the orbit's state and the field's flyers. The hand-over is one frame: the ring's last
+  // frame has 30 flies, the next frame the field has the same 30 as flyers. No logo, no icon, no gap.
+  const handWatch = (p, ms) => p.evaluate(ms => new Promise(done => {
+    const out = [], t0 = performance.now();
+    const f = t => { const o = window.orbit.info(), c = window.creation.info(); out.push({ t: Math.round(t - t0), state: o.state, m: o.m, rs: o.flies.map(d => d.r), xs: o.flies.map(d => d.x + ',' + d.y), ring: o.flies.length, flyers: c.field.flyers, flying: c.field.flying, total: c.field.total, split: document.body.classList.contains('split'), logo: !!document.querySelector('#logo') }); if (t - t0 < ms) requestAnimationFrame(f); else done(out); };
+    requestAnimationFrame(f);
+  }), ms);
   async function chosen(reduce, how) {
     const p = await open(browser, reduce);
     await p.goto(base + '/new'); await p.waitForTimeout(900);
     const before = await countAgents();
-    const w = watch(p, 2600);
+    const w = handWatch(p, 2600);
+    await p.waitForTimeout(150);   // a few ring frames on record before the files come
     if (how === 'pick') {
       const ch = p.waitForEvent('filechooser');
       await p.click('#pick');
       await (await ch).setFiles(folder);
     } else await drop(p, 'files');
     const sm = await w;
-    const firstAnswer = sm.find(x => x.state === 'answer'), fl = sm.find(x => x.state === 'first-light');
+    const k = sm.findIndex(x => x.state === 'released'), rel = sm[k], prev = sm[k - 1];
+    const splitAt = sm.find(x => x.split);
     const out = {
-      p, sm, ms: fl && firstAnswer ? fl.t - firstAnswer.t : -1, reached: !!fl,
-      mMax: Math.max(...sm.map(x => x.m)), radii: radiiOk(sm.filter(x => x.rs.length)),
-      status: await p.textContent('#status'), logo: await p.evaluate(() => getComputedStyle(document.querySelector('#logo')).opacity),
-      logoLit: await p.evaluate(() => { const cv = document.querySelector('#logo'); if (!cv.width) return 0; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let x = 0; for (let k = 3; k < d.length; k += 4) x += d[k]; return x; }),
+      p, sm, released: !!rel, ms: rel && splitAt ? splitAt.t - rel.t : -1,
+      handOver: !!(rel && prev && prev.ring === 30 && rel.flyers === 30),
+      flew: sm.some(x => x.flying > 0), gap: sm.slice(Math.max(0, k)).some(x => x.ring === 0 && x.flyers === 0 && x.total === 0),
+      mMax: Math.max(...sm.map(x => x.m)), radii: radiiOk(sm.filter(x => x.rs.length)), logo: sm.some(x => x.logo),
+      status: await p.textContent('#status'),
       made: (await countAgents()) - before,
-      moved: sm.filter(x => x.state === 'answer' && x.xs.length).map(x => x.xs.join()),
+      moved: sm.filter(x => x.state === 'rest' && x.xs.length).map(x => x.xs.join()),
     };
     if (out.made === 1) {
       if (readOnly) out.files = fake[fake.length - 1].posted.map(f => f.path).sort();
@@ -197,21 +233,24 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   }
   for (const how of ['pick', 'drop']) {
     const r = await chosen(false, how);
-    ok(r.reached, `7. ${how}: answer, then first light`, r.ms + ' ms from answer to first light');
-    ok(r.ms > 0 && r.ms <= 2000, `7. ${how}: first light in about 1.5 s`, r.ms + ' ms');
-    ok(r.mMax > 5.5 && r.mMax <= 6, `7. ${how}: the burst (speed up to ${r.mMax})`);
-    ok(r.radii.ok, `7. ${how}: radii 2.5..6.0 through the burst`, r.radii.range);
-    ok(r.logo === '1' && r.logoLit > 0, `7. ${how}: the placeholder (the new agent's DNA logo) is shown`, 'opacity ' + r.logo + ', lit ' + r.logoLit);
+    ok(r.released, `7. ${how}: the ring lets go at the first file`);
+    ok(r.handOver, `7. ${how}: the same 30 fireflies pass from the ring to the field in one frame`);
+    ok(r.flew && !r.gap, `7. ${how}: they fly out, never a frame with no fireflies`);
+    ok(r.ms >= 250 && r.ms <= 1000, `7. ${how}: the menu comes in beside the field at ~300 ms`, r.ms + ' ms after the signal');
+    ok(r.mMax === 1, `7. ${how}: no spin-up (speed stays 1)`, 'm max ' + r.mMax);
+    ok(r.radii.ok, `7. ${how}: radii 2.5..6.0`, r.radii.range);
+    ok(!r.logo, `7. ${how}: no logo or icon in between`);
     ok(r.status === 'New agent', `7. ${how}: VoiceOver hears "New agent"`, JSON.stringify(r.status));
     ok(r.made === 1, `7. ${how}: exactly one agent made`, String(r.made));
     if (how === 'pick') ok(JSON.stringify(r.files) === JSON.stringify(['Recipes/bread.txt', 'Recipes/soup.md']), '7. pick: the folder\'s files, hidden file left out', JSON.stringify(r.files));
     else ok(r.files && r.files.length === 2, '7. drop: the dropped files', JSON.stringify(r.files));
     // a second drop during first light does nothing
-    if (how === 'drop') { const n = await countAgents(); await drop(r.p, 'files'); await r.p.waitForTimeout(600); ok(await countAgents() === n, '7. a second drop after the answer is ignored'); }
+    // a second drop on the field lands in the agent (the menu's zones own it), never a second agent
+    if (how === 'drop') { const n = await countAgents(); await drop(r.p, 'files'); await r.p.waitForTimeout(600); ok(await countAgents() === n, '7. a second drop makes no second agent'); }
     ok(r.p.errors.length === 0, `7. ${how}: no page errors`, JSON.stringify(r.p.errors));
-    // Esc from first light goes home, and the new agent is there
+    // Esc from the creation screen goes home, and the new agent is there
     await r.p.keyboard.press('Escape'); await r.p.waitForURL(u => new URL(u).pathname === '/', { timeout: 4000 }).catch(() => {});
-    ok(new URL(r.p.url()).pathname === '/', `7. ${how}: Esc from first light goes home`, r.p.url());
+    ok(new URL(r.p.url()).pathname === '/', `7. ${how}: Esc goes home`, r.p.url());
     if (!readOnly && r.id) { await r.p.waitForTimeout(800); const top = await r.p.evaluate(() => document.querySelector('#rows a.row')?.getAttribute('href')); ok(top === '/agents/' + r.id, `7. ${how}: the new agent is at the top of home`, String(top)); }
     await r.p.close();
   }
@@ -224,9 +263,11 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   await drop(page, 'files');
   const settled = await until(page, i => i.state === 'rest', 3000);
   i = await info(page);
-  ok(settled >= 0, '8. a failed save settles back to rest', settled + ' ms');
+  ok(settled >= 0, '8. a failed save brings the ring back at rest', settled + ' ms');
   await page.waitForTimeout(1000); i = await info(page);
-  ok(i.m === 1, '8. after a failed save the ring is back to speed 1 (not left stirred)', 'm=' + i.m + ', alpha ' + Math.max(...i.flies.map(f => f.a)));
+  ok(i.m === 1 && i.flies.length === 30, '8. after a failed save the ring is back: 30 flies, speed 1', 'm=' + i.m + ', ' + i.flies.length + ' flies');
+  const cf = await page.evaluate(() => ({ c: window.creation.info(), split: document.body.classList.contains('split'), answered: document.body.classList.contains('answered') }));
+  ok(cf.c.field.total === 0 && !cf.split && !cf.answered, '8. the field\'s lights faded, the menu went, the middle takes a click again', JSON.stringify({ total: cf.c.field.total, split: cf.split, answered: cf.answered }));
   await page.waitForTimeout(500);
   ok(await countAgents() === n0, '8. a failed save leaves no agent');
   ok((await page.textContent('#status')) === '', '8. a failed save shows no words');
@@ -242,7 +283,7 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   await drop(page, 'files'); await page.waitForTimeout(300);
   const st = (await info(page)).state;
   await page.keyboard.press('Escape'); await page.waitForURL(u => new URL(u).pathname === '/', { timeout: 4000 }).catch(() => {});
-  ok(st === 'answer' && new URL(page.url()).pathname === '/', '9. Esc during the answer goes home', st);
+  ok(st === 'released' && new URL(page.url()).pathname === '/', '9. Esc while the files are saved goes home', st);
   await page.close();
   await sleep(1800);   // let the held save fail and clean itself up
 
@@ -259,7 +300,7 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   ok(JSON.stringify(i1.flies) === JSON.stringify(i2.flies) && i2.m === 1, '10. RM: no orbit movement, speed 1');
   await page.mouse.move(500, 400); await page.waitForTimeout(700);
   const i3 = await info(page);
-  ok(i3.state === 'lean' && i3.textOpacity <= .36 && i3.textOpacity > .3, '10. RM: hover still shows the faint word', String(i3.textOpacity));
+  ok(i3.state === 'rest' && i3.textOpacity <= .36 && i3.textOpacity > .3, '10. RM: hover still shows the faint word', String(i3.textOpacity));
   ok(i3.flies.every((f, k) => f.x === i1.flies[k].x && f.y === i1.flies[k].y && f.r === i1.flies[k].r), '10. RM: hover changes brightness only (no lean, no growth)');
   await page.mouse.move(40, 40); await page.waitForTimeout(700);
   s = await (async () => { const w = watch(page, 900); await stirFor(page, 700); return w; })();
@@ -267,9 +308,9 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
   await page.close();
   for (const how of ['pick', 'drop']) {
     const r = await chosen(true, how);
-    ok(r.reached && r.ms > 0 && r.ms <= 2000, `10. RM ${how}: first light`, r.ms + ' ms');
+    ok(r.released && r.handOver && r.ms >= 0 && r.ms <= 1000, `10. RM ${how}: the ring hands over and the menu comes`, r.ms + ' ms');
     ok(r.mMax === 1, `10. RM ${how}: no speed-up`, 'm max ' + r.mMax);
-    ok(new Set(r.moved).size <= 1, `10. RM ${how}: the ring fades in place, never gathers`, new Set(r.moved).size + ' positions');
+    ok(new Set(r.moved).size <= 1, `10. RM ${how}: the ring stays still until it hands over`, new Set(r.moved).size + ' positions');
     ok(r.radii.ok, `10. RM ${how}: radii 2.5..6.0`, r.radii.range);
     ok(r.made === 1 && r.status === 'New agent', `10. RM ${how}: one agent made, "New agent"`);
     ok(r.p.errors.length === 0, `10. RM ${how}: no page errors`, JSON.stringify(r.p.errors));

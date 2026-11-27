@@ -38,7 +38,7 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
   page.on('response', r => { if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) errors.push(r.status() + ' ' + r.url()); });
   await page.goto(base + '/new'); await page.waitForTimeout(900);
 
-  /* ---------- 1. The scan: 10,000 files, fast orbit until the last batch, no freeze ---------- */
+  /* ---------- 1. 10,000 files: the ring hands over, the field fills, no freeze ---------- */
   // Build the 10,000 File objects first (that is the test's own work, not the screen's), then time from the drop on.
   await page.evaluate(() => { const dt = new DataTransfer(); for (let k = 0; k < 10000; k++) dt.items.add(new File(['x'.repeat(1 + (k % 50))], `f${k}.md`)); window._big = dt; });
   await page.evaluate(() => {
@@ -47,11 +47,12 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
     const f = t => {
       if (window._scan.started) window._scan.gaps.push(t - last); last = t;
       const o = window.orbit.info(), c = window.creation.info();
-      window._scan.states.push({ t, state: o.state, m: o.m, total: c.field.total, split: c.split });
-      if (!c.split) requestAnimationFrame(f);
+      window._scan.states.push({ t, state: o.state, ring: o.flies.length, flyers: c.field.flyers, flying: c.field.flying, queued: c.field.queued, total: c.field.total, split: c.split });
+      if (!c.split || c.field.queued > 0) requestAnimationFrame(f);
     };
     requestAnimationFrame(f);
   });
+  await page.waitForTimeout(150);   // a few ring frames on record first
   const t0 = Date.now();
   await page.evaluate(() => {
     const at = { bubbles: true, cancelable: true, clientX: 300, clientY: 300, dataTransfer: window._big };
@@ -66,21 +67,24 @@ const until = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 
   const wi = gaps.indexOf(worst), around = scan.states.slice(Math.max(0, wi - 1), wi + 3).map(s => s.total).join(' → ');
   console.log('   (drop handler itself took ' + Math.round(scan.dropMs) + ' ms; longest frame at #' + wi + ', totals ' + around + ')');
   ok(worst < 250, '1. no freeze: longest frame ' + Math.round(worst) + ' ms (p95 ' + Math.round(p95) + ' ms, ' + gaps.length + ' frames)');
-  const fullAt = scan.states.findIndex(s => s.total === 10000);
-  const firstLight = scan.states.findIndex(s => s.state === 'first-light');
-  const growing = new Set(scan.states.filter(s => s.state === 'answer').map(s => s.total)).size;
-  ok(growing > 3, '1. fireflies land batch by batch during the scan', growing + ' different counts while circling');
-  ok(fullAt >= 0 && (firstLight < 0 || firstLight >= fullAt), '1. the fast circling lasts until every file is in (first light only after 10,000)', 'full at frame ' + fullAt + ', first light at ' + firstLight);
-  // After the burst's ramp-up (the first files land while it is still accelerating).
-  // Files often land within a few frames, while the burst is still ramping up: so ask that the orbit reaches
-  // full speed while it is still in the scan state (before first light).
-  const coming = scan.states.filter(s => s.state === 'answer' && s.total > 0);
-  const peak = Math.max(...coming.map(s => s.m));
-  ok(coming.length > 0 && peak > 3, '1. while files are still coming the orbit runs fast', 'peak m ' + peak.toFixed(2) + ' over ' + coming.length + ' frames');
+  const k1 = scan.states.findIndex(s => s.state === 'released');
+  ok(k1 > 0 && scan.states[k1 - 1].ring === 30 && scan.states[k1].flyers === 30, '1. the first file hands the 30 live fireflies from the ring to the field in one frame', 'at frame ' + k1);
+  ok(scan.states.some(s => s.flying > 0), '1. they fly out to their files');
+  ok(scan.states.slice(Math.max(0, k1)).every(s => s.flyers <= 30), '1. never more than 30 fly; the rest light in place', String(Math.max(...scan.states.map(s => s.flyers))));
+  // Files reach the field as they are read (Chrome hands loose files over in one part, WebKit in many).
+  const fedAt = scan.states.findIndex(s => s.total === 10000);
+  const totals = scan.states.map(s => s.total);
+  ok(totals.slice(0, k1).every(n => n === 0) && totals[k1] > 0 && fedAt >= k1 && totals.every((n, j) => !j || n >= totals[j - 1]),
+    '1. the field takes the files from the signal on, as they are read, before the server has them', 'first ' + totals[k1] + ' at the signal, all 10,000 by frame ' + fedAt + ' (signal ' + k1 + ')');
+  const poured = scan.states.filter(s => s.queued > 0).length;
+  ok(poured > 3, '1. the rest pour in place over many frames, never all in one', poured + ' frames of pour');
+  const splitAt = scan.states.findIndex(s => s.split);
+  ok(splitAt >= 0 && splitAt > k1, '1. one screen: the menu comes in after the hand-over, no step between', 'split at frame ' + splitAt);
+  await until(async () => (await cinfo(page)).field.queued === 0, 20000);
   await page.waitForTimeout(800);
   let c = await cinfo(page);
   ok(c.field.total === 10000 && c.field.drawn === 3000, '1. field: 10,000 counted, 3,000 drawn', c.field.total + '/' + c.field.drawn);
-  ok(!(await page.$('#count')) && !(await page.$('#emblem')) && !(await page.$('#ghost')), 'fix 1+9: no file count, no fireflies by the name, no carried dot');
+  ok(!(await page.$('#count')) && !(await page.$('#emblem')) && !(await page.$('#ghost')) && !(await page.$('#logo')), 'fix 1+9: no file count, no fireflies by the name, no carried dot, no logo');
   const id = new URL(page.url()).searchParams.get('agent');
   ok(!!id, '1. the URL holds the agent (a reload comes back to the split)', page.url());
 
