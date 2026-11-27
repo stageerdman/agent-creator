@@ -80,4 +80,8 @@ Knowledge files are actually cut with.
 
 ## Status
 
-- [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4
+
+Phase 3 note: each saved score keeps the agent fingerprint it was judged
+against (`quality.json` → `files[path] = { score, reason, fingerprint,
+agent }`), so a batch that fails after the agent changed still shows stale.

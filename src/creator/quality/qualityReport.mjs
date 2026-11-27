@@ -30,9 +30,15 @@ export function personaFingerprintOf(parts, generated) {
   return hashOf([fingerprintOf(sources), generated]);
 }
 
-// Which usable parts need a (new) usefulness score.
-export const needsScore = (saved, parts, agentFingerprint) =>
-  parts.filter((part) => saved?.agent !== agentFingerprint || saved?.files?.[part.path]?.fingerprint !== fileFingerprintOf(part));
+// Which usable parts need a (new) usefulness score. Each saved score keeps
+// the agent fingerprint it was judged against, so a batch that failed after
+// the agent changed still shows its old scores as stale.
+export function needsScore(saved, parts, agentFingerprint) {
+  return parts.filter((part) => {
+    const entry = saved?.files?.[part.path];
+    return entry?.agent !== agentFingerprint || entry?.fingerprint !== fileFingerprintOf(part);
+  });
+}
 
 function fileView(file, part, reason, saved, fresh) {
   const role = roleOf(file.feeds);
