@@ -18,8 +18,8 @@
  * creation-screen.test.mjs; everything after mountCreation touches the DOM.
  */
 
-import { BATCH, chunks } from './file-intake.js';
-import { FLY, hash, rng, entriesOfDrop } from './firefly-orbit.js';
+import { BATCH, chunks, entriesOfDrop } from './file-intake.js';
+import { FLY, hash, rng } from './firefly-orbit.js';
 import { nameOf } from './agent-list.js';
 
 export const MENU_W = 380;        // the menu's width, css px; the field is the rest of the window

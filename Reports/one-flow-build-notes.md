@@ -46,7 +46,12 @@ Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
       (null under Reduce Motion or on error); pure `planFlights(pts, ring, {px,py,vw,vh,D})`; `restoreHome()`
       (pageshow persisted: un-fade + remove the kept ring canvas). gatherToPlus, plus glow, pulse, halo deleted.
       Home writes `sessionStorage['glade.call'] = {epoch, t}` only when epoch is set.
-- [ ] file-intake.js + test (walker moved in)
+- [x] file-intake.js + test — the one intake. Exports `BATCH, chunks, isHidden, entriesOfFiles(files), entriesOfDrop(dt, found)`
+      (found(newEntries) after each readEntries batch, always async), `httpApi()` → `{createAgent, addFiles, getAgent, removeAgent}`,
+      `createIntake({api, emit}).take(source, read)` where `read(found)` → Promise<entries>. Events: `start {source}` at the first
+      real entry, `found {entries, total}`, `progress {sent,total}`, `done {agentId, agent, added, dna}`, `error {message, started}`;
+      a failed save removes the agent. `attachIntake`, `toEntries`, `walkEntries`, `dropSource` deleted (unused); orbit's walker deleted.
+      creation-screen.js imports `entriesOfDrop` from file-intake.js.
 - [ ] creation-screen.js field adopt + pour + test
 - [ ] new-agent.html wiring
 - [ ] checks/build-screen-check.cjs, checks/creation-screen-check.cjs

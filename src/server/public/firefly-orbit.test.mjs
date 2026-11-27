@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createOrbit, makeFlies, ringPos, entriesOfFiles, entriesOfDrop, isHidden, hitRadius, TEXT_PEAK, TEXT_REST, WAKE } from "./firefly-orbit.js";
+import { createOrbit, makeFlies, ringPos, hitRadius, TEXT_PEAK, TEXT_REST, WAKE } from "./firefly-orbit.js";
 import { MIN_R, MAX_R } from "./fireflies-dna.js";
 
 // A canvas that draws nothing, so the orbit runs in node on a fake clock.
@@ -153,42 +153,4 @@ test("orbit: Reduce Motion — nothing moves, r never changes, no speed-up, the 
     assert.ok(Math.abs(a.x - p0[i].x) < .1 && Math.abs(a.y - p0[i].y) < .1);
     assert.equal(a.a, WAKE);
   });
-});
-
-test("entries: picks keep the folder's own name, leave hidden files out", () => {
-  const files = [
-    { webkitRelativePath: "Tony Course/Books/a.pdf", size: 10 },
-    { webkitRelativePath: "Tony Course/.DS_Store", size: 1 },
-    { webkitRelativePath: "Tony Course/.git/HEAD", size: 1 },
-    { name: "loose.md", size: 3 },
-  ];
-  assert.deepEqual(entriesOfFiles(files), [{ path: "Tony Course/Books/a.pdf", size: 10 }, { path: "loose.md", size: 3 }]);
-  assert.ok(isHidden("a/.b/c") && !isHidden("a/b.c"));
-});
-
-test("entries: a dropped folder is walked in batches; onFirst fires once; a link brings nothing", async () => {
-  const file = (name, size) => ({ isFile: true, name, fullPath: name, file: (ok) => ok({ size }) });
-  const dir = (name, kids) => ({ isDirectory: true, name, createReader: () => { let left = [...kids]; return { readEntries: (ok) => ok(left.splice(0, 2)) }; } });
-  const root = dir("Notes", [file("/Notes/a.md", 4), file("/Notes/.DS_Store", 1), dir(".git", [file("/Notes/.git/x", 1)]), file("/Notes/b.md", 5)]);
-  let first = 0;
-  const list = await entriesOfDrop({ items: [{ kind: "file", webkitGetAsEntry: () => root }] }, () => first++);
-  assert.deepEqual(list, [{ path: "Notes/a.md", size: 4 }, { path: "Notes/b.md", size: 5 }]);
-  assert.equal(first, 1);
-  assert.deepEqual(await entriesOfDrop({ items: [{ kind: "string" }], files: [] }), []);
-});
-
-test("entries: loose files without the entry API still answer, and onFirst comes after the call returns", async () => {
-  let entries = null, seen = null;
-  entries = entriesOfDrop({ items: [{ kind: "file" }], files: [{ name: "note.md", size: 5 }] }, () => { seen = entries; });
-  assert.equal(seen, null);
-  assert.deepEqual(await entries, [{ path: "note.md", size: 5 }]);
-  assert.equal(seen, entries);
-});
-
-test("entries: a dropped file whose entry can't be read (WebKit, no disk path) still counts", async () => {
-  const entry = { isFile: true, name: "note.md", fullPath: "/note.md", file: (_ok, fail) => fail(new Error("NotFoundError")) };
-  const item = { kind: "file", webkitGetAsEntry: () => entry, getAsFile: () => ({ name: "note.md", size: 5 }) };
-  let first = 0;
-  assert.deepEqual(await entriesOfDrop({ items: [item] }, () => first++), [{ path: "note.md", size: 5 }]);
-  assert.equal(first, 1);
 });

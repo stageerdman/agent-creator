@@ -1,26 +1,18 @@
-// Files picked in Finder or dropped on the page go into a new agent's DNA
-// (POST /api/agents, then POST /api/agents/:id/files), never into chat.
+// The one way files come in: a Finder pick or a drop becomes [{ path, size }] and goes into a new
+// agent's DNA (POST /api/agents, then POST /api/agents/:id/files in batches), never into chat.
 // Only paths and sizes leave the page: the creator never reads content.
 //
-// The screen listens on `document` (attachIntake) and draws its own moments:
-//   intake:over / intake:leave  something is dragged over the window / left it
-//   intake:start  { source: 'drop' | 'pick' }  the instant files are chosen
-//   intake:progress { sent, total }  after each upload batch
-//   intake:done   { agentId, files, added, dna }
-//   intake:cancel  the picker closed with nothing chosen
-//   intake:error  { message }  'busy' while one runs, 'no files found', or the server's words
-// It never navigates: the screen decides where to move on.
+//   createIntake({ api, emit }).take(source, read)
+//     read(found) → Promise<[{ path, size }]>, calling found(newEntries) as entries are read
+//   events (emit(name, detail)):
+//     start    { source: 'drop' | 'pick' }   at the first real entry, never before
+//     found    { entries, total }             each time more entries were read (the field lights them)
+//     progress { sent, total }                after each saved batch
+//     done     { agentId, agent, added, dna } the agent as the server has it now
+//     error    { message, started }           'busy', 'no files found', or the server's words
+// A failed save removes the half-made agent. It never navigates: the screen decides.
 
 export const BATCH = 500;   // ~60 bytes a file, far under the server's 1 MB body cap
-
-// .DS_Store, .git/… are the Mac's and tools' files, not the person's material.
-export const isHidden = (path) => path.split("/").some((part) => part.startsWith("."));
-
-// File-likes ({ name, size, relativePath | webkitRelativePath }) → [{ path, size }].
-export function toEntries(files) {
-  return Array.from(files, (file) => ({ path: file.relativePath || file.webkitRelativePath || file.name, size: file.size }))
-    .filter(({ path }) => path && !isHidden(path));
-}
 
 export function chunks(list, size = BATCH) {
   const out = [];
@@ -28,112 +20,97 @@ export function chunks(list, size = BATCH) {
   return out;
 }
 
-// A drop's FileSystemEntries → File-likes with their path inside the drop.
-// Folders are walked to any depth; readEntries hands out batches until empty.
-export async function walkEntries(entries) {
-  const files = [];
-  async function visit(entry) {
-    if (entry.isFile) {
-      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-      files.push({ name: file.name, size: file.size, relativePath: entry.fullPath.replace(/^\/+/, "") });
-    } else if (entry.isDirectory && !isHidden(entry.name)) {
-      const reader = entry.createReader();
-      for (;;) {
-        const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
-        if (!batch.length) break;
-        for (const child of batch) await visit(child);
-      }
-    }
+/* Hidden files and dot-folders (.DS_Store, .git) are the Mac's and tools' files, not the person's. */
+export const isHidden = path => String(path).split('/').some(part => part.startsWith('.'));
+const clean = p => String(p || '').replace(/^\/+/, '');
+
+/* A folder pick (<input webkitdirectory>) or loose File-likes. Paths start with the chosen folder's name. */
+export function entriesOfFiles(files) {
+  const out = [];
+  for (const f of files || []) {
+    const path = clean(f.relativePath || f.webkitRelativePath || f.name);
+    if (path && !isHidden(path)) out.push({ path, size: +f.size || 0 });
   }
-  for (const entry of entries) await visit(entry);
-  return files;
+  return out;
 }
 
-// The entries must be taken during the drop event itself: the browser empties
-// the DataTransfer as soon as the handler returns.
-export function dropSource(dataTransfer) {
-  const entries = Array.from(dataTransfer.items ?? [], (item) => item.webkitGetAsEntry?.()).filter(Boolean);
-  const files = Array.from(dataTransfer.files ?? []);
-  return () => (entries.length ? walkEntries(entries) : files);
+/* A drop: folders are read through webkitGetAsEntry to any depth, one readEntries batch at a time,
+   so a 10,000-file folder never blocks a frame. found(newEntries) after each batch with real files;
+   it always runs after this call has returned its promise. Must be called inside the drop event:
+   the browser empties the DataTransfer as soon as the handler returns. */
+export async function entriesOfDrop(dataTransfer, found = () => {}) {
+  const items = [...(dataTransfer && dataTransfer.items || [])].filter(i => i.kind === 'file');
+  const roots = items.map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
+  // Taken now, while the drop is live: a top-level file whose entry can't be read (WebKit, no disk path) still counts.
+  const loose = items.map(i => (i.getAsFile ? i.getAsFile() : null));
+  const out = [];
+  let fresh = [];
+  const push = e => { if (e.path && !isHidden(e.path)) { out.push(e); fresh.push(e); } };
+  const flush = async () => { await null; if (fresh.length) { const now = fresh; fresh = []; found(now); } };
+  const fileOf = entry => new Promise(res => entry.file(res, () => res(null)));
+  const batches = dir => { const reader = dir.createReader(); return () => new Promise(res => reader.readEntries(res, () => res([]))); };
+  async function walk(entry, fallback = null) {
+    if (!entry || entry.name.startsWith('.')) return;
+    if (entry.isFile) { const f = (await fileOf(entry)) || fallback; if (f) push({ path: clean(entry.fullPath || entry.name), size: +f.size || 0 }); return; }
+    if (!entry.isDirectory) return;
+    const next = batches(entry), dirs = [];
+    for (let batch = await next(); batch.length; batch = await next()) {
+      for (const child of batch) { if (child.isDirectory) dirs.push(child); else await walk(child); }
+      await flush();
+    }
+    for (const d of dirs) await walk(d);
+  }
+  if (roots.some(Boolean)) { for (let k = 0; k < roots.length; k++) { await walk(roots[k], loose[k]); await flush(); } }
+  else { entriesOfFiles(dataTransfer && dataTransfer.files).forEach(push); await flush(); }   // no entry API: loose files only
+  return out;
 }
 
 export function httpApi(fetchFn = fetch) {
   async function call(method, url, body) {
-    const res = await fetchFn(url, { method, headers: { "content-type": "application/json" }, body: body && JSON.stringify(body) });
+    const res = await fetchFn(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body && JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `The app answered ${res.status}.`);
     return data;
   }
+  const at = id => `/api/agents/${encodeURIComponent(id)}`;
   return {
-    createAgent: async () => (await call("POST", "/api/agents")).id,
-    addFiles: (id, files) => call("POST", `/api/agents/${encodeURIComponent(id)}/files`, { files }),
+    createAgent: async () => (await call('POST', '/api/agents')).id,
+    addFiles: (id, files) => call('POST', `${at(id)}/files`, { files }),
+    getAgent: id => call('GET', at(id)),
+    removeAgent: id => call('DELETE', at(id)),
   };
 }
 
-// The intake itself, without the DOM: `gather()` yields File-likes.
 export function createIntake({ api, emit, batch = BATCH }) {
   let busy = false;
-  async function take(source, gather) {
-    if (busy) return emit("error", { message: "busy" });
+  async function take(source, read) {
+    if (busy) return emit('error', { message: 'busy', started: false });
     busy = true;
-    emit("start", { source });
+    let started = false, total = 0, agentId = null;
     try {
-      const entries = toEntries(await gather());
-      if (!entries.length) throw new Error("no files found");
-      const agentId = await api.createAgent();
+      const entries = await read(list => {
+        if (!list.length) return;
+        if (!started) { started = true; emit('start', { source }); }
+        total += list.length;
+        emit('found', { entries: list, total });
+      });
+      if (!entries.length) throw new Error('no files found');
+      agentId = await api.createAgent();
       const added = [];
       let result;
       for (const part of chunks(entries, batch)) {
         result = await api.addFiles(agentId, part);
         added.push(...result.added);
-        emit("progress", { sent: added.length, total: entries.length });
+        emit('progress', { sent: added.length, total: entries.length });
       }
-      emit("done", { agentId, files: result.files, added, dna: result.dna });
+      const agent = await api.getAgent(agentId).catch(() => ({ id: agentId, dna: result.dna }));
+      emit('done', { agentId, agent, added, dna: result.dna });
     } catch (error) {
-      emit("error", { message: error.message });
+      if (agentId) await Promise.resolve().then(() => api.removeAgent(agentId)).catch(() => {});   // a failed save leaves no agent
+      emit('error', { message: error.message, started });
     } finally {
       busy = false;
     }
   }
   return { take, isBusy: () => busy };
-}
-
-// Wires drops on the whole window and a hidden Finder folder picker.
-// → { pick(), isBusy() }.
-export function attachIntake(doc = document, { api = httpApi() } = {}) {
-  const emit = (name, detail) => doc.dispatchEvent(new CustomEvent(`intake:${name}`, { detail }));
-  const intake = createIntake({ api, emit });
-
-  const input = Object.assign(doc.createElement("input"), { type: "file", multiple: true, hidden: true });
-  input.setAttribute("webkitdirectory", "");
-  doc.body.append(input);
-  input.addEventListener("change", () => {
-    const files = Array.from(input.files);
-    input.value = "";   // the same folder picked again still fires change
-    if (files.length) intake.take("pick", () => files);
-    else emit("cancel");
-  });
-  input.addEventListener("cancel", () => emit("cancel"));
-
-  // dragenter/leave fire for every child crossed; count to know the window's own edge.
-  let depth = 0;
-  const hasFiles = (e) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
-  doc.addEventListener("dragenter", (e) => { if (hasFiles(e) && depth++ === 0) emit("over"); });
-  doc.addEventListener("dragleave", (e) => { if (hasFiles(e) && --depth === 0) emit("leave"); });
-  doc.addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });   // allows the drop
-  doc.addEventListener("drop", (e) => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();   // never let the window navigate to the dropped file
-    depth = 0;
-    emit("leave");
-    intake.take("drop", dropSource(e.dataTransfer));
-  });
-
-  return {
-    pick() {
-      if (intake.isBusy()) return emit("error", { message: "busy" });
-      input.click();
-    },
-    isBusy: intake.isBusy,
-  };
 }
