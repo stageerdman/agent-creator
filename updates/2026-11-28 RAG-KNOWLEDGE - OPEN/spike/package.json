@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "fastembed": "^3.0.0"
+  }
+}
