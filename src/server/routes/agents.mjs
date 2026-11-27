@@ -1,7 +1,8 @@
 // The creator's HTTP surface: thin wrappers over src/creator's use cases.
 // A missing agent throws AgentNotFound; the app's error handler makes it a 404.
+// Files, sections and texts are in material.mjs.
 
-import { readJson, requireFiles, requireMessage, sendJson, streamEvents } from "../http.mjs";
+import { readJson, requireMessage, sendJson, streamEvents } from "../http.mjs";
 
 export function agentRoutes(agents) {
   return {
@@ -26,10 +27,6 @@ export function agentRoutes(agents) {
         send("done", { say: turn.say, sessionId: turn.sessionId });
       });
     },
-
-    // Dropped or picked files: { files: [{ path, size }] } → { files, added }.
-    "POST /api/agents/:id/files": async (req, res, { params }) =>
-      sendJson(res, 200, await agents.addFiles(params.id, requireFiles(await readJson(req)))),
 
     "PUT /api/agents/:id/draft": async (req, res, { params }) =>
       sendJson(res, 200, await agents.edit(params.id, await readJson(req))),

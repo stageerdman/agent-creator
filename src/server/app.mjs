@@ -8,6 +8,7 @@ import { BadRequest, sendJson } from "./http.mjs";
 import { matchRoute } from "./router.mjs";
 import { agentRoutes } from "./routes/agents.mjs";
 import { askRoute } from "./routes/ask.mjs";
+import { materialRoutes } from "./routes/material.mjs";
 import { mockRoutes } from "./routes/mock.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
 import { summary } from "../creator/agents.mjs";
@@ -27,6 +28,7 @@ function staticFile(name, contentType) {
 }
 
 export function createApp(engine, { store = createAgentStore() } = {}) {
+  const agents = createAgents({ store, engine });
   const routes = {
     "GET /": staticFile("agent-home.html", "text/html; charset=utf-8"),
     "GET /new": staticFile("new-agent.html", "text/html; charset=utf-8"),
@@ -39,15 +41,17 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
     ...mockRoutes(),
     "GET /api/health": async (_req, res) => sendJson(res, 200, await engine.checkCli()),
     "POST /api/ask": askRoute(engine),
-    ...agentRoutes(createAgents({ store, engine })),
+    ...agentRoutes(agents),
+    ...materialRoutes(agents),
   };
 
   return createServer(async (req, res) => {
     const traceId = newTraceId();
-    const match = matchRoute(routes, req.method, new URL(req.url, "http://local").pathname);
+    const url = new URL(req.url, "http://local");
+    const match = matchRoute(routes, req.method, url.pathname);
     if (!match) return sendJson(res, 404, { error: "Not found." });
     try {
-      await match.handler(req, res, { traceId, params: match.params });
+      await match.handler(req, res, { traceId, params: match.params, query: url.searchParams });
     } catch (error) {
       handleError(error, req, res, traceId);
     }
