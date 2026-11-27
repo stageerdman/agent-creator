@@ -5,6 +5,7 @@
 
 import { readFile } from "node:fs/promises";
 import { CantExtract, NotFound } from "../errors.mjs";
+import { markFiles } from "../fileMarks.mjs";
 import { normalPath } from "../files.mjs";
 import { createLogger } from "../../log/logger.mjs";
 import { extractPlainText } from "./extract.mjs";
@@ -29,14 +30,9 @@ export function createSourceMemory({ store, readOriginal = readFile }) {
     }
   }
 
-  // Marks are put on the list as it is *now*: copying takes a while.
-  async function saveMarks(id, marks) {
-    if (!marks.size) return (await store.loadAgent(id)).files ?? [];
-    const latest = await store.loadAgent(id);
-    const files = (latest.files ?? []).map((file) => (marks.has(file.path) ? { ...file, text: marks.get(file.path) } : file));
-    await store.saveDraft(id, { files });
-    return files;
-  }
+  // A new copy makes the old embedding stale, so its `embed` mark goes too.
+  const saveMarks = (id, marks) =>
+    markFiles(store, id, new Map([...marks].map(([path, text]) => [path, { text, embed: undefined }])));
 
   // An original that can't be read now (moved, no access) gets no mark,
   // so the next change tries again.

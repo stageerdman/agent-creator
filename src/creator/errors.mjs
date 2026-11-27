@@ -26,6 +26,17 @@ export class CantExtract extends Error {
   }
 }
 
+// The local embedding model can't run now (not downloaded yet and offline,
+// or its runtime won't load). Passing: the next change tries again.
+export class CantEmbed extends Error {
+  constructor(reason, cause) {
+    super(`Can't embed: ${reason}.`, cause ? { cause } : undefined);
+    this.name = "CantEmbed";
+    this.kind = "cant-embed";
+    this.reason = reason;
+  }
+}
+
 // Input the creator can't use, e.g. a file with no path.
 export class BadInput extends Error {
   constructor(message) {

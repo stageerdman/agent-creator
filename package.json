@@ -19,6 +19,7 @@
     "@tauri-apps/cli": "^2.12.6"
   },
   "dependencies": {
+    "fastembed": "^3.0.0",
     "unpdf": "^2.2.3"
   }
 }
