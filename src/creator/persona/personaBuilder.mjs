@@ -11,7 +11,7 @@ import { changeFiles } from "../fileList.mjs";
 import { feedOf } from "../files.mjs";
 import { rebuiltFeed } from "../sections.mjs";
 import { createLogger } from "../../log/logger.mjs";
-import { packSources } from "./pack.mjs";
+import { packSources } from "../sourceText/pack.mjs";
 import { PERSONA_TAG, buildPersonaMessage, buildPersonaPrompt, readGenerated } from "./personaPrompt.mjs";
 
 const log = createLogger("personaBuilder");

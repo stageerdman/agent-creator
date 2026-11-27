@@ -23,6 +23,11 @@ test("packSources: the total never passes the cap", () => {
   assert.deepEqual(lengths(packed), [7, 12, 12]);
 });
 
+test("packSources: a part's other fields travel with it, cut or not", () => {
+  const packed = packSources([{ ...part("a", 50), role: "knowledge" }, { ...part("b", 5), role: "persona" }], 20);
+  assert.deepEqual(packed.sources.map((source) => source.role), ["knowledge", "persona"]);
+});
+
 test("packSources: no parts is nothing", () => {
   assert.deepEqual(packSources([], 100), { sources: [], cut: [] });
 });
