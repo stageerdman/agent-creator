@@ -76,6 +76,24 @@ Watch item, not blocking: with big Max dot sizes, a seed head near the edge can 
 
 Browser checks rerun after the fixes (`checks/run.cjs`): 19/19 in WebKit (672 lights, 61 fps) and 19/19 in Chrome (672 lights, 60 fps). The console is empty in both, with normal and reduced motion. Check 1 confirms Merlin's block is still byte-identical to his doc.
 
+## Recheck (round 3, Jony's pass on main's rewritten page)
+
+*Eraser, 2026-11-27, on Jony's `6dd9c07` (main merged in at `e6261fc`), merged into this branch. Main had rewritten `playground/fireflies-dna.html` into the 56 px cluster page, so Merlin's `<script id="dna-magic">` block and old check 1 no longer exist. The current check is `updates/2026-11-26 FIREFLIES-DNA-CLUSTER/checks/run.cjs`.*
+
+| Fix | What is in the code | Result |
+|---|---|---|
+| F1 | `FIRST_SLOTS = [0, .67, .33, 1, .5, .17, .83]`, then golden steps. It's the same in `playground/fireflies-dna.html:160`, `src/server/public/fireflies-dna.js:42` and `02-merlin-magic.md:360`. Merlin's comment now gives the reason (150° arc) | **Pass.** run.cjs, Chrome and WebKit: the first 4 topics are at least **49°** apart, and all 7 are at least **24°** apart. My target was ≥ 40° for the first 4 and ≥ 20° for 5–7, so main's slots meet it. Jony's question: **keep it as it is.** "Five at ≥ 35°" was never my target. It would cost the 7-topic spread, and the hover card names a topic anyway |
+| F2 | Both sliders run 2–9 and push each other (`fireflies-dna.html:450-451`). Merlin's table now says this | **Pass.** Setting Min to 8 pushes Max to 8, and pulling Max to 2 pulls Min to 2. The labels read 2.0 / 2.0, so they can't say something false. This is better than my suggestion: one range, no logic hidden from the user |
+| F3 | `03-jony-build.md:37`: "every dot of that file's seed head (not the whole topic)" | **Pass** |
+
+**Step Count:** no change in this pass, which only touched the docs. The page's path is still name → Size → Add, with the same control set (agentName, fname, fsize, minR, maxR, Add, ×).
+
+**The 8 run.cjs failures (the same 112/120 in both browsers) are stale expectations, not regressions.** They assert the Update 2 behaviour that two later sign-offs replaced on purpose. (1) Reduce Motion now lights 1 dot per frame about 66 ms apart, not one file per step (see "Reduce Motion pace", `c5ecc57`). That accounts for the 2 reduce-pace fails. (2) Each file now blinks on its own beat, and nothing blinks while files are landing, instead of a whole-cluster idle beat (see "Per-file blink", `502662e`). That accounts for the 6 U2 pixel probes. I reran the checks that replaced them on this page in WebKit: **`eye-check.cjs` PASS** (Reduce Motion lights 13 separate dots 66 ms apart with no pop; normal mode runs about 90–100 ms apart; 60 MB = 60 dots, then glow) and **`blink-check.cjs` PASS** (gaps 617 / 1165 ms match the rule, same moment means same frame, no blink while landing, Reduce Motion has 0 rises). The console is clean. Updating run.cjs is filed in `issues.txt`.
+
+`npm test`: 225 pass, 0 fail, 1 skipped. Chrome headless dropped out mid-run here as well (already in `issues.txt`), and the script restarted those parts. The page logged no errors.
+
 ## Sign-off
+
+**APPROVED (round 3)**: Eraser, 2026-11-27, on `6dd9c07`. F1–F3 hold on main's page. Nothing to cut.
 
 **APPROVED.** All four rules can be seen and played with, there's no clutter, it runs smoothly at 600+ lights, and it respects reduced motion. The non-blocking watch item (big heads clipped at the edge) stays open.
