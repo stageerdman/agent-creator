@@ -41,3 +41,8 @@ test("binary, empty and broken PDFs are refused with a reason", async () => {
   assert.equal(await reasonOf(extractPlainText("e.txt", Buffer.from("  \n"))), "empty");
   assert.equal(await reasonOf(extractPlainText("bad.pdf", Buffer.from("%PDF-1.4 nonsense"))), "unreadable-pdf");
 });
+
+test("audio and video are refused as media, even when their bytes look like text", async () => {
+  assert.equal(await reasonOf(extractPlainText("talk.MP4", Buffer.from("looks like text"))), "media");
+  assert.equal(await reasonOf(extractPlainText("talks/day1.mp3", Buffer.from([1, 0, 2]))), "media");
+});

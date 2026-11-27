@@ -4,11 +4,14 @@
 
 import { extractText } from "unpdf";
 import { CantExtract } from "../errors.mjs";
+import { isMedia } from "../intake/kinds.mjs";
 
 const isPdf = (name, bytes) => /\.pdf$/i.test(name) || bytes.subarray(0, 5).toString("latin1") === "%PDF-";
 
-// → text (never empty), or throws CantExtract with reason "binary" | "empty" | "unreadable-pdf".
+// → text (never empty), or throws CantExtract with reason "media" | "binary" | "empty" | "unreadable-pdf".
+// Audio and video say "media": their words need a transcript, not a read.
 export async function extractPlainText(name, bytes) {
+  if (isMedia(name)) throw new CantExtract(name, "media");
   const text = isPdf(name, bytes) ? await pdfText(name, bytes) : utf8Text(name, bytes);
   if (!text.trim()) throw new CantExtract(name, "empty");
   return text;

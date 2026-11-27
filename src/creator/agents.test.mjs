@@ -170,6 +170,35 @@ test("agents: dropped files join the DNA list, the creator routes them by path",
   assert.deepEqual((await agents.get(id)).files.map((f) => f.feeds), [["rag"], ["instructions"]]);
 });
 
+test("agents: paths asked in chat are scanned in, then rules sort them; a bad path is reported", async () => {
+  const root = await mkdtemp(join(home, "books-"));
+  await writeFile(join(root, "notes.md"), "# notes");
+  await writeFile(join(root, "talk.mp4"), "video");
+  const missing = join(home, "no-such-folder");
+  const block = { paths: [root, missing], rules: [{ to: "rag", files: { types: ["md"] }, only: true }] };
+  const engine = scriptedEngine([`Reading them. <draft>${JSON.stringify(block)}</draft>`]);
+  const agents = createAgents({ store: await freshStore(), engine, random: () => 0 });
+  const { id } = await agents.create();
+  const batches = [];
+  const turn = await agents.chat(id, `take ${root}`, { onFiles: (files) => batches.push(files) });
+
+  const folder = root.split("/").at(-1);
+  assert.deepEqual(batches.flat().map((f) => f.path).sort(), [`${folder}/notes.md`, `${folder}/talk.mp4`]);
+  assert.equal(turn.intake.added, 2);
+  assert.equal(turn.intake.skipped.length, 1);
+  assert.equal(turn.intake.skipped[0].path, missing);
+  assert.deepEqual(turn.intake.rules, [{ to: "rag", picked: 1, only: true }]);
+  const feeds = Object.fromEntries((await agents.get(id)).files.map((f) => [f.path, f.feeds]));
+  assert.deepEqual(feeds[`${folder}/notes.md`], ["rag"]);
+  assert.ok(!feeds[`${folder}/talk.mp4`].includes("rag"));
+});
+
+test("agents: a turn with no paths and no rules has no intake", async () => {
+  const agents = createAgents({ store: await freshStore(), engine: scriptedEngine(['ok <draft>{"name":"Tina"}</draft>']) });
+  const { id } = await agents.create();
+  assert.equal((await agents.chat(id, "rename")).intake, null);
+});
+
 test("agents: a reply with no block leaves the draft as it is", async () => {
   const store = await freshStore();
   const agents = createAgents({ store, engine: scriptedEngine(["Just chatting."]) });

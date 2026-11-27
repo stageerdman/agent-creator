@@ -113,6 +113,26 @@ test("a file the creator routes to knowledge is embedded: embedded { file } foll
   assert.deepEqual(events.find((e) => e.event === "embedded").data, { type: "embedded", file: "soup.md" });
 });
 
+test("a path asked in chat streams found, then files, then intake once", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  const root = await mkdtemp(join(home, "shelf-"));
+  await writeFile(join(root, "a.md"), "A");
+  await writeFile(join(root, "b.pdf"), "B");
+  const folder = root.split("/").at(-1);
+  const events = await chat(id, JSON.stringify({ paths: [root, join(home, "gone")], rules: [{ to: "rag", files: { types: ["md"] } }] }));
+  const names = events.map((e) => e.event);
+  assert.ok(names.indexOf("found") < names.indexOf("files"));
+  assert.ok(names.indexOf("files") < names.indexOf("intake"));
+  assert.equal(names.filter((n) => n === "intake").length, 1);
+  assert.deepEqual(events.filter((e) => e.event === "found").flatMap((e) => e.data.files.map((f) => f.path)).sort(), [`${folder}/a.md`, `${folder}/b.pdf`]);
+  const intake = events.find((e) => e.event === "intake").data;
+  assert.equal(intake.added, 2);
+  assert.deepEqual(intake.skipped.map((s) => s.path), [join(home, "gone")]);
+  assert.deepEqual(intake.rules, [{ to: "rag", picked: 1, only: false }]);
+  assert.deepEqual(events.filter((e) => e.event === "allocate").map((e) => e.data), [{ file: `${folder}/a.md`, section: "knowledge" }]);
+});
+
 // The Left Side's own client (streamChat) against this server: the panel talks to the real creator.
 const pageFetch = (path, options) => fetch(`${base}${path}`, options);
 

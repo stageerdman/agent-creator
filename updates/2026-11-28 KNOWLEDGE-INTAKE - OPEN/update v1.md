@@ -63,4 +63,4 @@ Sketcher can still read when a folder brings thousands of files.
 
 ## Status
 
-- [x] Phase 1  - [x] Phase 2  - [ ] Phase 3  - [ ] Phase 4
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4

@@ -1,7 +1,7 @@
 // The agent's own copy of every file it uses: plain text kept at
 // `sources/<path>.txt` in its folder, so nothing depends on the original
 // staying where it was. Each file records how its copy went in `text`:
-// "ok", or the reason it has none ("binary", "empty", "unreadable-pdf").
+// "ok", or the reason it has none ("media", "binary", "empty", "unreadable-pdf").
 
 import { readFile } from "node:fs/promises";
 import { BadInput, CantExtract, NotFound } from "../errors.mjs";
