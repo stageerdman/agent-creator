@@ -1,4 +1,11 @@
-# ONE FLOW: build notes (Jony) — DRAFT, plan
+# ONE FLOW: build notes (Jony)
+
+**Done.** One screen from + to the creation screen. The + sends the home's fireflies into the ring
+round the middle (not into the button); /new picks up on the same clock. The first real file hands
+the same 30 live fireflies to the field in one frame; they fly to their files and the rest light in
+place. No logo, no icon, no first-light wait, no second intake. `npm test` 206 pass, 1 skip; both
+`checks/*.cjs` ALL PASS in Chrome and WebKit (10,000 files: longest frame 33 ms Chrome, 18 ms WebKit).
+For Columbo to confirm: `Select Folder` now rests at .24 (was invisible), as the spec says.
 
 Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
 
@@ -58,9 +65,20 @@ Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
       `createField` exported; info() adds `lit, flyers, flying, queued`. Pure: `leaveOrder, flightAt, flyerAlpha, pourTake, asFile`.
       Flyers drawn with the DNA sprite, radius → `LAND_R` 4.5, then the file's dot (no fade). A flyer takes the next file
       only while still in the air; otherwise the file pours. Pour queue only up to FIELD_CAP.
-- [ ] new-agent.html wiring
-- [ ] checks/build-screen-check.cjs, checks/creation-screen-check.cjs
-- [ ] final notes, issues.txt (two intakes → resolved), Start check
+- [x] new-agent.html wiring — one `createIntake`: `start` → `screen.adopt(orbit.release())`, `found` → `screen.feed`,
+      `done` → `?agent=` + `screen.open`, `error` (started) → `screen.fail()` + `orbit.restore()`. `#logo` and the
+      old `save()`/`split()`/`orbit.answer` deleted. A fast save waits for the menu's 300 ms (`splitDue`).
+- [x] checks: build-screen §0 (+ into the ring, /new on the same clock), §7 (one-frame hand-over, flight, no
+      gap, no logo, menu ~300 ms), §8 (failed save: ring back, field empty). Creation-screen §1 (10,000 files:
+      hand-over, ≤30 flyers, pour, no frame over 250 ms). Run with `npm i --no-save playwright-core` and a
+      scratch server: `AGENT_CREATOR_HOME=.scratch/home PORT=3505 npm start`.
+- [x] issues.txt (two intakes → resolved), Start check: `npm run start:app` builds, installs and opens the
+      app; `build-screen-check.cjs http://localhost:3517 webkit --read-only` against its own server: ALL PASS
+      (the read-only mocks now answer `added` and the menu's reads). Note: Start's build resets
+      node_modules, so reinstall playwright-core before running the checks again.
+
+Not in this part: the field's fireflies wander only a few px (DRIFT_MAX 3). The user wants real
+wandering across the left side; that's a separate task on the board.
 
 Known limit: a drop on the home during the call is not taken (the home has
 no drop); /new takes clicks and drops from its first frame.

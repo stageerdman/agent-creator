@@ -39,11 +39,14 @@ async function open(browser, reduce, opts = {}) {
       const id = 'fake' + Date.now().toString(36); fake.push({ id, dna: [] });
       return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id }) });
     });
+    // The creation screen opens in the same flow and reads its menu: a fake agent's menu is empty.
+    await page.route(/\/api\/agents\/fake[^/]+\/(sections|skills|system-prompt|knowledge)/, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ files: [], skills: [], text: '' }) }));
     await page.route(/\/api\/agents\/fake[^/]+(\/files)?$/, (r, q) => {
       const id = q.url().match(/fake[^/]+/)[0], a = fake.find(x => x.id === id);
       if (q.method() === 'DELETE') { fake = fake.filter(x => x.id !== id); return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); }
       if (q.method() === 'POST') { const files = JSON.parse(q.postData()).files; a.dna = files.map((f, i) => ({ id: f.path, name: f.path, sizeBytes: f.size, addedAt: new Date(Date.now() + i).toISOString(), topic: f.path.split('/')[0] })); a.posted = files; }
-      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id, name: '', draft: {}, dna: a ? a.dna : [] }) });
+      const added = q.method() === 'POST' ? a.dna.map(f => f.id) : undefined;   // the files POST answers with what it added
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id, name: '', draft: {}, dna: a ? a.dna : [], added }) });
     });
   }
   return page;
