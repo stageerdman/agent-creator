@@ -38,9 +38,9 @@ test("dnaOf: oldest first, topic is the top folder, old files take the fallback"
     { path: "notes/x.md", name: "x.md", size: 12, feeds: ["rag"], addedAt: "2026-11-02T00:00:00.000Z" },
   ];
   assert.deepEqual(dnaOf(files, "2026-11-01T00:00:00.000Z"), [
-    { id: "bio.pdf", name: "bio.pdf", sizeBytes: null, addedAt: "2026-11-01T00:00:00.000Z", topic: "other" },
-    { id: "notes/x.md", name: "x.md", sizeBytes: 12, addedAt: "2026-11-02T00:00:00.000Z", topic: "notes" },
-    { id: "Talks/day 1/a.mp4", name: "a.mp4", sizeBytes: 5e7, addedAt: "2026-11-03T00:00:00.000Z", topic: "talks" },
+    { id: "bio.pdf", name: "bio.pdf", sizeBytes: null, addedAt: "2026-11-01T00:00:00.000Z", topic: "other", state: "unprocessed" },
+    { id: "notes/x.md", name: "x.md", sizeBytes: 12, addedAt: "2026-11-02T00:00:00.000Z", topic: "notes", state: "unprocessed" },
+    { id: "Talks/day 1/a.mp4", name: "a.mp4", sizeBytes: 5e7, addedAt: "2026-11-03T00:00:00.000Z", topic: "talks", state: "unprocessed" },
   ]);
   assert.deepEqual(dnaOf(undefined, "2026-11-01T00:00:00.000Z"), []);
 });

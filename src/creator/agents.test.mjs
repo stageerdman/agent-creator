@@ -126,7 +126,7 @@ test("agents: dropped files are stamped by the clock and show up as dna on the l
   const { id } = await agents.create();
   await agents.edit(id, { name: "Ada" });
   await agents.addFiles(id, [{ path: "talks/one.mp4", size: 2048 }]);
-  const expected = [{ id: "talks/one.mp4", name: "one.mp4", sizeBytes: 2048, addedAt: "2026-11-20T08:00:00.000Z", topic: "talks" }];
+  const expected = [{ id: "talks/one.mp4", name: "one.mp4", sizeBytes: 2048, addedAt: "2026-11-20T08:00:00.000Z", topic: "talks", state: "unprocessed" }];
   assert.deepEqual((await agents.list())[0].dna, expected);
   assert.deepEqual((await agents.get(id)).dna, expected);
 });

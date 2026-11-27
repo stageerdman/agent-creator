@@ -5,6 +5,8 @@
 // message instead, so the creator sees it on every turn.
 // Rules come from research-columbo.md and review-eraser.md (R2, R6, R10).
 
+import { FEEDS } from "./files.mjs";
+
 const RULES = `You are the Sketcher. You help the user create an AI agent by chatting with them. Next to this chat the user sees the agent's draft (the Sketch) with three fields:
 - name: what the agent is called.
 - persona: who the agent is: its voice, character and point of view. Written to the agent, starting "You are".
@@ -70,9 +72,15 @@ function userLines(handLines) {
 }
 
 // Paths and feeds only: the creator routes files, it never sees their content.
+// Only the feeds it may route (skill files are the user's own sorting), and
+// never a file the user removed.
 function fileList(files) {
-  if (!files.length) return "";
-  const rows = files.map(({ path, feeds }) => `- ${path} → ${feeds.length ? feeds.join(" + ") : "not routed yet"}`);
+  const listed = files.filter((file) => !file.removed);
+  if (!listed.length) return "";
+  const rows = listed.map(({ path, feeds }) => {
+    const routed = feeds.filter((feed) => FEEDS.includes(feed));
+    return `- ${path} → ${routed.length ? routed.join(" + ") : "not routed yet"}`;
+  });
   return ["<files>", ...rows, "</files>"].join("\n");
 }
 
