@@ -2,8 +2,9 @@
 // material). One folder per agent, `<home>/agents/<id>/agent.json`, so P3
 // can later keep the agent's materials next to it.
 //
-// Record: { id, draft, sessionId, handEdited, handLines?, files?, skills?, chat?, createdAt, updatedAt }.
+// Record: { id, draft, sessionId, handEdited, handLines?, files?, skills?, chat?, talk?, createdAt, updatedAt }.
 // `chat` is what the Sketcher panel shows again on a reload: [{ who, text }].
+// `talk` is the user's talk with the kept agent: [{ who, text, used? }].
 // `files` is the DNA file list (see files.mjs): paths, sizes, feeds and
 // added-at stamps, never content. Texts the agent is built into (its system
 // prompt, knowledge, skill bodies) are files in the same folder (readText).
@@ -69,8 +70,8 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
     // The autosave. `draft.status` is whatever the caller computed:
     // applyPatch already turns a changed kept agent back into a draft.
     // Fields left out stay as they are.
-    saveDraft: (id, { draft, sessionId, handEdited, handLines, files, skills, chat }) =>
-      update(id, definedOnly({ draft, sessionId, handEdited, handLines, files, skills, chat })),
+    saveDraft: (id, { draft, sessionId, handEdited, handLines, files, skills, chat, talk }) =>
+      update(id, definedOnly({ draft, sessionId, handEdited, handLines, files, skills, chat, talk })),
 
     // A text the agent keeps next to its record; "" when never written.
     async readText(id, rel) {

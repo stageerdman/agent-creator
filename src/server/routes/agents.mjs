@@ -17,7 +17,8 @@ export function agentRoutes(agents) {
 
     // SSE: delta* → draft { draft, changed } and/or files { files, changed }
     // (each only if something changed), then allocate { file, section } per
-    // changed file and section it now goes to ("none" if it feeds nothing) → done { say, sessionId } | error.
+    // changed file and section it now goes to ("none" if it feeds nothing) → ready { type, ready: true }
+    // only when the creator flags the agent ready (never once kept) → done { say, sessionId, ready } | error.
     "POST /api/agents/:id/chat": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
       await agents.get(params.id); // 404 before the stream opens
@@ -27,7 +28,18 @@ export function agentRoutes(agents) {
         if (turn.changed.length) send("draft", { draft: turn.draft, changed: turn.changed });
         if (turn.filesChanged.length) send("files", { files: turn.files, changed: turn.filesChanged });
         for (const allocation of allocations(turn.files, turn.filesChanged)) send("allocate", allocation);
-        send("done", { say: turn.say, sessionId: turn.sessionId });
+        if (turn.ready) send("ready", { type: "ready", ready: true });
+        send("done", { say: turn.say, sessionId: turn.sessionId, ready: turn.ready });
+      });
+    },
+
+    // Talk to the kept agent itself. SSE: delta* → done { say, used: [{ kind, name }] } | error.
+    "POST /api/agents/:id/talk": async (req, res, { params, traceId }) => {
+      const message = requireMessage(await readJson(req));
+      await agents.get(params.id); // 404 before the stream opens
+      await streamEvents(res, traceId, async ({ send, signal }) => {
+        const onSay = (text) => send("delta", { text });
+        send("done", await agents.talk(params.id, message, { onSay, signal, traceId }));
       });
     },
 

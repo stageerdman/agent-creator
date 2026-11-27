@@ -96,6 +96,10 @@
       Please send a ready flag from the engine (e.g. `done` event
       `{ ready: true }` when the creator proposes Keep). Then left-side.js
       saysReady can read that flag instead of the words.
+      Uncle Bob (2026-11-28): backend done. The creator returns "ready": true
+      in its <draft> block; chat SSE sends `ready {type:"ready",ready:true}`
+      before `done` (never once saved) and `done` carries `ready`. Left to
+      Jony: retire the word match in left-side.js saysReady.
 - [x] LEFT-SIDE round 2 (Eraser → Jony, 2026-11-27, RETURNED narrow): branch
       left-side-review-returned-the-full-revie-850ca84f (123de76) passes
       tests + Chrome check, and M4 is proven on screen (6→190→253→674). But it

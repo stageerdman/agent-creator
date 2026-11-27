@@ -6,6 +6,7 @@ import { dnaOf, routeFiles } from "./files.mjs";
 import { createMaterial } from "./agentMaterial.mjs";
 import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
+import { createTalk } from "./agentTalk.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
 // instructions, cut to about 80 characters. Empty when neither has text.
@@ -24,8 +25,8 @@ export function summary({ id, draft, files, createdAt, updatedAt }) {
     createdAt: born, updatedAt, dna: dnaOf(files, born),
   };
 }
-const view = ({ id, draft, sessionId, files = [], chat = [], createdAt, updatedAt }) =>
-  ({ id, draft, sessionId, files, chat, dna: dnaOf(files, createdAt || updatedAt) });
+const view = ({ id, draft, sessionId, files = [], chat = [], talk = [], createdAt, updatedAt }) =>
+  ({ id, draft, sessionId, files, chat, talk, dna: dnaOf(files, createdAt || updatedAt) });
 
 // The chat as the panel shows it again after a reload; the oldest lines go first.
 export const CHAT_KEEP = 200;
@@ -35,11 +36,12 @@ const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !reco
 
 // Files, sections and texts are their own use cases (agentMaterial.mjs,
 // agentTexts.mjs), offered here so callers hold one object.
-export function createAgents({ store, engine, now = () => new Date() }) {
+export function createAgents({ store, engine, now = () => new Date(), readSource }) {
   const material = createMaterial({ store, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),
+    ...createTalk({ store, engine, readSource }),
 
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
@@ -69,7 +71,9 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
       const chat = withTurn(latest.chat, message, turn.say);
       await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
-      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId };
+      // A kept agent is never "ready to create" again.
+      const ready = turn.ready && draft.status !== "saved";
+      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId, ready };
     },
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.

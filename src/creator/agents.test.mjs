@@ -119,7 +119,7 @@ test("creatorTurn streams without the block, trusts the final result, resumes th
     { engine, onSay: (t) => said.push(t) },
   );
   assert.equal(said.join(""), "Hi! ");
-  assert.deepEqual(turn, { say: "Hello!", patch: { name: "Tina" }, sessionId: "sess-1" });
+  assert.deepEqual(turn, { say: "Hello!", patch: { name: "Tina" }, sessionId: "sess-1", ready: false });
   assert.equal(engine.calls[0].resumeSessionId, "old");
   assert.match(engine.calls[0].systemPrompt, /You are the Sketcher/);
   // A resumed session ignores a new system prompt, so the live draft rides in the message.
@@ -139,7 +139,7 @@ test("agents: a chat turn applies the patch, autosaves it and keeps the session"
   assert.deepEqual(turn.changed, ["name", "persona"]);
   assert.equal(turn.say, "Sketched.");
   const chat = [{ who: "you", text: "a loud coach" }, { who: "sketcher", text: "Sketched." }];
-  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], chat, dna: [] });
+  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], chat, talk: [], dna: [] });
 });
 
 test("agents: dropped files are stamped by the clock and show up as dna on the list and the view", async () => {
