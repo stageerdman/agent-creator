@@ -83,7 +83,7 @@ test("dim if unprocessed, bright if processed, red if removed but still baked in
 });
 
 test("the belt's line says what is used, waiting and out", () => {
-  assert.equal(sectionLine([]), "nothing yet · drag a firefly here");
+  assert.equal(sectionLine([]), "nothing yet · drag files here");
   assert.equal(sectionLine([{ state: "processed" }, { state: "unprocessed" }, { state: "unprocessed" }, { state: "removed" }]),
     "1 used · 2 waiting · 1 out at next rebuild");
   assert.ok(BELT_CAP > 0);

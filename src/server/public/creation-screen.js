@@ -78,9 +78,12 @@ export function countLine(total, cap = FIELD_CAP) {
 
 /* ---------- pure: the menu ---------- */
 
+/* One wording for an empty section, belts and Skills alike (fireflies and Finder files are both files). */
+export const EMPTY = 'nothing yet · drag files here';
+
 /* What a section's belt says under its title. files: [{ state }]. */
 export function sectionLine(files) {
-  if (!files.length) return 'nothing yet · drag a firefly here';
+  if (!files.length) return EMPTY;
   const n = s => files.filter(f => f.state === s).length;
   const parts = [[n('processed'), 'used'], [n('unprocessed'), 'waiting'], [n('removed'), 'out at next rebuild']];
   return parts.filter(([k]) => k > 0).map(([k, w]) => `${fmt(k)} ${w}`).join(' · ');
@@ -257,7 +260,7 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   function renderSkills() {
     const box = menu.querySelector('[data-section="skills"] .stars');
     const line = menu.querySelector('[data-section="skills"] .line');
-    line.textContent = skills.length ? '' : 'nothing yet · drag files here';
+    line.textContent = skills.length ? '' : EMPTY;
     line.hidden = !!skills.length;
     box.replaceChildren(...skills.map(k => {
       const b = doc.createElement('button'); b.type = 'button'; b.className = 'star'; b.title = k.name; b.setAttribute('aria-label', `Open skill ${k.name}`);
