@@ -42,7 +42,9 @@ const focused = page => page.evaluate(() => document.activeElement && document.a
 (async () => {
   if (!home) { console.log('FAIL needs --home <scratch home> (the same folder the server uses)'); process.exit(1); }
   const { createAgentStore, createAgents } = await import(path.join(__dirname, '..', 'src', 'creator', 'index.mjs'));
-  const agents = createAgents({ store: createAgentStore({ home }), engine: {} });
+  const store = createAgentStore({ home });
+  const agents = createAgents({ store, engine: {} });
+  agents.seedChat = (id, chat) => store.saveDraft(id, { chat });   // no endpoint writes a chat without the AI
   for (let attempt = 1; ; attempt++) {
     fails = 0; let lost = false;
     try { await run(agents, () => lost, v => { lost = v; }); return; }
@@ -170,7 +172,59 @@ async function run(agents, isLost, setLost) {
   ok(errors.length === 0, 'no page errors or failed requests', errors.slice(0, 5).join(' | '));
   if (isLost()) throw new Error('browser lost');
   await browser.close();
+  await webkitChat(agents, id);
   console.log(fails ? `${fails} FAILED` : 'ALL PASS');
   process.exit(fails ? 1 : 0);
   }
+}
+
+/* ---------- 7. WebKit (the Mac app's engine): Sketcher's markdown shows formatted, never as raw ** ---------- */
+const RELEASE_COACH = `I've sketched **Release Coach**: a calm helper that turns your merged changes into clear release notes.
+
+**Files:**
+1. \`note.md\` → instructions (it shapes how Release Coach writes)
+2. \`changelog/\` → rag (it looks things up there when it answers)
+3. \`screenshots/\` → not routed yet
+
+Here's how it might sound:
+> **Release Coach:** Three fixes and one new button this week. Lead with the button: that's what people will notice.
+
+Should \`screenshots/\` go to rag too? I'd say *no*, since they're images. If that's Release Coach, press Keep.`;
+const LONG_CODE = 'A long line:\n```\n' + 'const releaseNotes = changes.filter(c => c.merged).map(c => c.title).join(" · ") + " and a lot more text so it overflows";\n```\n<script>window.__pwned = 1</script> and **half';
+
+async function webkitChat(agents, id) {
+  console.log('== webkit against ' + base);
+  await agents.seedChat(id, [
+    { who: 'you', text: 'Make me a **release** helper' },
+    { who: 'sketcher', text: RELEASE_COACH },
+    { who: 'sketcher', text: LONG_CODE },
+  ]);
+  const browser = await pw.webkit.launch();
+  const page = await browser.newPage({ viewport: { width: 1200, height: 820 } });
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(`${base}/new?agent=${id}`);
+  await until(async () => (await linfo(page)).handle.shown, 8000);
+  await page.click('#handle'); await page.waitForTimeout(600);
+  const r = await page.evaluate(() => {
+    const log = document.querySelector('#sketcher-log'), panel = document.querySelector('#sketcher');
+    const md = [...log.querySelectorAll('.md')];
+    const coach = md[0], edge = md[1], pre = edge && edge.querySelector('pre');
+    const count = (el, s) => el ? el.querySelectorAll(s).length : 0;
+    return {
+      lines: log.children.length,
+      coachText: coach ? coach.innerText : '',
+      youText: log.firstElementChild ? log.firstElementChild.innerText : '',
+      strong: count(coach, 'strong'), ol: count(coach, 'ol'), li: count(coach, 'li'), code: count(coach, 'code'), quote: count(coach, 'blockquote'), em: count(coach, 'em'),
+      pre: pre ? { sw: pre.scrollWidth, cw: pre.clientWidth } : null,
+      panelW: panel.getBoundingClientRect().width, logSW: log.scrollWidth, logCW: log.clientWidth,
+      edgeText: edge ? edge.innerText : '', scripts: count(log, 'script'), pwned: !!window.__pwned,
+    };
+  });
+  ok(r.coachText && !r.coachText.includes('**') && !r.coachText.includes('`') && !/^\s*>/m.test(r.coachText), '7. webkit: no raw **, backtick or line-start > on screen in the Release Coach reply', JSON.stringify(r.coachText.slice(0, 80)));
+  ok(r.strong === 3 && r.ol === 1 && r.li === 3 && r.code === 4 && r.quote === 1 && r.em === 1, '7. webkit: bold, numbered list, code, quote and italics are formatted', JSON.stringify({ strong: r.strong, ol: r.ol, li: r.li, code: r.code, quote: r.quote, em: r.em }));
+  ok(r.youText.includes('**release**'), '7. webkit: your own line stays plain text', JSON.stringify(r.youText));
+  ok(!!r.pre && r.pre.sw > r.pre.cw && r.logSW <= r.logCW + 1, '7. webkit: a long code line scrolls inside its block, the chat does not widen', JSON.stringify({ pre: r.pre, logSW: r.logSW, logCW: r.logCW, panelW: r.panelW }));
+  ok(r.scripts === 0 && !r.pwned && r.edgeText.includes('<script>') && r.edgeText.includes('**half'), '7. webkit: HTML shows as text, a half-streamed ** stays plain', JSON.stringify(r.edgeText.slice(-60)));
+  ok(errors.length === 0, '7. webkit: no page errors', errors.slice(0, 3).join(' | '));
+  await browser.close();
 }

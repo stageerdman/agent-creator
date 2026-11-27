@@ -7,6 +7,7 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::webview::NewWindowResponse;
 use tauri::window::Color;
 use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
@@ -60,12 +61,46 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
         .min_inner_size(640.0, 640.0)
         // Let Finder drops reach the page's own dragenter/drop handlers.
         .disable_drag_drop_handler()
+        // Chat links are target="_blank": hand them to the default browser or
+        // mail app and keep the chat on screen.
+        .on_new_window(|url, _| {
+            open_outside(&url);
+            NewWindowResponse::Deny
+        })
         .visible(false)
         .center()
         .build()?;
     // Paint the home's Fireflies field first, so a launch never flashes white.
     window.set_background_color(Some(canvas(window.theme()?)))?;
     window.show()
+}
+
+/// Web and mail links only; anything else (file:, javascript:, custom schemes) is dropped.
+fn opens_outside(url: &tauri::Url) -> bool {
+    matches!(url.scheme(), "https" | "http" | "mailto")
+}
+
+fn open_outside(url: &tauri::Url) {
+    if opens_outside(url) {
+        if let Err(e) = std::process::Command::new("/usr/bin/open").arg(url.as_str()).spawn() {
+            eprintln!("main: could not open {url}: {e}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::opens_outside;
+
+    #[test]
+    fn only_web_and_mail_links_leave_the_app() {
+        for ok in ["https://example.com/a", "http://example.com", "mailto:hi@example.com"] {
+            assert!(opens_outside(&ok.parse().unwrap()), "{ok}");
+        }
+        for no in ["file:///etc/passwd", "javascript:alert(1)", "ftp://x.y", "tel:123"] {
+            assert!(!opens_outside(&no.parse().unwrap()), "{no}");
+        }
+    }
 }
 
 /// The home's Fireflies field (#0B1410). It is dark in both themes, so the

@@ -1,49 +1,64 @@
-# Chat markdown: Eraser sign-off
+# Chat markdown: Eraser's clutter check and sign-off
 
-*Eraser, 2026-11-27. Branch `studio/build-the-safe-markdown-renderer-wire-it-82270a8f`, head `ce7ebd1`. Checked against `Reports/chat-markdown-roadmap.md` (Columbo).*
+*Eraser, 2026-11-27. Checks Jony's commits `5fc46af`, `d636b58` and `ce7ebd1` against `Reports/chat-markdown-roadmap.md` (Columbo).*
 
-## Verdict: APPROVED
+## Verdict: RETURNED (2 small fixes for Jony)
 
-Sketcher's replies now show formatted text (bold, lists, code, quote, italics). No raw `**` or backtick shows, either on screen in WebKit or in the tests. There is one renderer, no new controls and no new colours.
+The formatting is clean, lean and quiet. There is one renderer, there are no new controls, and the Release Coach sample shows no raw `**` or backtick in WebKit. Two things from the roadmap's "Done means" list are not covered yet. Both are small. Jony owns the fixes; I re-check and sign once they are in.
 
 ## Goal
 
-The user reads a Sketcher reply and sees the formatting, not markdown symbols, both live and after a reload.
+The user reads Sketcher's reply and finds the bold label, the numbered item, the file name and the voice quote at a glance, with no raw symbols in the way.
 
-## Step Count (reading a reply)
+## Step count (reading a reply)
 
-| # | Step | Before | Now | Mark |
-|---|---|---|---|---|
-| 1 | Send a message | 1 | 1 | Keep |
-| 2 | Read the reply as it streams in | 1 | 1 | Keep |
-| 3 | Mentally strip out `**`, backticks and `>` to find the label, file name or quote | 1 | 0 | **Cut** (the renderer does it) |
-| 4 | After a reload, read the old replies (raw before, formatted now) | 1 + step 3 again | 1 | **Merge** (same renderer as live) |
+| # | Step | Mark | Why |
+|---|---|---|---|
+| 1 | Send a message (already exists) | Keep | Unchanged. |
+| 2 | Read the reply as it streams, formatted | Keep | Same `say()` runs on every chunk and on reload. |
+| 3 | Scan bold, list numbers, code names, quote | Keep | This is the goal. |
+| 4 | Click a link (rare, B13) | **Fix** | In the Mac app the link may do nothing. See F1. |
 
-**Count: 5 → 3.** No new click, button or choice was added. The cut is mental work, which is the step that matters most here (B2, B4, B5 in the roadmap).
+**Current: 3 steps on the common path, plus 1 broken step on a rare path. Target: the same 3, and the rare link opens the browser in one click.** No step was added: there is no copy button, toggle, "show raw" switch or new icon.
 
-## Roadmap checks
+## The four checks
 
-| Roadmap asks | Found | OK |
+| Check | Result | Evidence |
 |---|---|---|
-| Exactly one renderer | `git grep renderMarkdown` lists one definition (`markdown.js:225`) and one caller (`left-side.js:258`, `say()`). Live (`onText`, :270) and reload (`line(..., md)` from :201) both go through `say()`. No other parser exists in `src/`. | ✔ |
-| DOM only, no `innerHTML` | `markdown.js` uses only `createElement`, `createTextNode`, `textContent` and `setAttribute`. The one `innerHTML` in the app is a fixed SVG in `creation-screen.js:408`, which has nothing to do with chat. | ✔ |
-| User's own lines and app lines stay plain | `line('you', …)`, the waiting line, the error line (:277, class reset to `sketcher err`), "Yours…" and "Couldn’t keep it…" are all `textContent`. In WebKit, the check shows `Make me a **release** helper` exactly as typed. | ✔ |
-| No extra controls | No copy button, no toggle, no "show raw". There are no new buttons in the diff. | ✔ |
-| Styles stay quiet | Bold is weight 600 in `color: inherit`. Code and blocks use the same faint tint `rgba(232,239,224,.08)`. The quote is a 2px rule at .25. Links use the existing `--fly` accent. There are no new colours and no size changes, and headings become one bold line. | ✔ |
-| Supported set only | Bold, italics, ol/ul, inline code, fenced code, quote and links. Tables, images, rules, strikethrough and HTML stay as plain text (tests). | ✔ |
-| Watch-outs 1, 2, 4, 5, 7 | HTML and script stay literal (unit test plus WebKit `__pwned` false). Unsafe links include case, space, entity, data, vbscript, file and `//`. Every streamed prefix of both samples is tested. A long code line scrolls inside its own block (pre 963 > 332, and the log does not widen). The user's line is never formatted. | ✔ |
-| No raw `**` or backtick for Release Coach | Unit test 1 plus WebKit check 7: on-screen `innerText` has neither. The counts are 3 strong, 1 ol, 3 li, 4 code, 1 quote and 1 em, exactly as the roadmap describes. | ✔ |
+| **One renderer, no second way** | Pass | `renderMarkdown` lives only in `src/server/public/markdown.js:225`. Its only caller is `left-side.js:258` (`say`), which is used for live chunks (`:270`) and history after a reload (`:201`, through `line(..., md)`). No `innerHTML` on reply text (the only `innerHTML` in `public/` is a fixed SVG in `creation-screen.js:408`). No other parser or "simple" variant exists. User lines and app lines stay `textContent` (`:261`). |
+| **No extra controls** | Pass | No copy buttons, icons, toggles or headings-as-big-type. The roadmap's left-out list (tables, images, rules, strikethrough, HTML) all stay plain text, and there are tests for each. |
+| **Quiet styles that match the app** | Pass | `new-agent.html:149-162`: bold is weight 600 in the same colour. Code is monospace on `rgba(232,239,224,.08)`. The quote is a 2 px rule at `.25`. Links use the app's own `--fly` accent, underlined. No new colours, no size changes. Long code scrolls inside its block. |
+| **No raw `**` or backtick (Release Coach)** | Pass | Unit test "Release Coach sample: no ** or backtick survives" passes. WebKit check 7 passes on screen (3 bold, 1 list with 3 items, 4 code, 1 quote, 1 italic). The user's own `**release**` stays plain. |
 
-## Checks re-run (my checkout, detached at `ce7ebd1`)
+## Runs
 
-- `npm test`: **245 pass, 1 skip, 0 fail** (the 19 renderer tests are included).
-- `npm install --no-save playwright-core`, then `AGENT_CREATOR_HOME=<checkout>/.scratch-home PORT=3505 npm start`, then `node checks/left-side-check.cjs http://localhost:3505 --home .scratch-home`: **ALL PASS**. That covers Chrome parts 1–6 and WebKit part 7, which has 6 checks. Chrome quit once from outside during part 4, and the check's own fresh-visit retry carried on and passed.
+- `npm test`: **245 pass, 1 skipped** (the live-AI test), 0 fail.
+- `node checks/left-side-check.cjs http://localhost:3505 --home .scratch/eraser-md` (Chrome steps 1-6, WebKit step 7): **ALL PASS**. Long code: block scrollWidth 963 > clientWidth 332, and the log did not widen (396 = 396). `<script>` stayed text, with no script node.
 
-## Watch later (not blocking)
+## Fixes for Jony
 
-1. **Links in the Tauri Mac shell** may do nothing (`target="_blank"`, no opener plugin). This is already a must-fix on Uncle Bob's shell/glass item, and Columbo is tracking it.
-2. **Huge replies (watch-out 9).** The whole reply is re-rendered on every chunk. That's fine for normal replies, but no check measures a long pasted transcript yet. Add a timing check if Talk (Phase 2) brings long replies.
-3. **Live streaming in WebKit** is covered by the unit prefix test and by both paths sharing `say()`. Check 7 seeds the chat and tests the reload path on screen. When the real engine check (`sketcher-chat-check.cjs`) runs, it should look for the same "no raw `**`" condition on the live answer.
-4. **Phase 2:** Talk must import this same `markdown.js` and these same `.md` styles. If a second parser or a "simple" variant appears, it gets returned.
+**F1. Links must open in the default browser from the Mac app (roadmap watch-out 3 and open question 1).**
+`markdown.js:131` sets `target="_blank"`, but the Tauri shell (`src-tauri/src/main.rs`) has no navigation or new-window handler, and no opener. In a Tauri WebKit window a `_blank` link either does nothing (a dead link, which breaks "no dead UI") or isn't proven to work. Nobody has answered the open question, and no check covers it.
+*Done means:* clicking an `https:` or `mailto:` link in the **built Mac app** opens the default browser or mail app, and the chat stays on screen. Write down how you checked it (in your notes or as a check). Use the smallest fix you can: one handler in the shell, not a new page-side control.
 
-Signed — Eraser, APPROVED, 2026-11-27.
+**F2. The WebKit check must also prove there is no `>` at the start of a visible line.**
+The roadmap's "rendered well" asks for "zero `**`, zero `` ` ``, zero `>` at a line start". Check 7 tests the first two only (`checks/left-side-check.cjs`, the `coachText` assertion). Add `!/^\s*>/m.test(r.coachText)` to that check.
+
+## Watch later (not blockers)
+
+- **Huge replies (watch-out 9).** The whole reply is re-rendered on every chunk. No one has timed this with a long echoed paste in WebKit. If Talk (Phase 2) brings longer replies, measure it then.
+- **Streaming on screen.** WebKit checks the reloaded history. Streaming is covered by the unit test "every streamed prefix… never shows a broken tag", through the same `say()`. That's enough for now. A real-stream WebKit pass would be stronger.
+- **Phase 2.** When Talk returns, it must import this same `renderMarkdown` and reuse the `.md` styles. A second parser or a per-screen variant gets returned.
+
+## Jony's fixes (for the re-check)
+
+**F1. Done: one handler in the shell.** `src-tauri/src/main.rs` adds `on_new_window` to the window. A `target="_blank"` link goes to macOS's `/usr/bin/open`, which hands it to the default browser or mail app. The new window is refused, so the chat stays where it is. Only `https:`, `http:` and `mailto:` go out. Anything else is dropped (Rust test `only_web_and_mail_links_leave_the_app`). Nothing changed on the page.
+*How I checked it in the built app:* I built a release `.app` with a temporary probe (not committed). Five seconds after launch, the probe clicked a `_blank` link to a local listener, then reported the page's address 2.5 s later. The listener logged `GET /opened-by-link` from **Firefox, the Mac's default browser**. Next it logged `/still?href=http://localhost:3517/&title=Agent Creator` from the app's WebKit, which shows the chat window never moved. After that I removed the probe and rebuilt with `npm run build:app`, so the copy now in `/Applications` is the committed code. `mailto:` takes the same `open` path; I did not click one in the app.
+
+**F2. Done.** Check 7 now also asserts `!/^\s*>/m.test(r.coachText)`.
+
+**Runs:** `npm test` 245 pass, 1 skipped, 0 fail. `npm run test:shell` 7/7. `left-side-check` ALL PASS (Chrome 1–6, WebKit 7, including the new `>` assertion).
+
+## Sign-off
+
+*Pending F1 and F2. Eraser re-checks and signs here.*
