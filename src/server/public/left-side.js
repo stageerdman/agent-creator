@@ -109,10 +109,22 @@ export function parseEvents(buf) {
   return { events: out, rest };
 }
 
+/* The sorting: Sketcher puts a file in a section (the server's allocate { file, section }).
+   The menu section that takes it: 'skill:<id>' → 'skills'; 'none' (feeds nothing) → null. */
+export const menuSectionOf = section => !section || section === 'none' ? null : String(section).startsWith('skill:') ? 'skills' : section;
+export const GLOW_MS = 900;     // a sorted file's firefly glows this long, from its own allocate
+export const TOOK_MS = 600;     // the section's soft light when the file lands
+export const SORT_GAP = 90;     // ms between two sorted files leaving (a burst reads as a line, not a blob)
+/* The glow dt ms after its allocate: up fast, down slow; 0 outside. Reduce Motion: a plain step. */
+export const glowLevel = (dt, reduced) => dt < 0 ? 0 : reduced ? (dt < STILL_BLINK ? 1 : 0) : dt >= GLOW_MS ? 0 : flash(dt * 1020 / GLOW_MS);
+/* When each of a burst leaves: never before t + WAKE_MS (the glow first), SORT_GAP after the one before. */
+export const sortLeave = (t, last) => Math.max(t + WAKE_MS, last + SORT_GAP);
+
 /* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
-   onText(all text so far) as it streams; onChange() when the draft or the files changed.
+   onText(all text so far) as it streams; onChange(event) when the draft or the files changed;
+   onAllocate({ file, section }) once per file Sketcher sorted (after files).
    → Sketcher's whole answer. Throws on any failure (no answer counts as one). */
-export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {} }) {
+export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {}, onAllocate = () => {} }) {
   const r = await fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
   if (!r.ok || !r.body) throw new Error(`chat: status ${r.status}`);
   const rd = r.body.getReader(), dec = new TextDecoder();
@@ -122,7 +134,8 @@ export async function streamChat({ fetch, id, message, onText = () => {}, onChan
     const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
     for (const { event, data } of out.events) {
       if (event === 'delta' && data && data.text) onText(text += data.text);
-      else if (event === 'files' || event === 'draft') onChange();
+      else if (event === 'files' || event === 'draft') onChange(event);
+      else if (event === 'allocate' && data && data.file) onAllocate({ file: data.file, section: data.section || 'none' });
       else if (event === 'done' && data && data.say) { if (data.say !== text) onText(text = data.say); }   // the final text is the truth
       else if (event === 'error') throw new Error(`chat: ${(data && data.error) || 'error'}`);
     }
@@ -132,7 +145,7 @@ export async function streamChat({ fetch, id, message, onText = () => {}, onChan
 }
 
 /* ------------------------------------------------------------------ the page ---- */
-export function mountLeftSide({ doc = document, reduced = false, store = localStorage, fetchAgent, refresh }) {
+export function mountLeftSide({ doc = document, reduced = false, store = localStorage, fetchAgent, refresh, reloadMenu = () => {} }) {
   const win = doc.defaultView, $ = s => doc.querySelector(s), now = () => win.performance.now();
   const markEl = $('#mark'), sky = $('#sky'), ctx = sky.getContext('2d');
   const handle = $('#handle'), chev = handle.querySelector('.chev');
@@ -140,6 +153,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
+  let glows = new Map(), sorters = [], lastLeave = -1e9, sorted = { count: 0, last: [] }, tookSeen = 0;   // the sorting
   let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
@@ -195,7 +209,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function refreshHidden() { if (api.hide) api.hide([...flown]); }
 
   function start(a, still) {
-    timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = [];
+    timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = []; sorters = []; glows = new Map();
     id = a.id; name = nameOf(a); files = a.dna || [];
     heldWhole = false; wasKept = kept(store, a); create.hidden = true;
     if (wasKept) store['left.kept.' + id] = '1';
@@ -280,7 +294,8 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     const reply = line('sketcher wait', 'Sketching…');
     const onText = text => { say(reply, text); reply.classList.remove('wait'); reply.classList.add('md'); log.scrollTop = log.scrollHeight; };
     try {
-      const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange: pull });
+      const onChange = ev => { pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
+      const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate: sortFile });
       if (showKeep(text, wasKept)) create.hidden = false;
     } catch {
       // The message goes back in the box, so Enter tries again (no retyping, no retry button).
@@ -298,6 +313,60 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     } catch { line('sketcher err', 'Couldn’t keep it. Try again.'); }
     create.disabled = false;
   });
+
+  /* ---- the sorting: on its own allocate, a file's firefly glows, then a light leaves it and flies to
+     its section, which takes it with a soft light. The file's firefly stays (it is not built in yet).
+     'none': the glow only. Reduce Motion: no flight; the glow and the section's light are plain steps. ---- */
+  const secEl = key => doc.querySelector(`#menu [data-section="${key}"]`);
+  function dotAt(file, t) {   // where the file's firefly is now: its field spot, or the mark once it has flown in
+    const g = geo();
+    if (flown.has(file) || !files.some(f => f.id === file)) return { x: g.cx, y: g.cy };
+    if (reduced) { const s = spotOf(file), ar = area(g); return { x: ar.pad + s.x * Math.max(0, ar.w - 2 * ar.pad), y: ar.pad + s.y * Math.max(0, ar.h - 2 * ar.pad) }; }
+    return wanderAt(file, t, area(g), false, wanderParams(file));
+  }
+  function targetOf(key) {    // the section's fireflies (or its skills), else its title
+    const sec = secEl(key); if (!sec) return null;
+    const stars = sec.querySelector('.stars');
+    const el = sec.querySelector('.swarm:not([hidden])') || (stars && stars.childElementCount ? stars : null) || sec.querySelector('h2') || sec;
+    const r = el.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 60), y: r.top + r.height / 2 };
+  }
+  function took(key) {
+    const sec = secEl(key); if (!sec) return;
+    sec.classList.add('took'); tookSeen++;
+    later(() => sec.classList.remove('took'), reduced ? STILL_BLINK : TOOK_MS);
+  }
+  function sortFile({ file, section }) {
+    const t = now(), key = menuSectionOf(section);
+    sorted.count++; sorted.last = [...sorted.last, { file, section }].slice(-20);
+    glows.set(file, t);
+    if (key && reduced) took(key);
+    else if (key) { lastLeave = sortLeave(t, lastLeave); sorters.push({ file, key, leave: lastLeave, from: null, tan: null }); }
+    kick();
+  }
+  function drawSorting(t) {
+    const out = [];
+    for (const [file, at] of glows) {   // F13: the glow is this file's own, from its own allocate
+      const v = glowLevel(t - at, reduced);
+      if (v <= 0 && t - at > 0) { glows.delete(file); continue; }
+      const p = dotAt(file, reduced ? at : t);
+      ctx.globalAlpha = .45 * v; ctx.beginPath(); ctx.arc(p.x, p.y, 11, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = v; ctx.beginPath(); ctx.arc(p.x, p.y, 2.6, 0, 6.2832); ctx.fill();
+    }
+    sorters = sorters.filter(s => {
+      if (t < s.leave) { out.push(s); return true; }
+      if (!s.from) {
+        const p = dotAt(s.file, s.leave), q = dotAt(s.file, s.leave - 16), d = Math.hypot(p.x - q.x, p.y - q.y);
+        s.from = p; s.tan = d ? { x: (p.x - q.x) / d, y: (p.y - q.y) / d } : { x: 0, y: -1 };
+      }
+      const u = (t - s.leave) / FLY_MS, to = targetOf(s.key);
+      if (u >= 1 || !to) { took(s.key); return false; }
+      const p = flightAt(s.from, s.tan, to, u), a = WAKE * (1 - .5 * u);
+      ctx.globalAlpha = a * .2; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, 6.2832); ctx.fill();
+      return true;
+    });
+    return glows.size + sorters.length;
+  }
 
   /* ---- the agent while files wait ---- */
   async function pull() { if (!id) return; try { const a = await fetchAgent(id); if (a && a.id === id) refresh(a); } catch {} }
@@ -336,10 +405,11 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
       ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 6.2832); ctx.fill();
       return true;
     });
+    const sorting = drawSorting(t);
     ctx.globalAlpha = 1;
     const bt = t - blinkAt, lit = reduced ? bt < STILL_BLINK : bt < 1020;
     chev.style.setProperty('--b', ((blinkLevel(bt, reduced) - .55) / .45).toFixed(3));
-    if (moving || flyers.length || lit) kick();
+    if (moving || flyers.length || sorting || lit) kick();
   }
 
   const api = {
@@ -347,6 +417,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     setReduced(v) { reduced = !!v; kick(); },
     isOpen: () => open,
     info: () => ({
+      sorted: { count: sorted.count, last: sorted.last.slice() }, sorting: sorters.length, glowing: glows.size, took: tookSeen,
       agent: id, grow, kept: wasKept, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
       handle: { shown: !handle.hidden && handle.classList.contains('in'), blinks, blinkAt },
       panel: { open, hidden: panel.hidden }, mark: mark ? mark.info() : null,
