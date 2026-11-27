@@ -12,6 +12,8 @@
     --hit: max(112px, 20vmin);   /* 2 x hitR = 2 x max(56, .10 U) */
   }
   html { background: var(--field); }
+  /* In the Mac app the window is glass: the field tints the blurred desktop, dark enough for text. */
+  html.glass { background: transparent; --field: rgba(11, 20, 16, .62); --shadow: rgba(6, 11, 8, .8); }
   html, body { margin: 0; height: 100%; }
   body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
   canvas#field { position: fixed; inset: 0; display: block; pointer-events: none; }
@@ -140,6 +142,8 @@
   }
   /* Narrow screens: the panel is full width and the arrow rests just inside its right edge; keep words clear of it. */
   @media (max-width: 639px) { #sketcher { padding-right: 56px; } }
+  /* Over the glass window the chat is long reading: near-solid, so it never depends on the wallpaper. */
+  html.glass #sketcher { background: rgba(12,14,10,.88); }
   #sketcher[hidden] { display: none; }
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
