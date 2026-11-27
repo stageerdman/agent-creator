@@ -34,7 +34,7 @@ You should be able to *see* an agent's history as fireflies, play with the four 
 
 ## Hover and tap
 
-Pointing at a light lights up every dot of that one file (its whole seed head) and shows a card beside the seed head with name, size and time. Plain files also say "no embedding yet". Events show their kind, a plain line and the time. On touch, a tap does the same, and tapping empty space clears it.
+Pointing at a light lights up every dot of that file's seed head (not the whole topic) and shows a card beside the seed head with name, size and time. Plain files also say "no embedding yet". Events show their kind, a plain line and the time. On touch, a tap does the same, and tapping empty space clears it.
 
 ## States
 

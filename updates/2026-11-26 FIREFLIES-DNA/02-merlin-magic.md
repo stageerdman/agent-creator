@@ -80,11 +80,13 @@ All dots of a file share one colour (one file, one embedding).
 "topic direction", plus a small nudge from the name, so same-topic files
 come out as siblings (about ±6° of hue). A purely random topic direction
 could land two topics on the same hue. So the fake topics are **placed on
-purpose**: the first five topics seen take fixed spots on the arc, at least
-35° apart (about 196°, 120°, 269°, 156°, 233°); from the sixth on they
-step along by the golden ratio (the same trick sunflowers use, so it ties
-back to Rule A). Golden steps alone can't keep even four topics 35° apart
-on this 150° arc, so the first five, the ones people see most, are fixed. `embeddingToColor` itself stays an honest
+purpose**: the first 7 topics seen take fixed slots along the arc
+(`[0, 0.67, 0.33, 1, 0.5, 0.17, 0.83]`), so the first 4 sit about 50° apart
+and topics 5–7 about 25° from their neighbours. From the 8th topic on,
+golden-ratio steps continue (the same trick sunflowers use, so it ties back
+to Rule A), and the name on the hover card tells close topics apart.
+(Golden steps alone can't do this: the arc doesn't wrap, so with 4 topics
+two always end up ~22° apart.) `embeddingToColor` itself stays an honest
 projection, so a real vector lands wherever it falls. An empty topic uses
 the name, and that file becomes its own species, at a hashed spot.
 
@@ -198,8 +200,8 @@ to read as one event: it starts, it travels, it fades.
 
 | Control | Default | Range | Note |
 |---|---|---|---|
-| Min dot size (`minR`, CSS px) | **1.5** | 0.75 – 2.5 | |
-| Max dot size (`maxR`, CSS px) | **4.5** | 2.5 – 9 | ranges meet at 2.5, so min can never pass max |
+| Min dot size (`minR`, CSS px) | **1.5** | 0.75 – 4 | |
+| Max dot size (`maxR`, CSS px) | **4.5** | 2 – 9 | min > max is swapped |
 | Blink speed | **1** | 0.25 – 4 | pass never below 2.5 s |
 | Randomness | **0.35** | 0 – 1 | floor jitter of 0.15 stays |
 | Chain strength | **0.5** | 0 – 1 | 0 = lone flash |
@@ -350,11 +352,12 @@ to read as one event: it starts, it travels, it fades.
     l = Math.min(80, l + 6 * blue);
     return { h: Math.round(h * 10) / 10, s: Math.round(sat), l: Math.round(l) };
   }
-  // Fake topics are placed on purpose: the first five topics seen take fixed spots
-  // on the hue arc, at least 35 degrees apart (about 196/120/269/156/233); later
-  // ones step on by the golden ratio. (Real vectors would land wherever the
-  // projection puts them; embeddingToColor stays honest.)
-  var topicSlots = {}, topicCount = 0, FIRST_SLOTS = [0.5, 0, 1, 0.27, 0.75];
+  // Fake topics are placed on purpose: the first 7 topics seen take fixed slots on
+  // the hue arc (first 4 about 50 deg apart, 5-7 about 25 deg), then golden-ratio
+  // steps. (Real vectors would land wherever the projection puts them;
+  // embeddingToColor stays honest.)
+  var topicSlots = {}, topicCount = 0;
+  var FIRST_SLOTS = [0, 0.67, 0.33, 1, 0.5, 0.17, 0.83];
   function probit(q) { return Math.log(q / (1 - q)) / 1.702; } // inverse of phi
   function topicBase(t, named) {
     var g = normalize(gaussVec(hashStr('topic:' + t), 64));
@@ -363,7 +366,8 @@ to read as one event: it starts, it travels, it fades.
     var rn = Math.sqrt(rr), q;
     if (named) {
       if (!(t in topicSlots)) topicSlots[t] = topicCount++;
-      var k = topicSlots[t], fr = k < 5 ? FIRST_SLOTS[k] : (0.5 + k * 0.6180339887) % 1;
+      var k = topicSlots[t];
+      var fr = k < FIRST_SLOTS.length ? FIRST_SLOTS[k] : (0.15 + k * 0.6180339887) % 1;
       q = 0.06 + 0.88 * fr;
     } else {
       q = 0.06 + 0.88 * ((hashStr('own:' + t) % 10007) / 10007);

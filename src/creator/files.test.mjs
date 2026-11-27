@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addFiles, feedOf, routeFiles } from "./files.mjs";
+import { addFiles, dnaOf, feedOf, routeFiles } from "./files.mjs";
 
 const dropped = () =>
   addFiles([], [
@@ -20,6 +20,29 @@ test("addFiles: nested paths are kept, cleaned, named; a repeat keeps its feeds"
   const again = addFiles(routed, [{ path: "./bio.pdf" }, { path: "new.md" }]);
   assert.deepEqual(again.added, ["new.md"]);
   assert.deepEqual(again.files.find((f) => f.path === "bio.pdf").feeds, ["rag"]);
+});
+
+test("addFiles: new files get the stamp; a repeat keeps its first one", () => {
+  const first = addFiles([], [{ path: "a.md" }], "2026-11-01T10:00:00.000Z").files;
+  const again = addFiles(first, [{ path: "a.md" }, { path: "b.md" }], "2026-11-02T10:00:00.000Z").files;
+  assert.deepEqual(again.map((f) => [f.path, f.addedAt]), [
+    ["a.md", "2026-11-01T10:00:00.000Z"],
+    ["b.md", "2026-11-02T10:00:00.000Z"],
+  ]);
+});
+
+test("dnaOf: oldest first, topic is the top folder, old files take the fallback", () => {
+  const files = [
+    { path: "Talks/day 1/a.mp4", name: "a.mp4", size: 5e7, feeds: [], addedAt: "2026-11-03T00:00:00.000Z" },
+    { path: "bio.pdf", name: "bio.pdf", size: null, feeds: [] },
+    { path: "notes/x.md", name: "x.md", size: 12, feeds: ["rag"], addedAt: "2026-11-02T00:00:00.000Z" },
+  ];
+  assert.deepEqual(dnaOf(files, "2026-11-01T00:00:00.000Z"), [
+    { id: "bio.pdf", name: "bio.pdf", sizeBytes: null, addedAt: "2026-11-01T00:00:00.000Z", topic: "other", state: "unprocessed" },
+    { id: "notes/x.md", name: "x.md", sizeBytes: 12, addedAt: "2026-11-02T00:00:00.000Z", topic: "notes", state: "unprocessed" },
+    { id: "Talks/day 1/a.mp4", name: "a.mp4", sizeBytes: 5e7, addedAt: "2026-11-03T00:00:00.000Z", topic: "talks", state: "unprocessed" },
+  ]);
+  assert.deepEqual(dnaOf(undefined, "2026-11-01T00:00:00.000Z"), []);
 });
 
 test("addFiles: a file without a path fails fast", () => {

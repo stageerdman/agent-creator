@@ -2,15 +2,18 @@
 // material). One folder per agent, `<home>/agents/<id>/agent.json`, so P3
 // can later keep the agent's materials next to it.
 //
-// Record: { id, draft, sessionId, handEdited, handLines?, files?, createdAt, updatedAt }.
-// `files` is the DNA file list (see files.mjs): paths and feeds, never content.
+// Record: { id, draft, sessionId, handEdited, handLines?, files?, skills?, chat?, createdAt, updatedAt }.
+// `chat` is what the Sketcher panel shows again on a reload: [{ who, text }].
+// `files` is the DNA file list (see files.mjs): paths, sizes, feeds and
+// added-at stamps, never content. Texts the agent is built into (its system
+// prompt, knowledge, skill bodies) are files in the same folder (readText).
 
 import { randomBytes } from "node:crypto";
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import { emptyDraft, markKept } from "./draft.mjs";
-import { AgentNotFound } from "./errors.mjs";
+import { AgentNotFound, BadInput } from "./errors.mjs";
 import { createLogger } from "../log/logger.mjs";
 
 const log = createLogger("agentStore");
@@ -26,13 +29,17 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
   const fileOf = (id) => join(agentsDir, id, "agent.json");
 
   async function write(record) {
-    const file = fileOf(record.id);
-    await mkdir(join(agentsDir, record.id), { recursive: true });
-    // Temp file + rename: a crash mid-write never leaves half a file.
-    const temp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
-    await writeFile(temp, JSON.stringify(record, null, 2));
-    await rename(temp, file);
+    await writeAtomic(fileOf(record.id), JSON.stringify(record, null, 2));
     return record;
+  }
+
+  // A text file of the agent's own ("system-prompt.md", "skills/<id>/SKILL.md").
+  async function textFileOf(id, rel) {
+    await loadAgent(id); // unknown or odd id → AgentNotFound
+    if (typeof rel !== "string" || !rel || isAbsolute(rel) || rel.split(/[\\/]/).some((part) => part === ".." || part === "")) {
+      throw new BadInput(`Not a file inside the agent: ${JSON.stringify(rel)}.`);
+    }
+    return join(agentsDir, id, rel);
   }
 
   async function loadAgent(id) {
@@ -62,12 +69,34 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
     // The autosave. `draft.status` is whatever the caller computed:
     // applyPatch already turns a changed kept agent back into a draft.
     // Fields left out stay as they are.
-    saveDraft: (id, { draft, sessionId, handEdited, handLines, files }) =>
-      update(id, definedOnly({ draft, sessionId, handEdited, handLines, files })),
+    saveDraft: (id, { draft, sessionId, handEdited, handLines, files, skills, chat }) =>
+      update(id, definedOnly({ draft, sessionId, handEdited, handLines, files, skills, chat })),
+
+    // A text the agent keeps next to its record; "" when never written.
+    async readText(id, rel) {
+      const file = await textFileOf(id, rel);
+      try {
+        return await readFile(file, "utf8");
+      } catch (error) {
+        if (error.code === "ENOENT") return "";
+        throw new Error(`Couldn't read ${rel} of agent ${id}: ${error.message}`, { cause: error });
+      }
+    },
+
+    async writeText(id, rel, text) {
+      await writeAtomic(await textFileOf(id, rel), text);
+    },
 
     async markSaved(id) {
       const record = await loadAgent(id);
       return update(id, { draft: markKept(record.draft) });
+    },
+
+    // Removes the agent's whole folder. Only our own folder: the user's
+    // files are listed by path in the record, never copied in, so they stay.
+    async deleteAgent(id) {
+      await loadAgent(id); // unknown or odd id → AgentNotFound, never a path to follow
+      await rm(join(agentsDir, id), { recursive: true, force: true });
     },
 
     // Newest first. A broken file is logged and skipped so one bad agent
@@ -85,6 +114,14 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
       return records.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },
   };
+}
+
+// Temp file + rename: a crash mid-write never leaves half a file.
+async function writeAtomic(file, text) {
+  await mkdir(dirname(file), { recursive: true });
+  const temp = `${file}.${randomBytes(4).toString("hex")}.tmp`;
+  await writeFile(temp, text);
+  await rename(temp, file);
 }
 
 function definedOnly(fields) {

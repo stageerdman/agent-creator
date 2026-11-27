@@ -2,7 +2,9 @@
 // shell) call. Store and engine are passed in; no HTTP here.
 
 import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
-import { addFiles, routeFiles } from "./files.mjs";
+import { dnaOf, routeFiles } from "./files.mjs";
+import { createMaterial } from "./agentMaterial.mjs";
+import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
@@ -14,23 +16,40 @@ export function shortDescription({ persona = "", instructions = "" } = {}) {
 }
 // The home sorts and ages rows by createdAt. Records written before the store
 // kept it fall back to updatedAt: never undefined, never "now".
-export const summary = ({ id, draft, createdAt, updatedAt }) => ({
-  id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) },
-  createdAt: createdAt || updatedAt, updatedAt,
-});
-const view = ({ id, draft, sessionId, files = [] }) => ({ id, draft, sessionId, files });
+// `dna` is what the row's Fireflies DNA logo draws (files.mjs dnaOf).
+export function summary({ id, draft, files, createdAt, updatedAt }) {
+  const born = createdAt || updatedAt;
+  return {
+    id, draft: { name: draft.name, status: draft.status, description: shortDescription(draft) },
+    createdAt: born, updatedAt, dna: dnaOf(files, born),
+  };
+}
+const view = ({ id, draft, sessionId, files = [], chat = [], createdAt, updatedAt }) =>
+  ({ id, draft, sessionId, files, chat, dna: dnaOf(files, createdAt || updatedAt) });
+
+// The chat as the panel shows it again after a reload; the oldest lines go first.
+export const CHAT_KEEP = 200;
+export const withTurn = (chat = [], message, say) =>
+  [...chat, { who: "you", text: message }, { who: "sketcher", text: say }].slice(-CHAT_KEEP);
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
-export function createAgents({ store, engine }) {
+// Files, sections and texts are their own use cases (agentMaterial.mjs,
+// agentTexts.mjs), offered here so callers hold one object.
+export function createAgents({ store, engine, now = () => new Date() }) {
+  const material = createMaterial({ store, now });
   return {
+    ...material,
+    ...createTexts({ store, material, now }),
+
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
       const unused = (await store.listAgents()).find(isUnused);
       return { id: (unused ?? (await store.createAgent())).id };
     },
 
-    // Empty agents are left out of the switcher (R8).
-    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft)).map(summary),
+    // Empty agents are left out of the switcher (R8); one made only of
+    // dropped files is in it, so its files are never out of reach.
+    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft) || r.files?.length).map(summary),
 
     get: async (id) => view(await store.loadAgent(id)),
 
@@ -48,7 +67,8 @@ export function createAgents({ store, engine }) {
       const routed = routeFiles(latest.files ?? [], turn.patch?.files);
       const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
-      await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId });
+      const chat = withTurn(latest.chat, message, turn.say);
+      await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
       return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId };
     },
 
@@ -62,14 +82,8 @@ export function createAgents({ store, engine }) {
       return (await store.saveDraft(id, { draft, handEdited, handLines })).draft;
     },
 
-    // Dropped or picked files join the DNA file list, unrouted. Never the chat.
-    async addFiles(id, entries) {
-      const record = await store.loadAgent(id);
-      const { files, added } = addFiles(record.files ?? [], entries);
-      if (added.length) await store.saveDraft(id, { files });
-      return { files, added };
-    },
-
     keep: async (id) => (await store.markSaved(id)).draft,
+
+    remove: (id) => store.deleteAgent(id),
   };
 }

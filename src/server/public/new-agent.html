@@ -5,43 +5,321 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New agent · Agent Creator</title>
 <style>
-  /* A blank page on the Fireflies background (same on html and body: no white flash). */
-  :root { --field: #0B1410; --shadow: #060B08; }
+  /* The Fireflies background (same on html and body: no white flash). */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --hit: max(112px, 20vmin);   /* 2 x hitR = 2 x max(56, .10 U) */
+  }
   html { background: var(--field); }
   html, body { margin: 0; height: 100%; }
   body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
-  canvas#field { position: fixed; inset: 0; display: block; }
+  canvas#field { position: fixed; inset: 0; display: block; pointer-events: none; }
+  /* The middle the fireflies circle: the one control. Transparent; it holds the faint word. */
+  #pick {
+    position: fixed; left: 50%; top: 50%; width: var(--hit); height: var(--hit); transform: translate(-50%, -50%);
+    border: 0; border-radius: 50%; padding: 0; margin: 0; background: transparent; cursor: pointer;
+    font: 500 15px/1 var(--font); letter-spacing: .02em; color: var(--fly);
+    -webkit-tap-highlight-color: transparent; outline: none;
+  }
+  #pick:focus-visible { box-shadow: 0 0 0 1px rgba(216,242,106,.38); }
+  #pick span { opacity: 0; text-shadow: 0 0 6px rgba(216,242,106,.55), 0 0 18px rgba(216,242,106,.22); white-space: nowrap; pointer-events: none; }
+  body.answered #pick { cursor: default; pointer-events: none; }
+  body.answered #pick:focus-visible { box-shadow: none; }
+  /* After the signal the field draws the flies; the orbit's canvas and the word step aside. */
+  body.split #field, body.split #pick { pointer-events: none; }
+
+  /* ---------- the creation screen: the field (left) ---------- */
+  /* Fireflies are not things to arrange: the field takes no pointer at all. */
+  canvas#flies { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+  /* ---------- the menu (right) ---------- */
+  #menu { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; box-sizing: border-box; padding: 40px 32px 32px;
+    overflow-y: auto; color: #E8EFE0; font: 400 14px/1.4 var(--font);
+    background: rgba(6,11,8,.72); border-left: 1px solid rgba(216,242,106,.08);
+    opacity: 0; transform: translateX(24px); transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.7,.2,1); visibility: hidden; }
+  body.split #menu { opacity: 1; transform: none; visibility: visible; }
+  #menu header { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
+  /* The name: click it and type. Enter or a click elsewhere saves, Esc puts it back. */
+  #name { margin: -2px -6px; padding: 2px 6px; border-radius: 6px; min-width: 0; font: 600 20px/1.2 var(--font);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; outline: none; transition: background 160ms ease; }
+  #name:hover { background: rgba(216,242,106,.06); }
+  #name:focus { background: rgba(216,242,106,.06); box-shadow: 0 0 0 1px rgba(216,242,106,.38); text-overflow: clip; }
+  #menu section { position: relative; padding: 16px; margin: 0 -16px 8px; border-radius: 14px; transition: background 160ms ease; }
+  #menu .head { display: flex; align-items: center; gap: 8px; }
+  #menu h2 { margin: 0; font: 600 15px/1.2 var(--font); }
+  #menu .icon { width: 32px; height: 32px; margin: -6px 0 -6px -6px; padding: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); cursor: pointer; }
+  #menu .icon svg { width: 20px; height: 20px; display: block; }
+  #menu .icon:hover, #menu .icon:focus-visible { background: rgba(216,242,106,.1); outline: none; }
+  /* A section's swarm: a loose cluster of fireflies; tapped, each flies to its spot beside its file name. */
+  #menu .swarm { position: relative; margin-top: 10px; height: 56px; transition: height 420ms cubic-bezier(.45,.05,.25,1); }
+  #menu .swarm[hidden] { display: none; }
+  #menu .belt { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+  #menu .belt:disabled { cursor: default; }
+  #menu .belt:focus-visible { outline: 1px solid rgba(216,242,106,.38); outline-offset: 2px; }
+  #menu .flies, #menu .names { position: absolute; inset: 0; pointer-events: none; }
+  #menu p.line { margin: 8px 0 0; font-size: 12px; color: rgba(232,239,224,.55); }
+  #menu p.line[hidden] { display: none; }
+  i.d { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--fly);
+    animation: drift var(--dp, 9s) ease-in-out var(--dd, 0s) infinite alternate; transition: opacity 240ms ease; }
+  /* The shine: a very dim glow now and then, never a flash. */
+  i.d::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--fly); opacity: 0;
+    animation: shine var(--sp, 18s) linear var(--sd, 0s) infinite; }
+  i.d.unprocessed { opacity: .32; }
+  i.d.processed { opacity: .9; box-shadow: 0 0 6px rgba(216,242,106,.6); }
+  i.d.removed { background: #FF6B5E; opacity: .9; box-shadow: 0 0 6px rgba(255,107,94,.5); }
+  i.d.removed::after { background: #FF6B5E; }
+  i.d.tucked { opacity: 0; }
+  @keyframes drift { from { translate: calc(-1 * var(--dx, 2px)) calc(-1 * var(--dy, 2px)); } to { translate: var(--dx, 2px) var(--dy, 2px); } }
+  @keyframes shine { 0%, 100% { opacity: 0; } 5% { opacity: .35; } 10% { opacity: 0; } }
+  #menu .row { position: absolute; left: 0; right: 0; height: 28px; box-sizing: border-box; padding-left: 22px; display: flex; align-items: center; gap: 8px;
+    visibility: hidden; opacity: 0; transition: opacity 160ms ease, visibility 0s linear 160ms; }
+  #menu section.open .row { visibility: visible; opacity: 1; transition: opacity 240ms ease 240ms, visibility 0s; }
+  #menu .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  #menu .row.removed .fname { color: #FF6B5E; }
+  #menu .rm { pointer-events: auto; min-height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: rgba(232,239,224,.6); font: inherit; font-size: 12px; cursor: pointer; }
+  #menu .rm:hover, #menu .rm:focus-visible { color: #FF6B5E; background: rgba(255,107,94,.1); outline: none; }
+  /* Skills: a star and its name. */
+  #menu .stars { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 10px; }
+  #menu .star { display: flex; align-items: center; gap: 8px; min-height: 32px; max-width: 100%; padding: 0 10px 0 7px; margin-left: -7px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); font: inherit; cursor: pointer; }
+  #menu .star svg { width: 18px; height: 18px; flex: none; display: block; fill: currentColor; filter: drop-shadow(0 0 4px rgba(216,242,106,.5)); }
+  #menu .sk-name { color: #E8EFE0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu .star:hover, #menu .star:focus-visible { background: rgba(216,242,106,.1); outline: none; }
+
+  /* Drop zones: only while something is dragged. */
+  #menu .zone { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 14px;
+    border: 1px dashed rgba(216,242,106,.35); color: var(--fly); font: 600 15px/1 var(--font); opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
+  body.dragging #menu .zone { opacity: 1; }
+  body.dragging #menu section > :not(.zone) { opacity: .15; transition: opacity 160ms ease; }
+  #menu section.hot { background: rgba(216,242,106,.08); }
+  #menu section.hot .zone { border-style: solid; border-color: rgba(216,242,106,.7); }
+
+  /* The confirmation line and the carried firefly. */
+  #note { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 8px); margin: 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-radius: 12px; background: #16211B; color: #E8EFE0; font: 400 13px/1.3 var(--font);
+    opacity: 0; pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; }
+  #note.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #note button { border: 0; background: transparent; color: var(--fly); font: 600 13px/1 var(--font); padding: 6px 4px; cursor: pointer; }
+
+  /* The popup. */
+  #sheet { width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 24px; border: 0; border-radius: 16px;
+    background: #111B16; color: #E8EFE0; font: 400 14px/1.5 var(--font); box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+  #sheet::backdrop { background: rgba(6,11,8,.6); }
+  #sheet form { display: flex; flex-direction: column; gap: 12px; }
+  #sheet-title { margin: 0; font: 600 17px/1.2 var(--font); }
+  #sheet input, #sheet textarea { box-sizing: border-box; width: 100%; border: 1px solid rgba(232,239,224,.12); border-radius: 10px; background: #0B1410; color: inherit; font: inherit; padding: 10px 12px; }
+  #sheet input[hidden] { display: none; }
+  #sheet textarea { min-height: 320px; resize: vertical; font: 400 13px/1.55 ui-monospace, "SF Mono", Menlo, monospace; }
+  #sheet input:focus, #sheet textarea:focus { outline: none; border-color: rgba(216,242,106,.5); }
+  #sheet .err { margin: 0; min-height: 1em; color: #FF6B5E; font-size: 12px; }
+  #sheet .close { align-self: flex-end; min-height: 36px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
+  /* ---------- the Left Side: the likeness, the flights, the Sketcher handle and panel ---------- */
+  canvas#mark { position: fixed; display: block; pointer-events: none; opacity: 0; transition: opacity 600ms ease; }
+  body.left canvas#mark { opacity: 1; }
+  canvas#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #menu { z-index: 2; }
+  #handle { position: fixed; left: 0; top: 50%; z-index: 3; display: flex; align-items: center; gap: 6px; min-width: 44px; height: 48px;
+    padding: 0 12px 0 10px; border: 0; border-radius: 0 12px 12px 0; background: rgba(6,11,8,.5); color: var(--fly); cursor: pointer;
+    font: 500 13px/1 var(--font); transform: translateX(-100%); -webkit-tap-highlight-color: transparent; outline: none; }
+  #handle[hidden] { display: none; }
+  #handle.in { transform: none; }
+  #handle .chev { font-size: 20px; line-height: 1; opacity: calc(.55 + .45 * var(--b, 0)); transition: opacity 120ms ease, transform 120ms ease; text-shadow: 0 0 8px rgba(216,242,106,.45); }
+  #handle .label { max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; transition: max-width 120ms ease, opacity 120ms ease; }
+  #handle:hover .chev, #handle:focus-visible .chev { opacity: 1; transform: translateX(2px); }
+  #handle:hover .label, #handle:focus-visible .label { max-width: 80px; opacity: 1; }
+  #handle:focus-visible { box-shadow: 0 0 0 1px rgba(216,242,106,.45); }
+  #sketcher { position: fixed; left: 0; top: 0; bottom: 0; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+    padding: 20px 20px 20px 24px; border-radius: 0 16px 16px 0; color: #E8EFE0; font: 400 14px/1.45 var(--font);
+    background: rgba(12,14,10,.92); transform: translateX(-100%); box-shadow: 0 0 60px rgba(0,0,0,.4); }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    #sketcher { background: rgba(12,14,10,.64); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+  }
+  #sketcher[hidden] { display: none; }
+  #sketcher.open { transform: translateX(0); }
+  #sketcher .top { display: flex; align-items: center; gap: 8px; }
+  #sketcher h2 { margin: 0; font: 600 17px/1.2 var(--font); }
+  #sketcher-close { width: 44px; height: 44px; margin: -10px 0 -10px -12px; border: 0; border-radius: 10px; background: transparent; color: var(--fly); font: 400 22px/1 var(--font); cursor: pointer; }
+  #sketcher-close:hover, #sketcher-close:focus-visible { background: rgba(216,242,106,.1); outline: none; }
+  #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  #sketcher-log p { margin: 0; max-width: 90%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #sketcher-log p.you { align-self: flex-end; background: rgba(216,242,106,.14); }
+  #sketcher-log p.sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
+  #sketcher-log p.wait { color: rgba(232,239,224,.6); }
+  #sketcher-log p.err { color: #FF6B5E; }
+  #sketcher-form { display: flex; flex-direction: column; gap: 8px; }
+  #sketcher-box { box-sizing: border-box; width: 100%; min-height: 72px; resize: none; border: 1px solid rgba(232,239,224,.14); border-radius: 12px;
+    background: rgba(11,20,16,.7); color: inherit; font: inherit; padding: 10px 12px; }
+  #sketcher-box:focus { outline: none; border-color: rgba(216,242,106,.5); }
+  #sketcher-create { align-self: flex-end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
+  #sketcher-create[hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    #handle, #sketcher, #handle .label, #handle .chev, canvas#mark { transition: none !important; }
+    #menu, #note, #name, #menu .swarm, #menu .row, #menu section.open .row, i.d { transition: none; }
+    i.d, i.d::after { animation: none; }
+  }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
 <body>
+<canvas id="flies" aria-hidden="true"></canvas>
 <canvas id="field" aria-hidden="true"></canvas>
-<main aria-label="New agent"></main>
-<script>
-"use strict";
-/* The call fades where agents are born (02-merlin-motion.md §2, Arrival on /new). */
-let fresh = false;
-try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); fresh = !!c && Date.now() - c.t < 2000; } catch {}
-if (fresh && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  const cv = document.getElementById('field'), ctx = cv.getContext('2d');
-  const DPR = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
-  const s = document.createElement('canvas'); s.width = s.height = 64; const g = s.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(246,255,214,1)'); gr.addColorStop(.12, 'rgba(216,242,106,.85)'); gr.addColorStop(.32, 'rgba(216,242,106,.25)'); gr.addColorStop(1, 'rgba(216,242,106,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  const t0 = performance.now(), x = W / 2, y = H * .36;
-  const frame = t => {
-    const dt = t - t0; let b, alpha;
-    if (dt < 900) { const k = dt / 900; b = 1 - k * k; alpha = .14 + .8 * b; }
-    else { const k = Math.min(1, (dt - 900) / 600); b = 0; alpha = .14 * (1 - k * k); }
-    const size = 18 + 12 * b;
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
-    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha;
-    ctx.drawImage(s, x - size / 2, y - size / 2, size, size);
-    if (dt < 1500) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
-  };
-  requestAnimationFrame(frame);
+<canvas id="mark" aria-hidden="true"></canvas>
+<canvas id="sky" aria-hidden="true"></canvas>
+<button id="handle" type="button" aria-label="Open Sketcher" aria-expanded="false" aria-controls="sketcher" hidden><span class="chev" aria-hidden="true">›</span><span class="label" aria-hidden="true">Sketcher</span></button>
+<aside id="sketcher" aria-labelledby="sketcher-title" hidden inert>
+  <div class="top"><button id="sketcher-close" type="button" aria-label="Close Sketcher">‹</button><h2 id="sketcher-title">Sketcher</h2></div>
+  <div id="sketcher-log" aria-live="polite"></div>
+  <form id="sketcher-form">
+    <textarea id="sketcher-box" aria-label="Message to Sketcher" rows="3" enterkeyhint="send"></textarea>
+    <button id="sketcher-create" type="button" hidden>Keep</button>
+  </form>
+</aside>
+<main aria-label="New agent">
+  <button id="pick" type="button" aria-label="Select Folder"><span aria-hidden="true">Select Folder</span></button>
+  <p id="status" class="vh" role="status"></p>
+  <input id="folder" type="file" webkitdirectory multiple hidden tabindex="-1">
+</main>
+<aside id="menu" aria-label="Agent" inert>
+  <header><h1 id="name" contenteditable="plaintext-only" spellcheck="false" title="Rename" aria-label="Agent name"></h1></header>
+  <section data-section="system-prompt" aria-labelledby="h-sp">
+    <div class="zone" aria-hidden="true">Adjust DNA</div>
+    <div class="head">
+      <button class="icon" type="button" data-open="system-prompt" aria-label="Open system prompt">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M6.5 8 9 10l-2.5 2M10.5 12.5h3"/></svg>
+      </button>
+      <h2 id="h-sp">System prompt</h2>
+    </div>
+    <div class="swarm" hidden><button class="belt" type="button" aria-expanded="false" disabled></button><span class="flies" aria-hidden="true"></span><div class="names"></div></div>
+    <p class="line"></p>
+  </section>
+  <section data-section="knowledge" aria-labelledby="h-kn">
+    <div class="zone" aria-hidden="true">Adjust Knowledge</div>
+    <div class="head">
+      <button class="icon" type="button" data-open="knowledge" aria-label="Open knowledge">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5C5 3.5 7.5 3.5 10 5c2.5-1.5 5-1.5 7-.5v11c-2-1-4.5-1-7 .5-2.5-1.5-5-1.5-7-.5z"/><path d="M10 5v11"/></svg>
+      </button>
+      <h2 id="h-kn">Knowledge</h2>
+    </div>
+    <div class="swarm" hidden><button class="belt" type="button" aria-expanded="false" disabled></button><span class="flies" aria-hidden="true"></span><div class="names"></div></div>
+    <p class="line"></p>
+  </section>
+  <section data-section="skills" aria-labelledby="h-sk">
+    <div class="zone" aria-hidden="true">Create new skill</div>
+    <div class="head"><h2 id="h-sk">Skills</h2></div>
+    <div class="stars"></div>
+    <p class="line"></p>
+  </section>
+</aside>
+<p id="note" role="status"><span></span><button type="button" hidden>Undo</button></p>
+<dialog id="sheet" aria-labelledby="sheet-title">
+  <form method="dialog">
+    <h2 id="sheet-title"></h2>
+    <input id="sheet-name" type="text" aria-label="Skill name" hidden>
+    <textarea id="sheet-text" aria-labelledby="sheet-title"></textarea>
+    <p class="err" role="alert"></p>
+    <button class="close" type="submit">Close</button>
+  </form>
+</dialog>
+<script type="module">
+import { createOrbit } from '/firefly-orbit.js';
+import { createIntake, httpApi, entriesOfFiles, entriesOfDrop } from '/file-intake.js';
+import { mountCreation } from '/creation-screen.js';
+import { mountLeftSide } from '/left-side.js';
+
+const $ = s => document.querySelector(s);
+const pick = $('#pick'), input = $('#folder');
+const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+let left = null;
+const screen = mountCreation({ reduced: rmq.matches, onDna: (a, o) => left && left.onDna(a, o) });
+left = mountLeftSide({
+  reduced: rmq.matches,
+  fetchAgent: id => fetch(`/api/agents/${encodeURIComponent(id)}`).then(r => r.ok ? r.json() : null),
+  refresh: a => screen.refresh(a),
+});
+left.hide = ids => screen.hide(ids);
+rmq.addEventListener('change', e => { screen.setReduced(e.matches); left.setReduced(e.matches); });
+window.creation = { info: () => screen.info() };   // read-only, for checks
+window.leftSide = { info: () => left.info() };     // read-only, for checks
+
+/* An agent already made (a reload, or a link): straight to the split, no orbit. */
+const already = new URLSearchParams(location.search).get('agent');
+if (already) {
+  document.body.classList.add('answered');
+  fetch(`/api/agents/${encodeURIComponent(already)}`).then(r => r.ok ? r.json() : Promise.reject())
+    .then(a => screen.open(a, { still: true }),
+          () => { history.replaceState(null, '', '/new'); location.reload(); });
 }
+
+/* The call from home: its epoch keeps the ring's clock, so this page goes on from the home's last frame. */
+let epoch = null;
+try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); if (c && Date.now() - c.t < 2000) epoch = c.epoch; } catch {}
+
+const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, reduced: rmq.matches, epoch: rmq.matches ? null : epoch });
+if (!already) orbit.start();
+rmq.addEventListener('change', e => orbit.setReduced(e.matches));
+window.orbit = { info: () => orbit.info() };   // read-only, for checks
+
+/* ---------- the one intake: pick and drop both end here ---------- */
+/* At the first real file the orbit lets go of its 30 live fireflies and the field flies them out;
+   every file found lights on the field at once; the saved agent fills the menu. */
+const intake = createIntake({
+  api: httpApi(),
+  emit(type, d) {
+    if (type === 'start') { document.body.classList.add('answered'); screen.adopt(orbit.release()); }
+    else if (type === 'found') screen.feed(d.entries);
+    else if (type === 'done') {
+      history.replaceState(null, '', `/new?agent=${encodeURIComponent(d.agentId)}`);
+      $('#status').textContent = 'New agent';
+      screen.open(d.agent);
+    } else if (type === 'error') {
+      if (d.started) { screen.fail(); orbit.restore(); document.body.classList.remove('answered'); }
+      else { orbit.calm(); orbit.hold(false); }
+    }
+  },
+});
+const free = () => !already && !screen.isOpen() && !orbit.busy() && !intake.isBusy();
+
+/* ---------- click: the Finder folder picker ---------- */
+let picking = false;
+function settlePick() { if (!picking) return; picking = false; orbit.hold(false); }
+pick.addEventListener('click', () => {
+  if (picking || !free()) return;          // a second click while Finder is open does nothing
+  picking = true; orbit.hold(true); input.value = ''; input.click();
+});
+input.addEventListener('change', () => {
+  const entries = entriesOfFiles(input.files);
+  picking = false;
+  if (!entries.length || !free()) { orbit.hold(false); return; }   // an empty folder: as if cancelled
+  intake.take('pick', async found => { found(entries); return entries; });
+});
+input.addEventListener('cancel', settlePick);
+// Fallback for webviews without the cancel event: the window gets focus back and no change came.
+addEventListener('focus', () => setTimeout(() => { if (picking && !input.files.length) settlePick(); }, 400));
+
+/* ---------- hover and keyboard focus: the lean ---------- */
+addEventListener('pointermove', e => orbit.pointer(e.clientX, e.clientY));
+document.documentElement.addEventListener('pointerleave', () => orbit.pointer(null));
+pick.addEventListener('focus', () => { if (pick.matches(':focus-visible')) orbit.focus(true); });
+pick.addEventListener('blur', () => orbit.focus(false));
+
+/* ---------- drop anywhere ---------- */
+/* After the split the creation screen owns dragging (its drop zones); before it, a drop makes the agent. */
+addEventListener('dragenter', e => { if (screen.isOpen()) return; e.preventDefault(); orbit.stir(); });
+addEventListener('dragover', e => { if (screen.isOpen()) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = orbit.busy() ? 'none' : 'copy'; orbit.stir(); });
+addEventListener('drop', e => {
+  if (screen.isOpen()) return;
+  e.preventDefault();
+  if (!free()) return;
+  const dt = e.dataTransfer;
+  const hasFile = [...(dt && dt.items || [])].some(i => i.kind === 'file') || (dt && dt.files && dt.files.length > 0);
+  if (!hasFile) { orbit.calm(); return; }          // a link or text: settle back, nothing made
+  // Read now, inside the handler (the items die after it). The flow starts at the first real file;
+  // nothing found comes back as an error without a start, and the ring settles.
+  intake.take('drop', found => entriesOfDrop(dt, found));
+});
+
+/* ---------- leaving ---------- */
+addEventListener('keydown', e => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('dialog[open]')) location.href = '/'; });
 </script>
 </body>
 </html>

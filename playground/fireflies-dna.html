@@ -5,835 +5,487 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fireflies DNA · playground</title>
 <style>
-:root{--field:#0B1410;--shadow:#060B08;--fly:#D8F26A;--text:#E6EEE8;--quiet:#8C9A90;--panel:#101A15;--line:#1E2B24;--line-on:#3A4A40}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%}
-body{background:radial-gradient(ellipse at 60% 40%,var(--field) 0%,var(--field) 50%,var(--shadow) 100%) fixed;color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
-button,input{font:inherit;color:inherit}
-button{cursor:pointer;background:none;border:0;padding:0}
-:focus-visible{outline:2px solid var(--fly);outline-offset:2px}
-.app{display:grid;grid-template-columns:1fr 320px;grid-template-rows:1fr auto;height:100vh;height:100dvh}
-.field{position:relative;grid-column:1;grid-row:1;min-height:0;overflow:hidden;touch-action:manipulation}
-#sky{position:absolute;inset:0;width:100%;height:100%;display:block}
-.card{position:absolute;left:0;top:0;pointer-events:none;background:var(--panel);border:1px solid var(--line-on);border-radius:10px;padding:8px 12px;min-width:140px;max-width:260px;opacity:0;transition:opacity .08s}
-.card.on{opacity:1}
-.card .nm{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px;word-break:break-all}
-.card .sw{width:8px;height:8px;border-radius:50%;flex:none}
-.card .sub{font-size:13px;color:var(--quiet);margin-top:2px}
-.time{grid-column:1;grid-row:2;display:flex;align-items:center;gap:16px;padding:12px 24px 16px;background:var(--shadow);border-top:1px solid var(--line)}
-.play{height:36px;min-width:96px;padding:0 14px;border-radius:8px;border:1px solid var(--line-on);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500}
-.play:hover{border-color:var(--quiet)}
-.play svg{width:10px;height:12px;fill:currentColor}
-.track{position:relative;flex:1;height:44px}
-.ticks{position:absolute;left:8px;right:8px;top:24px;height:10px;pointer-events:none}
-.ticks i{position:absolute;top:0;width:2px;height:10px;border-radius:1px;margin-left:-1px}
-.ticks i.ev{top:2px;height:6px}
-.ticks i.later{opacity:.25}
-#scrub{position:absolute;left:0;right:0;top:20px;width:100%;margin:0;height:18px;background:none;-webkit-appearance:none;appearance:none}
-#scrub::-webkit-slider-runnable-track{height:2px;background:var(--line-on);border-radius:1px}
-#scrub::-moz-range-track{height:2px;background:var(--line-on);border-radius:1px}
-#scrub::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-7px;border-radius:50%;background:var(--text);border:0}
-#scrub::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--text);border:0}
-.when{position:absolute;top:0;transform:translateX(-50%);font-size:12px;color:var(--quiet);white-space:nowrap;pointer-events:none}
-.panel{grid-column:2;grid-row:1/3;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:24px 24px 20px;display:flex;flex-direction:column;gap:24px}
-h1{font-size:19px;font-weight:600;margin:0 0 4px}
-.lede{color:var(--quiet);font-size:13px;margin:0}
-section{display:flex;flex-direction:column;gap:10px}
-.k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--quiet);margin:0}
-.name{height:40px;border-radius:8px;border:1px solid var(--line-on);background:var(--shadow);padding:0 12px;font-size:14px;width:100%}
-.name:focus{outline:2px solid var(--fly);outline-offset:1px}
-.hint{font-size:12px;color:var(--quiet);margin:-4px 0 0}
-.row{display:flex;align-items:center;gap:12px;font-size:13px}
-.row label{color:var(--quiet);width:96px;flex:none}
-.row input[type=range]{flex:1;min-width:0;accent-color:var(--fly);height:24px;margin:0}
-.row output{width:58px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
-.primary{background:var(--fly);color:var(--field);font-weight:600;border-radius:10px;height:44px;width:100%}
-.primary:hover{filter:brightness(1.07)}
-.second{border:1px solid var(--line-on);border-radius:10px;height:44px;width:100%;font-weight:500}
-.second:hover:not(:disabled){border-color:var(--quiet)}
-.second:disabled{color:var(--quiet);cursor:default}
-.chips{display:flex;gap:8px}
-.chip{flex:1;height:40px;border:1px solid var(--line-on);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px}
-.chip:hover{border-color:var(--quiet)}
-.dot{width:8px;height:8px;border-radius:50%;flex:none}
-.foot{margin-top:auto;font-size:12px;color:var(--quiet)}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media (max-width:760px){
-  body{overflow:auto}
-  .app{grid-template-columns:1fr;grid-template-rows:56vh auto auto;height:auto}
-  .panel{grid-column:1;grid-row:3;border-left:0;border-top:1px solid var(--line)}
-  .time{padding:10px 16px 12px}
-}
+  /* The Fireflies look, as in src/server/public/agent-home.html. */
+  :root {
+    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --text: #E6EEE8; --quiet: #8C9A90;
+    --panel: #101A15; --line: #1E2B24; --line-on: #3A4A40;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--field); }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
+    color: var(--text); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
+
+  .app {
+    display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px;
+    max-width: 960px; margin: 0 auto; padding: max(32px, 10vh) 32px 48px;
+  }
+  @media (max-width: 820px) { .app { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 24px 16px 40px; } }
+
+  /* The stage: the real thing (a home row), then the same cluster larger. */
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 40px; min-width: 0; }
+  .row {
+    display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 14px;
+    width: min(100%, 420px); height: 68px; padding: 0 14px 0 6px; border-radius: 14px;
+  }
+  .row:hover, .row:focus-within { background: rgba(16, 26, 21, .72); }
+  .row canvas { width: 56px; height: 56px; display: block; }
+  .row .text { min-width: 0; }
+  .row .name {
+    display: block; width: 100%; padding: 0; border: 0; background: none; outline: none;
+    font-size: 17px; font-weight: 500; letter-spacing: .01em; line-height: 1.3; caret-color: var(--fly);
+    text-overflow: ellipsis; border-radius: 4px;
+  }
+  .row .name:focus-visible { box-shadow: 0 0 0 2px rgba(216, 242, 106, .55); }
+  .row .desc { display: block; font-size: 13px; color: var(--quiet); line-height: 1.4; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview { width: 224px; height: 224px; display: block; }
+
+  .topics { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; margin: -16px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--quiet); }
+  .topics li { display: inline-flex; align-items: center; gap: 8px; }
+  .sw { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  /* The panel: files, then dot size. */
+  .panel { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+  h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--quiet); font-weight: 500; margin: 0 0 10px; }
+  .files { list-style: none; margin: 0; padding: 0; }
+  .files li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto 32px; align-items: center; gap: 10px; height: 36px; font-size: 14px; }
+  .files .fn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .files .fs { color: var(--quiet); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .x { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--quiet); }
+  .x:hover, .x:focus-visible { color: var(--text); background: rgba(230, 238, 232, .06); }
+  .x svg { width: 10px; height: 10px; }
+  .quiet { margin: 0; color: var(--quiet); font-size: 13px; min-height: 20px; }
+
+  .add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 12px; }
+  .field {
+    height: 40px; border-radius: 10px; border: 0; padding: 0 12px; font-size: 14px; min-width: 0;
+    background: rgba(230, 238, 232, .075); box-shadow: inset 0 0 0 .5px rgba(230, 238, 232, .08); caret-color: var(--fly);
+  }
+  .field:focus { outline: none; box-shadow: inset 0 0 0 1px rgba(216, 242, 106, .38); }
+  .field::placeholder { color: var(--quiet); }
+  .go { height: 40px; padding: 0 16px; border-radius: 10px; background: var(--fly); color: var(--field); font-weight: 600; font-size: 14px; }
+  .go:hover { filter: brightness(1.07); }
+  .add .slide { grid-column: 1 / -1; }
+
+  .slide { display: grid; grid-template-columns: 76px minmax(0, 1fr) 56px; align-items: center; gap: 12px; font-size: 13px; color: var(--quiet); }
+  .slide + .slide { margin-top: 6px; }
+  .slide input { width: 100%; margin: 0; height: 24px; accent-color: var(--fly); }
+  .slide output { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .note { margin-top: -28px; text-align: center; min-height: 0; }
+  .note:empty { display: none; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="field" id="field">
-    <canvas id="sky" role="img" aria-label="Fireflies field"></canvas>
-    <div class="card" id="card" aria-hidden="true"><div class="nm"><span class="sw" id="cardSw"></span><span id="cardNm"></span></div><div class="sub" id="cardSub"></div></div>
-  </div>
-
-  <div class="time">
-    <button class="play" id="play" type="button"><svg viewBox="0 0 10 12" aria-hidden="true"><path id="playIcon" d="M0 0L10 6L0 12Z"/></svg><span id="playTx">Replay</span></button>
-    <div class="track">
-      <div class="when" id="when">Now</div>
-      <div class="ticks" id="ticks" aria-hidden="true"></div>
-      <input id="scrub" type="range" min="0" max="1000" value="1000" aria-label="Point in the history">
+<main class="app">
+  <section class="stage" aria-label="Cluster">
+    <div class="row" id="row">
+      <canvas id="avatar" data-role="avatar" aria-hidden="true"></canvas>
+      <span class="text">
+        <input class="name" id="agentName" type="text" value="Juniper" aria-label="Agent name" spellcheck="false" autocomplete="off">
+        <span class="desc" id="desc"></span>
+      </span>
     </div>
-  </div>
+    <canvas class="preview" id="preview" data-role="preview" role="img"></canvas>
+    <ul class="topics" id="topics" aria-label="Topic colours"></ul>
+    <p class="quiet note" id="note"></p>
+  </section>
 
   <aside class="panel">
-    <header>
-      <h1>Fireflies DNA</h1>
-      <p class="lede">A made-up history. Each light is a file or an event. Point at one to see which.</p>
-    </header>
-
-    <section aria-labelledby="hFile">
-      <h2 class="k" id="hFile">Add a file</h2>
-      <input class="name" id="fname" type="text" aria-label="File name" spellcheck="false" autocomplete="off">
-      <p class="hint">The folder is the topic.</p>
-      <div class="row"><label for="fsize">Size</label><input id="fsize" type="range" min="0" max="100" step="0.5" value="78.5"><output id="fsizeV" for="fsize"></output></div>
-      <button class="primary" id="addFile" type="button">Add file</button>
+    <section aria-labelledby="hFiles">
+      <h2 id="hFiles">Files</h2>
+      <ul class="files" id="files"></ul>
+      <form class="add" id="add" autocomplete="off">
+        <input class="field" id="fname" type="text" aria-label="File name, folder is the topic" placeholder="folder/file.md" spellcheck="false">
+        <button class="go" type="submit">Add</button>
+        <div class="slide"><label for="fsize">Size</label><input id="fsize" type="range" min="0" max="100" step="0.5"><output id="fsizeV" for="fsize"></output></div>
+      </form>
+      <p class="quiet" id="said" role="status" aria-live="polite"></p>
     </section>
 
-    <section aria-labelledby="hEv">
-      <h2 class="k" id="hEv">Add an event</h2>
-      <div class="chips">
-        <button class="chip" type="button" data-ev="edit"><span class="dot"></span>Edit</button>
-        <button class="chip" type="button" data-ev="change"><span class="dot"></span>Change</button>
-        <button class="chip" type="button" data-ev="activity"><span class="dot"></span>Activity</button>
-      </div>
+    <section aria-labelledby="hSize">
+      <h2 id="hSize">Dot size</h2>
+      <div class="slide"><label for="minR">Smallest</label><input id="minR" type="range" min="2" max="9" step="0.25"><output for="minR"></output></div>
+      <div class="slide"><label for="maxR">Largest</label><input id="maxR" type="range" min="2" max="9" step="0.25"><output for="maxR"></output></div>
     </section>
-
-    <section>
-      <button class="second" id="build" type="button">Build embeddings</button>
-    </section>
-
-    <section aria-labelledby="hTune">
-      <h2 class="k" id="hTune">Tune</h2>
-      <div class="row"><label for="minR">Min dot size</label><input id="minR" type="range" min="0.75" max="2.5" step="0.05" value="1.5"><output for="minR"></output></div>
-      <div class="row"><label for="maxR">Max dot size</label><input id="maxR" type="range" min="2.5" max="9" step="0.1" value="4.5"><output for="maxR"></output></div>
-      <div class="row"><label for="speed">Blink speed</label><input id="speed" type="range" min="0.25" max="4" step="0.05" value="1"><output for="speed"></output></div>
-      <div class="row"><label for="rnd">Randomness</label><input id="rnd" type="range" min="0" max="1" step="0.01" value="0.35"><output for="rnd"></output></div>
-      <div class="row"><label for="chain">Chain strength</label><input id="chain" type="range" min="0" max="1" step="0.01" value="0.5"><output for="chain"></output></div>
-    </section>
-
-    <p class="foot" id="foot" aria-live="polite"></p>
   </aside>
-</div>
-<ol class="sr" id="srList" aria-label="History, oldest first"></ol>
+</main>
 
-<script id="dna-magic">
-(function () {
-  'use strict';
-
-  // ---- small helpers -------------------------------------------------------
-  function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function hashStr(s) { // FNV-1a 32-bit
-    var h = 2166136261 >>> 0;
-    s = String(s == null ? '' : s);
-    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-    return h >>> 0;
-  }
-  function mulberry32(seed) {
-    var a = seed >>> 0;
-    return function () {
-      a = (a + 0x6D2B79F5) >>> 0;
-      var t = a;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  function gauss(rand) { // Box-Muller
-    var u = 1 - rand(), v = rand();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  }
-  function gaussVec(seed, n) {
-    var r = mulberry32(seed), out = new Array(n);
-    for (var i = 0; i < n; i++) out[i] = gauss(r);
-    return out;
-  }
-  function normalize(v) {
-    var s = 0, i;
-    for (i = 0; i < v.length; i++) { var x = +v[i] || 0; s += x * x; }
-    s = Math.sqrt(s) || 1;
-    var out = new Array(v.length);
-    for (i = 0; i < v.length; i++) out[i] = (+v[i] || 0) / s;
-    return out;
-  }
-  var ownRand = mulberry32(0xF1EF1E5); // used when no rand is passed; keeps moving
-
-  // ---- Rule A: file size -> seed head of dots ------------------------------
-  var GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ~137.5 deg
-  function fileToDots(sizeBytes, opts) {
-    opts = opts || {};
-    var rand = opts.rand || ownRand;
-    var minR = +opts.minR, maxR = +opts.maxR;
-    if (!(minR > 0)) minR = 1.5;
-    if (!(maxR > 0)) maxR = 4.5;
-    if (minR > maxR) { var sw = minR; minR = maxR; maxR = sw; }
-    minR = Math.max(0.5, minR); maxR = Math.max(minR, maxR);
-
-    var L = Math.log(Math.max(+sizeBytes || 0, 1)) / Math.LN10;  // 0 .. ~10
-    var m = clamp((L - 2.5) / 6.5, 0, 1);                           // 0 at ~300 B, 1 at ~1 GB
-    var radii = [];
-    if (m < 0.42) {                                                 // small: one dot
-      radii.push(lerp(minR, maxR, 0.88 * Math.pow(m / 0.42, 0.85)));
-    } else {
-      var u = (m - 0.42) / 0.58;                                    // 0 (≈200 KB) .. 1 (≈1 GB)
-      var heads = 1 + Math.round(u * 5);                            // 1..6 full dots
-      var tail = Math.round(3 + u * 9) + (rand() < 0.5 ? 0 : 1);    // 3..13 falling tail
-      var i;
-      for (i = 0; i < heads; i++) radii.push(maxR);
-      for (i = 0; i < tail; i++) {
-        var f = Math.pow((i + 1) / (tail + 1), 0.9);                // 0..1 down the tail
-        radii.push(lerp(maxR * 0.82, minR, f));
-      }
-    }
-    var spacing = maxR * 2.3;
-    var dots = [];
-    for (var k = 0; k < radii.length; k++) {
-      var r = radii[k] * (0.92 + 0.16 * rand());
-      r = clamp(r, minR * 0.92, maxR * 1.08);
-      var ang = k * GOLDEN + (rand() - 0.5) * 0.6;
-      var dist = k === 0 ? 0 : spacing * Math.sqrt(k) * (0.85 + 0.3 * rand());
-      dots.push({ r: r, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist });
-    }
-    return dots;
-  }
-
-  // ---- Rule B: embedding -> species colour (cool arc) ----------------------
-  var PROJ_SEED = 0xD7A0001;
-  var projCache = {};
-  function projRow(k, n) {
-    var key = k + ':' + n;
-    if (!projCache[key]) projCache[key] = gaussVec(PROJ_SEED + k * 7919 + n * 104729, n);
-    return projCache[key];
-  }
-  function phi(z) { return 1 / (1 + Math.exp(-1.702 * z)); } // ~normal CDF
-  var HUE_FROM = 110, HUE_TO = 280;
-  function embeddingToColor(vec) {
-    if (!vec || !vec.length) return { h: plainColor.h, s: plainColor.s, l: plainColor.l };
-    var v = normalize(vec), n = v.length, p = [0, 0, 0];
-    for (var k = 0; k < 3; k++) {
-      var row = projRow(k, n), s = 0;
-      for (var i = 0; i < n; i++) s += row[i] * v[i];
-      p[k] = s;
-    }
-    var h = lerp(HUE_FROM, HUE_TO, phi(p[0] * 1.15));
-    var l = lerp(62, 74, phi(p[1]));
-    var sat = lerp(72, 92, phi(p[2]));
-    var blue = Math.max(0, 1 - Math.abs(h - 235) / 45);  // blues read darker on green
-    l = Math.min(80, l + 6 * blue);
-    return { h: Math.round(h * 10) / 10, s: Math.round(sat), l: Math.round(l) };
-  }
-  // Fake topics are placed on purpose: the first five topics seen take fixed spots
-  // on the hue arc, at least 35 degrees apart (about 196/120/269/156/233); later
-  // ones step on by the golden ratio. (Real vectors would land wherever the
-  // projection puts them; embeddingToColor stays honest.)
-  var topicSlots = {}, topicCount = 0, FIRST_SLOTS = [0.5, 0, 1, 0.27, 0.75];
-  function probit(q) { return Math.log(q / (1 - q)) / 1.702; } // inverse of phi
-  function topicBase(t, named) {
-    var g = normalize(gaussVec(hashStr('topic:' + t), 64));
-    var r0 = projRow(0, 64), rr = 0, gr = 0, i;
-    for (i = 0; i < 64; i++) { rr += r0[i] * r0[i]; gr += g[i] * r0[i]; }
-    var rn = Math.sqrt(rr), q;
-    if (named) {
-      if (!(t in topicSlots)) topicSlots[t] = topicCount++;
-      var k = topicSlots[t], fr = k < 5 ? FIRST_SLOTS[k] : (0.5 + k * 0.6180339887) % 1;
-      q = 0.06 + 0.88 * fr;
-    } else {
-      q = 0.06 + 0.88 * ((hashStr('own:' + t) % 10007) / 10007);
-    }
-    var a = clamp(probit(q) / 1.15 / rn, -0.9, 0.9);   // wanted share along r0
-    var w = new Array(64), wl = 0;
-    for (i = 0; i < 64; i++) { w[i] = g[i] - (gr / rr) * r0[i]; wl += w[i] * w[i]; }
-    wl = Math.sqrt(wl) || 1;
-    var b = Math.sqrt(1 - a * a), out = new Array(64);
-    for (i = 0; i < 64; i++) out[i] = a * r0[i] / rn + b * w[i] / wl;
-    return out;
-  }
-  function fakeEmbedding(name, topic) {
-    var named = !(topic == null || topic === '');
-    var t = named ? String(topic) : String(name);
-    var base = topicBase(t, named);
-    var nudge = normalize(gaussVec(hashStr('name:' + name + '|' + t), 64));
-    var out = new Array(64);
-    for (var i = 0; i < 64; i++) out[i] = base[i] + 0.07 * nudge[i];
-    return out;
-  }
-
-  // ---- Rule C: event colours (warm side) and plain light -------------------
-  var EVENT = {
-    edit:     { h: 6,   s: 90, l: 66 },  // coral
-    activity: { h: 46,  s: 95, l: 60 },  // honey gold
-    change:   { h: 322, s: 80, l: 72 }   // rose
-  };
-  function eventColor(kind) {
-    var c = EVENT[kind] || EVENT.activity;
-    return { h: c.h, s: c.s, l: c.l };
-  }
-  var plainColor = { h: 72, s: 28, l: 82 }; // pale firefly light, before embeddings
-
-  // ---- Rule D: blinks follow time ------------------------------------------
-  function blinkTimes(items, opts) {
-    opts = opts || {};
-    var n = items ? items.length : 0;
-    if (!n) return [];
-    var rand = opts.rand || ownRand;
-    var speed = clamp(+opts.speed || 1, 0.25, 4);
-    var randomness = clamp(opts.randomness == null ? 0.35 : +opts.randomness, 0, 1);
-
-    var order = [];
-    for (var i = 0; i < n; i++) order.push(i);
-    order.sort(function (a, b) { return (+items[a].t || 0) - (+items[b].t || 0); });
-
-    // squeeze gaps on a log scale: seconds ~ together, hours ~ a beat, weeks ~ a pause
-    var raw = new Array(n), acc = 0;
-    raw[order[0]] = 0;
-    for (var j = 1; j < n; j++) {
-      var gap = Math.max(0, (+items[order[j]].t || 0) - (+items[order[j - 1]].t || 0));
-      acc += Math.log(1 + gap / 60000) + 0.02;   // small base so equal times still ripple
-      raw[order[j]] = acc;
-    }
-    var pass = Math.max(2500, clamp(n * 450, 8000, 40000) / speed);
-    var body = pass * 0.85;
-    var scale = acc > 0 ? body / acc : 0;
-    var meanGap = body / Math.max(1, n - 1);
-    var jit = (0.15 + 0.85 * randomness) * Math.min(meanGap, 900) * 0.6;
-    var lead = rand() * pass * 0.15;
-
-    var out = new Array(n);
-    for (var k = 0; k < n; k++) {
-      var o = lead + raw[k] * scale + gauss(rand) * jit;
-      out[k] = Math.max(0, Math.round(o));
-    }
-    return out;
-  }
-
-  // ---- Rule E: spark chain (the answering flash) ---------------------------
-  function sparkChain(flies, originIndex, opts) {
-    opts = opts || {};
-    var n = flies ? flies.length : 0;
-    if (!n || originIndex == null || originIndex < 0 || originIndex >= n) return [];
-    var rand = opts.rand || ownRand;
-    var strength = clamp(opts.strength == null ? 0.5 : +opts.strength, 0, 1);
-    var result = [{ index: originIndex, delayMs: 0, power: 1 }];
-    if (strength <= 0) return result;
-
-    var maxSteps = Math.round(1 + 5 * strength);
-    var cap = Math.max(1, Math.min(Math.round(4 + 36 * strength), Math.ceil(n * 0.25)));
-    var reach = 60 + 90 * strength;
-    var lit = {}; lit[originIndex] = true;
-    var front = [{ index: originIndex, delayMs: 0 }];
-
-    for (var step = 1; step <= maxSteps && front.length && result.length < cap; step++) {
-      var fade = Math.pow(0.62, step - 1);
-      var pNear = (0.1 + 0.22 * strength) * fade;
-      var pKin = (0.2 + 0.35 * strength) * fade;
-      var power = Math.max(0.35, 1 - 0.65 * step / maxSteps);
-      var next = [], kinUsed = 0;
-      for (var f = 0; f < front.length && result.length < cap; f++) {
-        var src = flies[front[f].index];
-        for (var i = 0; i < n && result.length < cap; i++) {
-          if (lit[i]) continue;
-          var o = flies[i];
-          var dx = o.x - src.x, dy = o.y - src.y, d = Math.sqrt(dx * dx + dy * dy);
-          var kin = src.groupKey != null && o.groupKey === src.groupKey;
-          var delay = -1;
-          if (d <= reach && rand() < pNear * (1 - 0.6 * d / reach)) {
-            delay = front[f].delayMs + 110 + d * 1.4 + rand() * 70;
-          } else if (kin && kinUsed < 2 && rand() < pKin * 0.25) {
-            kinUsed++;
-            delay = front[f].delayMs + 220 + rand() * 180;
-          }
-          if (delay >= 0) {
-            lit[i] = true;
-            var item = { index: i, delayMs: Math.round(delay), power: Math.round(power * 100) / 100 };
-            result.push(item); next.push(item);
-          }
-        }
-      }
-      front = next;
-    }
-    result.sort(function (a, b) { return a.delayMs - b.delayMs; });
-    return result;
-  }
-
-  var root = typeof window !== 'undefined' ? window : globalThis;
-  root.DNA = {
-    fileToDots: fileToDots,
-    embeddingToColor: embeddingToColor,
-    fakeEmbedding: fakeEmbedding,
-    eventColor: eventColor,
-    plainColor: plainColor,
-    blinkTimes: blinkTimes,
-    sparkChain: sparkChain
-  };
-})();
-</script>
-
-<script id="playground">
+<script>
 'use strict';
-/* The playground: a made-up history drawn as fireflies on one canvas, one rAF loop.
-   It only uses window.DNA for the rules; everything here is layout, input and drawing. */
 (function () {
 const $ = s => document.querySelector(s);
-const DNA = window.DNA;
+const clock = () => performance.now();
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches;
+const onMq = e => { reduced = e.matches; };
+mq.addEventListener ? mq.addEventListener('change', onMq) : mq.addListener(onMq);
 
-/* ---------- small tools ---------- */
-function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-function hash(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
-const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
-const ease = t => t < 0 ? 0 : t > 1 ? 1 : 1 - Math.pow(1 - t, 3);
-const hsl = (c, a) => `hsla(${c.h},${c.s}%,${c.l}%,${a == null ? 1 : a})`;
+/* ---------- tools, as in agent-home.html ---------- */
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const easeOut = x => 1 - (1 - x) * (1 - x);
+const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 function fmtSize(b) {
   if (b < 1000) return Math.round(b) + ' B';
   const u = ['KB', 'MB', 'GB', 'TB']; let i = -1;
-  do { b /= 1000; i++; } while (b >= 1000 && i < u.length - 1);
+  do { b /= 1024; i++; } while (b >= 1024 && i < u.length - 1);   // 1 MB = 1,048,576 B, the same MB one dot holds
   return (b < 10 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
 }
-function fmtTime(t) {
-  const d = new Date(t);
-  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/* ---------- the cluster's rules ---------- */
+const BOX = 56, MID = BOX / 2, LIMIT = [2, 9], GROW = 1.3;   // a flash grows a dot by up to 30 %
+const MB = 1048576;            // one dot holds one MB
+const FLOOR = 2;               // no dot is ever smaller than a 2 px radius
+const PLACED = 60;             // up to 60 dots get their own spot; past that, a dot only adds glow
+const TOUCH = .25;             // px of dark kept between two neighbouring dots at rest
+/* The pace. A file's dots land one by one; the next file waits for the last dot of the one before. */
+const STEP = 90, GAP = 250, PER_FILE = 2500;
+const STEP_REDUCED = 60;       // Reduce Motion: dots still light one by one, 60 ms apart; each just turns on
+/* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
+function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
+/* The golden-angle spiral. A slot's place doesn't depend on how many dots there are,
+   so a new dot never moves the others (Columbo W1); only the zoom changes. */
+function slot(i, seed) { const r = 10 * Math.sqrt(i + .5), t = i * 2.39996 + seed; return [Math.cos(t) * r, Math.sin(t) * r]; }
+
+/* Fixed topic hue slots from the last FIREFLIES-DNA round, on its cool arc (110-280 deg). */
+const FIRST_SLOTS = [0, .67, .33, 1, .5, .17, .83];
+function topicColor(k) {
+  const fr = k < FIRST_SLOTS.length ? FIRST_SLOTS[k] : (.15 + k * .6180339887) % 1;
+  const h = 110 + 170 * (.06 + .88 * fr), blue = Math.max(0, 1 - Math.abs(h - 235) / 45);
+  return hslHex(h, 85, Math.min(80, 66 + 6 * blue));
 }
-const KIND_WORD = { file: 'File', edit: 'Edit', change: 'Change', activity: 'Activity' };
-const EVENT_LINE = { edit: 'A person edited the agent', change: 'The agent was changed', activity: 'The agent was used' };
-
-/* ---------- settings ---------- */
-const S = { minR: 1.5, maxR: 4.5, speed: 1, rnd: 0.35, chain: 0.5 };
-let reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', e => { reduce = e.matches; });
-
-/* ---------- the history ---------- */
-const items = [];           // insertion order; blink offsets index into this
-let lastFile = null;        // newest file, for spark weighting
-const layoutRand = seeded(7);
-const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
-const NOW0 = Date.now();
-
-function topicOf(name) { const i = name.indexOf('/'); return i > 0 ? name.slice(0, i).trim().toLowerCase() : ''; }
-function eventR() { const a = Math.min(S.minR, S.maxR), b = Math.max(S.minR, S.maxR); return a + 0.45 * (b - a); }
-function makeDots(it) {
-  if (it.kind !== 'file') return [{ r: eventR(), dx: 0, dy: 0 }];
-  return DNA.fileToDots(it.size, { minR: S.minR, maxR: S.maxR, rand: seeded(hash('dots:' + it.id)) });
+function hslHex(h, s, l) {
+  s /= 100; l /= 100; const a = s * Math.min(l, 1 - l);
+  const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
 }
-function headRadius(dots) { let m = 0; for (const d of dots) m = Math.max(m, Math.hypot(d.dx, d.dy) + d.r); return m; }
+/* 1 dot per MB: dots = max(1, ceil(bytes / MB)). Every full dot holds 1 MB; the last one
+   holds what is left, and its size says how full it is (area follows the bytes). */
+const dotsFor = bytes => Math.max(1, Math.ceil(bytes / MB));
+function fills(bytes) {
+  const n = dotsFor(bytes), out = new Array(n).fill(1);
+  out[n - 1] = bytes <= 0 ? 0 : Math.sqrt((bytes - (n - 1) * MB) / MB);
+  return out;
+}
 
-function place(it) {
-  // Find a spot in the unit square that keeps seed heads apart (field is resized later; positions stay relative).
-  const W = Math.max(300, view.w - 2 * PAD), H = Math.max(200, view.h - 2 * PAD);
-  const rad = headRadius(it.dots) + 10;
-  let best = null, bestGap = -Infinity;   // crowded field: take the roomiest spot found
-  for (let k = 0; k < 60; k++) {
-    const nx = layoutRand(), ny = layoutRand();
-    let gap = Infinity;
-    for (const o of items) {
-      if (o === it) continue;
-      const d = Math.hypot((o.nx - nx) * W, (o.ny - ny) * H) - (o.rad + rad);
-      if (d < gap) gap = d;
+/* ---------- state ---------- */
+const S = { name: 'Juniper', min: 2.5, max: 6 };
+let files = [];                       // { id, name, bytes, topic, dots: [{ fill, slot, litAt, flashT, seedA, seedB, rs }] }
+const topicSlot = new Map();          // topic → hue slot, in order of first appearance; never reassigned
+function slotOf(topic) { if (!topicSlot.has(topic)) topicSlot.set(topic, topicSlot.size); return topicSlot.get(topic); }
+function colorOf(topic) { return topicColor(slotOf(topic)); }
+const allDots = () => files.flatMap(f => f.dots.map(d => (d.f = f, d)));
+const lit = () => allDots().filter(d => d.litAt != null);
+function freeSlot() { const used = new Set(allDots().map(d => d.slot)); let i = 0; while (used.has(i)) i++; return i < PLACED ? i : null; }
+/* After a removal, glow-only dots take the freed spots, oldest first. */
+function refillSlots() { for (const d of lit().sort((a, b) => a.litAt - b.litAt)) if (d.slot == null) { const s = freeSlot(); if (s == null) break; d.slot = s; } }
+
+/* The agent's own look, from its name only: spiral turn, outline, tilt and beat. */
+let look = null;
+function makeLook() {
+  const r = rng(hash(S.name.trim() || 'Untitled'));
+  look = { seed: r() * 6.28, squash: .8 + r() * .12, tilt: r() * 6.28, period: 2.4 + r() };
+  look.time = 1 - .4 / look.period;     // running time in periods; the first file blinks 400 ms in, so a new look is seen lit
+}
+
+/* Each file blinks on its own beat, set by when it was added. Its phase is the previous file's
+   plus a step that grows with the real gap between the two adds, log-squashed: added together
+   → in step; 1 s apart → ~0.22 of a beat (~650 ms); 1 day → ~0.6; a year or more → 0.8.
+   The step never reaches a full beat, so files added apart never land back in step with their neighbour. */
+const YEAR_S = 365 * 86400;
+function phaseStep(gapMs) {
+  const s = Math.max(0, gapMs) / 1000;
+  return .2 * Math.min(1, s) + .6 * Math.min(1, Math.log(1 + s) / Math.log(1 + YEAR_S));
+}
+function placeBeat(f) {
+  const prev = files.reduce((p, g) => g !== f && (!p || g.addedAt >= p.addedAt) ? g : p, null);
+  f.phase = prev ? (prev.phase + phaseStep(f.addedAt - prev.addedAt)) % 1 : 0;
+  f.beatAt = null; f.quietUntil = -1e9;
+}
+
+/* ---------- the queue: files light in the order they were added ---------- */
+const queue = [];                     // files waiting, oldest first
+let cur = null;                       // { f, i, step, gap, at }: the file lighting now
+let nextStart = -1e9;                 // the earliest moment the next file may start (after the gap)
+const litLog = [];                    // [{ fileId, litAt }] in the order dots lit
+function tick(now) {
+  let changed = false;
+  for (;;) {
+    if (!cur) {
+      if (!queue.length) break;
+      const f = queue.shift(), n = f.dots.length;
+      // A long queue (more than 3 files waiting) hurries: shorter steps and gaps, but every file still lights, in order.
+      const hurry = Math.max(.12, 1 / (1 + Math.max(0, queue.length - 3) / 2));
+      cur = { f, i: 0, step: Math.min(STEP, (PER_FILE - 100) / Math.max(1, n - 1)) * hurry, gap: Math.max(24, GAP * hurry), at: Math.max(nextStart, f.queuedAt) };
     }
-    if (gap > 6) { best = [nx, ny]; break; }
-    if (gap > bestGap) { bestGap = gap; best = [nx, ny]; }
+    if (cur.at > now) break;
+    const f = cur.f;
+    lightDot(f, f.dots[cur.i], cur.at); cur.i++;   // one dot at a time, in file order (Reduce Motion too)
+    changed = true;
+    if (cur.i >= f.dots.length) { const end = f.dots[f.dots.length - 1].litAt; nextStart = end + cur.gap; f.quietUntil = end + 1500; cur = null; }   // a file rests its blink while it lands
+    else cur.at += reduced ? STEP_REDUCED : cur.step;
   }
-  it.nx = best[0]; it.ny = best[1]; it.rad = rad;
+  if (changed) { relayout(); render(); }
 }
+function lightDot(f, d, at) { d.litAt = at; d.flashT = at; d.slot = freeSlot(); litLog.push({ fileId: f.id, litAt: at }); }
+const queueIdle = () => !cur && !queue.length;
 
-function addItem(o, born) {
-  const it = Object.assign({ id: 'i' + items.length, blinkAt: -1e9, bornAt: -1e9, bornPow: 0, vis: true }, o);
-  if (it.kind === 'file') {
-    it.topic = topicOf(it.name);
-    it.vec = DNA.fakeEmbedding(it.name, it.topic);   // computed now (fixed order); shown only after a build
-    it.built = false;
-    it.from = it.to = DNA.plainColor;
-  } else {
-    it.from = it.to = DNA.eventColor(it.kind);
+/* ---------- where every dot rests ----------
+   Up to 12 dots: the user's size range. Above 12: size × sqrt(12 / N). Then, if neighbours
+   would touch or the cluster would leave the 56 px box, every dot shrinks toward the 2 px
+   floor together (big stays bigger). Up to 60 dots keep a spot; more only add glow. */
+let layout = { scale: .6, pts: new Map(), glow: [] };
+function baseR(d) { return S.min + (S.max - S.min) * d.fill; }
+function relayout() {
+  const placed = lit().filter(d => d.slot != null), N = placed.length;
+  const sq = 1 - (1 - look.squash) * Math.min(1, Math.pow(12 / Math.max(1, N), 2));   // dense clusters round out to keep their spacing
+  const cs = Math.cos(look.tilt), sn = Math.sin(look.tilt), k = N > 12 ? Math.sqrt(12 / N) : 1;
+  const P = placed.map(d => {
+    const [u, v0] = slot(d.slot, look.seed), v = v0 * sq;
+    return { d, ux: u * cs - v * sn, uy: u * sn + v * cs, r0: Math.max(FLOOR, baseR(d) * k) };
+  });
+  let scale = .62, q = 1;
+  for (let it = 0; it < 80; it++) {
+    const r = p => FLOOR + (p.r0 - FLOOR) * q;
+    let sBox = Infinity, sNeed = 0;
+    for (const p of P) { const far = Math.hypot(p.ux, p.uy); if (far > 0) sBox = Math.min(sBox, (MID - 1 - GROW * r(p)) / far); }
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+      const du = Math.hypot(P[i].ux - P[j].ux, P[i].uy - P[j].uy);
+      sNeed = Math.max(sNeed, (r(P[i]) + r(P[j]) + TOUCH) / du);
+    }
+    if (sNeed <= sBox || q === 0) { scale = Math.max(sNeed, Math.min(.62, sBox)); if (sNeed > sBox) scale = sBox; break; }
+    q = q < .02 ? 0 : q * .94;
   }
-  it.fadeAt = -1e9;
-  it.dots = makeDots(it).map(d => ({ r: d.r, dx: d.dx, dy: d.dy, x: 0, y: 0, sparkAt: -1e9, sparkPow: 0 }));
-  const pr = seeded(hash('drift:' + it.id));
-  it.ph = [pr() * 6.28, pr() * 6.28, pr() * 6.28, pr() * 6.28];
-  place(it);
-  items.push(it);
-  if (it.kind === 'file') lastFile = it;
-  if (born) { it.bornAt = performance.now(); it.bornPow = 1; }
-  return it;
+  const pts = new Map();
+  for (const p of P) pts.set(p.d, { ux: p.ux, uy: p.uy, r: FLOOR + (p.r0 - FLOOR) * q });
+  // Glow: one soft light per topic, by how many extra MB it holds. Steady, capped, never a pulse.
+  const extra = new Map(); let E = 0;
+  for (const d of lit()) if (d.slot == null) { E++; extra.set(d.f.topic, (extra.get(d.f.topic) || 0) + 1); }
+  const level = E ? Math.min(.3, .06 * Math.log2(1 + E)) : 0;
+  layout = { scale, pts, glow: [...extra].map(([tp, n]) => ({ color: colorOf(tp), a: level * n / E })), extra: E };
 }
+function restingDot(d) { const p = layout.pts.get(d); return { x: MID + p.ux * layout.scale, y: MID + p.uy * layout.scale, r: p.r }; }
 
-function seedHistory() {
-  const ago = (d, h = 0, m = 0, s = 0) => NOW0 - d * DAY + h * HOUR + m * MIN + s * 1000;
-  const F = (name, size, t) => ({ kind: 'file', name, size, t });
-  const E = (kind, t) => ({ kind, t });
-  // Fixed order: topics are first seen as recipes, letters, garden (Merlin: keeps colours the same on every reload).
-  [
-    F('recipes/plum-cake-draft.txt', 3200, ago(20, 0, 0)),
-    F('recipes/grandmas-soup-scan.pdf', 48e6, ago(20, 0, 2)),
-    E('change', ago(20, 0, 5)),
-    F('letters/to-aunt-ida.md', 6100, ago(18, 3)),
-    E('edit', ago(18, 3, 20)),
-    F('letters/postcards-1998.zip', 220e6, ago(15, 1)),
-    F('garden/seed-list.csv', 900, ago(14, 6)),
-    E('activity', ago(13, 2)), E('activity', ago(13, 2, 0, 40)), E('activity', ago(13, 2, 3)),
-    F('garden/rose-bed-photos.zip', 1.4e9, ago(12, 4)),
-    F('recipes/bread-notes.md', 14000, ago(9, 5)),
-    F('letters/thank-you-notes.txt', 31000, ago(9, 5, 0, 30)),
-    E('edit', ago(8, 1)),
-    F('garden/frost-dates.txt', 2100, ago(6, 2)),
-    E('change', ago(5, 7)),
-    F('recipes/menu-planner.xlsx', 2.6e6, ago(4, 3)),
-    E('activity', ago(3, 8)), E('activity', ago(3, 8, 1)),
-    F('letters/old-diary-1971.pdf', 18e6, ago(2, 1)),
-    E('edit', ago(1, 4)),
-    F('garden/compost-how-to.md', 9000, ago(1, 6)),
-    E('activity', ago(0, -2)), E('activity', ago(0, -1, 30))
-  ].forEach(o => addItem(o, false));
-}
-
-/* ---------- timeline: squeezed time so busy days stay close and quiet weeks don't drag ---------- */
-let sorted = [];
-function retime() {
-  sorted = items.slice().sort((a, b) => a.t - b.t);
-  let acc = 0;
-  sorted.forEach((it, i) => { if (i) acc += Math.log(1 + (it.t - sorted[i - 1].t) / MIN) + 0.6; it.raw = acc; });
-  sorted.forEach(it => { it.tpos = acc ? 0.015 + 0.965 * it.raw / acc : 0.5; });
-  drawTicks();
-}
-function cursorTime(c) {
-  if (c >= 0.999) return null;
-  if (!sorted.length || c <= sorted[0].tpos) return sorted.length ? sorted[0].t : NOW0;
-  for (let i = 1; i < sorted.length; i++) {
-    const a = sorted[i - 1], b = sorted[i];
-    if (c <= b.tpos) return a.t + (b.t - a.t) * (c - a.tpos) / Math.max(1e-9, b.tpos - a.tpos);
-  }
-  return sorted[sorted.length - 1].t;
-}
-
-/* ---------- canvas ---------- */
-const field = $('#field'), cv = $('#sky'), ctx = cv.getContext('2d');
-const view = { w: 800, h: 600, dpr: 1 };
-const PAD = 44;
-function resize() {
-  const r = field.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
-  view.w = Math.max(1, r.width); view.h = Math.max(1, r.height); view.dpr = d;
-  cv.width = Math.round(view.w * d); cv.height = Math.round(view.h * d);
-  ctx.setTransform(d, 0, 0, d, 0, 0);
-}
-new ResizeObserver(resize).observe(field);
-resize();
-
-/* one glow sprite per colour, made only when an item's colour changes.
-   Fades pass through many in-between colours, so the cache is capped and the
-   oldest canvas is repainted instead of making new ones (Chrome crashed on the churn). */
+/* ---------- drawing ---------- */
 const sprites = new Map();
-function sprite(c) {
-  const key = Math.round(c.h) + ',' + Math.round(c.s) + ',' + Math.round(c.l);
-  let s = sprites.get(key);
-  if (s) { sprites.delete(key); sprites.set(key, s); return s; }  // keep recent ones
-  if (sprites.size >= 400) {
-    const oldest = sprites.keys().next().value;
-    s = sprites.get(oldest); sprites.delete(oldest);
-  } else {
-    s = document.createElement('canvas'); s.width = s.height = 64;
-  }
-  const g = s.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.clearRect(0, 0, 64, 64);
-  gr.addColorStop(0, hsl(c, 0.9)); gr.addColorStop(0.25, hsl(c, 0.35)); gr.addColorStop(1, hsl(c, 0));
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  sprites.set(key, s);
-  return s;
-}
-function colorNow(it, now) {
-  const k = clamp((now - it.fadeAt) / 1400, 0, 1), e = k * k * (3 - 2 * k);
-  if (e >= 1) return it.to;
-  let dh = it.to.h - it.from.h; if (dh > 180) dh -= 360; if (dh < -180) dh += 360;
-  return { h: (it.from.h + dh * e + 360) % 360, s: it.from.s + (it.to.s - it.from.s) * e, l: it.from.l + (it.to.l - it.from.l) * e };
-}
-/* flash shape: quick rise, slow fade (Rule D); reduced motion: slower and softer */
-function flash(e) {
-  if (e < 0) return 0;
-  const sq = Math.sqrt(S.speed), rise = (reduce ? 420 : 120) / sq, fade = (reduce ? 1100 : 500) / sq;
-  if (e < rise) return e / rise;
-  const f = 1 - (e - rise) / fade;
-  return f > 0 ? f * f : 0;
+function spriteOf(hex) {
+  let s = sprites.get(hex); if (s) return s;
+  const n = parseInt(hex.slice(1), 16), rgb = `${n >> 16},${(n >> 8) & 255},${n & 255}`;
+  const core = `rgb(${(n >> 16) + (255 - (n >> 16)) * .7 | 0},${((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * .7 | 0},${(n & 255) + (255 - (n & 255)) * .7 | 0})`;
+  s = document.createElement('canvas'); s.width = s.height = 128; const g = s.getContext('2d');
+  // A brighter core and a shorter glow than the home sprite, so neighbouring topics don't blend to white at 56 px.
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, core); gr.addColorStop(.18, `rgba(${rgb},.9)`); gr.addColorStop(.42, `rgba(${rgb},.28)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128); sprites.set(hex, s); return s;
 }
 
-/* ---------- blinks: one pass of the history at a time ---------- */
-let pass = null;
-function newPass(now) {
-  const offs = DNA.blinkTimes(items.map(i => ({ t: i.t })), { speed: S.speed, randomness: S.rnd });
-  let end = 0; for (const o of offs) end = Math.max(end, o);
-  pass = { start: now, offs, fired: new Uint8Array(offs.length), end: now + end + 900 };
-}
+const avatar = $('#avatar'), preview = $('#preview');
+const actx = avatar.getContext('2d'), pctx = preview.getContext('2d');
+let DPR = 1, shown = layout.scale;
+function fitCanvas(cv, css) { const px = Math.round(css * DPR); if (cv.width !== px) { cv.width = cv.height = px; } }
 
-/* ---------- sparks ---------- */
-const sparkRand = seeded(41);
-let nextSpark = performance.now() + 6000 + sparkRand() * 6000;
-let dragging = false;
-function waitSpark(now) {
-  const mean = 24 - 10 * S.chain;
-  nextSpark = now + clamp(-Math.log(1 - sparkRand()) * mean, 8, 35) * 1000;
-}
-function spark(now) {
-  const flies = [], refs = [];
-  let total = 0;
-  for (const it of items) {
-    if (!it.vis) continue;
-    const key = it.kind === 'file' ? (it.built ? 'topic:' + (it.topic || it.name) : it.id) : it.id;
-    for (const d of it.dots) {
-      const w = d.r * d.r * (it === lastFile ? 3 : 1);
-      flies.push({ x: d.x, y: d.y, groupKey: key }); refs.push(d); total += w; d.w = w;
-    }
-  }
-  if (!flies.length) return;
-  let pick = sparkRand() * total, origin = 0;
-  for (; origin < refs.length - 1; origin++) { pick -= refs[origin].w; if (pick <= 0) break; }
-  const chain = DNA.sparkChain(flies, origin, { strength: S.chain, rand: sparkRand });
-  const stretch = reduce ? 1.6 : 1;
-  for (const c of chain) { const d = refs[c.index]; d.sparkAt = now + c.delayMs * stretch; d.sparkPow = c.power; }
-}
-
-/* ---------- timeline state ---------- */
-let cursor = 1, playing = false, lastNow = performance.now();
-const REPLAY_MS = 16000;
-const scrub = $('#scrub');
-
-/* ---------- hover ---------- */
-let hover = null, pointer = null;
-function nearest(px, py, slop) {
-  let best = null, bd = slop;
-  for (const it of items) {
-    if (!it.vis) continue;
-    for (const d of it.dots) {
-      const g = Math.hypot(d.x - px, d.y - py) - Math.max(d.r, 3);
-      if (g < bd) { bd = g; best = it; }
-    }
-  }
-  return best;
-}
-function setHover(it) {
-  if (it === hover) return;
-  hover = it;
-  const card = $('#card');
-  if (!it) { card.classList.remove('on'); return; }
-  $('#cardSw').style.background = hsl(it.kind === 'file' ? (it.built ? it.to : DNA.plainColor) : it.to);
-  if (it.kind === 'file') {
-    $('#cardNm').textContent = it.name;
-    $('#cardSub').textContent = fmtSize(it.size) + ' · ' + fmtTime(it.t) + (it.built ? '' : ' · no embedding yet');
-  } else {
-    $('#cardNm').textContent = KIND_WORD[it.kind];
-    $('#cardSub').textContent = EVENT_LINE[it.kind] + ' · ' + fmtTime(it.t);
-  }
-  card.classList.add('on');
-}
-function placeCard(now) {
-  if (!hover) return;
-  const card = $('#card'), cx = hover.cx, cy = hover.cy, rr = headRadius(hover.dots) + 14;
-  const w = card.offsetWidth, h = card.offsetHeight;
-  let x = cx + rr; if (x + w > view.w - 8) x = cx - rr - w;
-  const y = clamp(cy - h / 2, 8, view.h - h - 8);
-  card.style.transform = `translate(${Math.round(Math.max(8, x))}px,${Math.round(y)}px)`;
-}
-field.addEventListener('pointermove', e => {
-  if (e.pointerType === 'touch') return;
-  const r = field.getBoundingClientRect(); pointer = [e.clientX - r.left, e.clientY - r.top];
-});
-field.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch') { pointer = null; setHover(null); } });
-field.addEventListener('pointerdown', e => {
-  if (e.pointerType !== 'touch') return;
-  const r = field.getBoundingClientRect();
-  setHover(nearest(e.clientX - r.left, e.clientY - r.top, 22));   // tap = hover; tap empty = clear
-});
-
-/* ---------- the one loop ---------- */
-function frame(now) {
-  const dt = Math.min(100, now - lastNow); lastNow = now;
-
-  if (playing) {
-    cursor = Math.min(1, cursor + dt / REPLAY_MS);
-    if (cursor >= 1) { playing = false; }
-    syncTimeline();
-  }
-
-  // who is visible at the cursor; during replay newcomers get a short birth glow
-  for (const it of items) {
-    const v = cursor >= 0.999 || it.tpos <= cursor;
-    if (v && !it.vis && playing) { it.bornAt = now; it.bornPow = 0.7; }
-    it.vis = v;
-  }
-  if (hover && !hover.vis) setHover(null);
-
-  if (!pass || now > pass.end) newPass(now);
-  for (let i = 0; i < pass.offs.length; i++) {
-    if (!pass.fired[i] && now >= pass.start + pass.offs[i]) { pass.fired[i] = 1; items[i].blinkAt = pass.start + pass.offs[i]; }
-  }
-
-  if (now >= nextSpark) {
-    if (dragging) nextSpark = now + 2000;
-    else { spark(now); waitSpark(now); }
-  }
-
-  ctx.clearRect(0, 0, view.w, view.h);
+function draw(ctx, k, list) {
+  ctx.setTransform(DPR * k, 0, 0, DPR * k, 0, 0); ctx.clearRect(0, 0, BOX, BOX);
   ctx.globalCompositeOperation = 'lighter';
-  const W = view.w - 2 * PAD, H = view.h - 2 * PAD, tt = now * 0.001;
-  const base = reduce ? 0.5 : 0.42, ripple = 30;
-  for (const it of items) {
-    if (!it.vis) continue;
-    const p = it.ph, amp = reduce ? 0 : 4;
-    it.cx = PAD + it.nx * W + amp * (Math.sin(tt * 0.21 + p[0]) + 0.6 * Math.sin(tt * 0.33 + p[1]));
-    it.cy = PAD + it.ny * H + amp * (Math.sin(tt * 0.17 + p[2]) + 0.6 * Math.sin(tt * 0.29 + p[3]));
-    const c = colorNow(it, now), spr = sprite(c), core = hsl(c);
-    const bornE = now - it.bornAt;
-    const burst = reduce ? 1 : ease(bornE / 700);
-    const born = it.bornPow * (bornE < 0 ? 0 : Math.max(0, 1 - bornE / (it.bornPow >= 1 ? 2600 : 900)));
-    const isHover = it === hover;
-    const show = reduce ? clamp(bornE / 600, 0, 1) : 1;   // reduced motion: newcomers fade in, no burst
-    ctx.fillStyle = core;
-    for (let k = 0; k < it.dots.length; k++) {
-      const d = it.dots[k];
-      d.x = it.cx + d.dx * burst; d.y = it.cy + d.dy * burst;
-      const b = flash(now - it.blinkAt - k * ripple);
-      const sp = flash(now - d.sparkAt) * d.sparkPow;
-      let f = Math.max(b * (reduce ? 0.6 : 1), sp * (reduce ? 0.7 : 1), born, isHover ? 0.85 : 0);
-      const R = d.r * (3.2 + 1.6 * f + (sp > 0.05 && !reduce ? 1.2 * sp : 0));
-      ctx.globalAlpha = show * (0.12 + 0.6 * f);
-      ctx.drawImage(spr, d.x - R, d.y - R, 2 * R, 2 * R);
-      ctx.globalAlpha = show * (base + (1 - base) * f);
-      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.2832); ctx.fill();
+  for (const d of list) { ctx.globalAlpha = d.a; ctx.drawImage(d.img, d.x - d.s / 2, d.y - d.s / 2, d.s, d.s); }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+let last = clock();
+function frame(t) {
+  tick(t);
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  fitCanvas(avatar, BOX); fitCanvas(preview, BOX * 4);
+  const ease = reduced ? 1 : Math.min(1, dt * 6);
+  shown += (layout.scale - shown) * ease;                                    // a zoom, never a reshuffle
+
+  // The beat: each file blinks on its own phase (see placeBeat), all its dots together.
+  // A file rests its blink while it is waiting or landing, and for 1.5 s after.
+  const beats = new Set();
+  if (!reduced) {
+    const before = look.time; look.time += dt / look.period;
+    for (const f of files) {
+      if (Math.floor(look.time + f.phase) === Math.floor(before + f.phase)) continue;
+      if ((cur && cur.f === f) || queue.includes(f) || t < f.quietUntil) continue;
+      beats.add(f); f.beatAt = t;
     }
   }
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-
-  if (pointer) setHover(nearest(pointer[0], pointer[1], 12));
-  placeCard(now);
+  const list = [];
+  for (const g of layout.glow) list.push({ x: MID, y: MID, s: BOX - 4, a: g.a, img: spriteOf(g.color) });
+  for (const [d, p] of layout.pts) {
+    d.rs = d.rs == null ? p.r : d.rs + (p.r - d.rs) * ease;
+    const age = t - d.litAt;
+    let ux = p.ux, uy = p.uy, a, s;
+    if (reduced) {
+      a = age < 1200 ? 1 : .75; s = 2 * d.rs;                                 // a new file simply appears, lit for a moment
+    } else {
+      if (age < 300) { const m = 1.25 - .25 * easeOut(age / 300); ux *= m; uy *= m; }   // a dot lands: from just outside, in 300 ms
+      else if (beats.has(d.f) && age > 1200) d.flashT = t + d.seedA * 4;                // up to ~25 ms apart, like the real thing
+      ux += Math.sin(t / 8000 * 6.283 + d.seedA) * 1.5; uy += Math.cos(t / 8000 * 6.283 + d.seedB) * 1.5;
+      const b = flash(t - d.flashT);
+      a = .12 + .8 * b; s = 2 * d.rs * (1 + (GROW - 1) * b);
+    }
+    list.push({ x: MID + ux * shown, y: MID + uy * shown, s, a, img: spriteOf(colorOf(d.f.topic)) });
+  }
+  draw(actx, 1, list); draw(pctx, 4, list);
   requestAnimationFrame(frame);
 }
 
-/* ---------- panel ---------- */
-const NAMES = {
-  recipes: ['pear-tart-notes.md', 'sunday-roast.txt', 'jam-labels.pdf', 'spice-list.csv', 'cookbook-scans.zip'],
-  letters: ['to-cousin-bo.md', 'birthday-cards.pdf', 'pen-pal-1984.txt', 'wedding-letters.zip'],
-  garden: ['tomato-log.csv', 'pond-plan.pdf', 'orchard-photos.zip', 'weeds-i-know.md'],
-  travel: ['rail-trip-notes.md', 'lake-photos.zip', 'packing-list.txt', 'map-scans.pdf']
-};
-const TOPICS = ['travel', 'recipes', 'garden', 'letters'];
-let suggestN = 0;
+/* ---------- files ---------- */
+function topicFromName(name) { const i = name.indexOf('/'); return i > 0 ? name.slice(0, i).trim().toLowerCase() : 'other'; }
+function makeFile(o, now) {
+  const name = String(o && o.name || '').trim();
+  const bytes = Math.max(0, +(o && (o.sizeBytes != null ? o.sizeBytes : o.bytes)) || 0);
+  const id = String(o && o.id != null && o.id !== '' ? o.id : name);
+  if (!name || files.some(f => f.id === id)) return null;
+  const topic = String(o.topic == null || o.topic === '' ? topicFromName(name) : o.topic).trim().toLowerCase();
+  const dots = fills(bytes).map((fill, k) => { const j = rng(hash('fly:' + id + ':' + k)); return { fill, slot: null, litAt: null, flashT: -1e9, seedA: j() * 6.28, seedB: j() * 6.28 }; });
+  slotOf(topic);
+  return { id, name, bytes, topic, dots, queuedAt: now, addedAt: isFinite(o.addedAt) ? +o.addedAt : Date.now() };
+}
+/* Files join the end of the queue, in the order given. The first dot of an idle queue lights at once. */
+function addFiles(list) {
+  const now = clock(); let n = 0;
+  for (const o of [].concat(list || [])) { const f = makeFile(o, now); if (!f) continue; placeBeat(f); files.push(f); queue.push(f); n++; }
+  if (n) { render(); tick(now); }
+  return n;
+}
+function addFile(o) { if (!o || files.some(f => f.name === String(o.name || '').trim())) return false; return addFiles([o]) === 1; }
+function removeFile(key) {
+  const i = files.findIndex(f => f.id === key || f.name === key); if (i < 0) return false;
+  const f = files[i];
+  files.splice(i, 1);                                                         // goes at once: no magic on deletion
+  const qi = queue.indexOf(f); if (qi >= 0) queue.splice(qi, 1);
+  if (cur && cur.f === f) { const done = f.dots.filter(d => d.litAt != null); nextStart = done.length ? done[done.length - 1].litAt + cur.gap : nextStart; cur = null; }
+  refillSlots(); relayout(); render();
+  return true;
+}
+function setSizeRange(a, b) {
+  a = +a; b = +b;
+  if (!isFinite(a)) a = S.min; if (!isFinite(b)) b = S.max;
+  if (a > b) { const t = a; a = b; b = t; }                                 // they can never cross
+  S.min = clamp(a, LIMIT[0], LIMIT[1]); S.max = clamp(b, LIMIT[0], LIMIT[1]);
+  relayout(); syncSize();
+  return { min: S.min, max: S.max };
+}
+
+/* ---------- the page ---------- */
+const X = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+function render() {
+  const ul = $('#files'); ul.textContent = '';
+  for (const f of files) {
+    const li = document.createElement('li');
+    const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = colorOf(f.topic);
+    const fn = document.createElement('span'); fn.className = 'fn'; fn.textContent = f.name; fn.title = f.name;
+    const fs = document.createElement('span'); fs.className = 'fs'; fs.textContent = fmtSize(f.bytes);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.innerHTML = X;
+    x.setAttribute('aria-label', 'Remove ' + f.name);
+    x.addEventListener('click', () => {
+      const i = [...ul.children].indexOf(li);
+      removeFile(f.id); say('Removed ' + f.name);
+      const b = ul.children[Math.min(i, ul.children.length - 1)];           // keep the keyboard in the list
+      (b ? b.querySelector('.x') : $('#fname')).focus();
+    });
+    li.append(sw, fn, fs, x); ul.appendChild(li);
+  }
+  const counts = new Map(); files.forEach(f => counts.set(f.topic, (counts.get(f.topic) || 0) + 1));
+  const tl = $('#topics'); tl.textContent = '';
+  [...counts.keys()].sort((a, b) => slotOf(a) - slotOf(b)).forEach(tp => {
+    const li = document.createElement('li'), sw = document.createElement('span');
+    sw.className = 'sw'; sw.style.background = colorOf(tp);
+    li.append(sw, tp + ' ' + counts.get(tp)); tl.appendChild(li);
+  });
+  const nf = files.length, nt = counts.size, nd = lit().length;
+  $('#desc').textContent = nf ? `${nf} file${nf === 1 ? '' : 's'} · ${nt} topic${nt === 1 ? '' : 's'}` : 'No files yet';
+  $('#note').textContent = layout.extra ? `Past ${PLACED} dots, each extra MB adds glow instead of a dot.` : '';
+  preview.setAttribute('aria-label', `${S.name.trim() || 'Untitled'}’s cluster: ${nd ? `${nd} light${nd === 1 ? '' : 's'} in ${nt} topic colour${nt === 1 ? '' : 's'}` : 'no lights yet'}`);
+}
+let sayTimer = 0;
+function say(s) { const p = $('#said'); p.textContent = s; clearTimeout(sayTimer); sayTimer = setTimeout(() => { p.textContent = ''; }, 4000); }
+
+/* Add: the name field always holds a suggestion, so Add works on the first press.
+   Size slider: 100 B … 60 MB on a log scale. Its top is one file at the 60-dot cap; more MB
+   only come from more files, and past 60 dots they add glow, never a dot. */
+const IDEAS = [
+  ['travel/packing-list.txt', 30], ['recipes/pear-tart-notes.md', 20], ['garden/orchard-photos.zip', 80],
+  ['letters/birthday-cards.pdf', 60], ['travel/map-scans.pdf', 72], ['recipes/spice-list.csv', 15],
+  ['garden/pond-plan.pdf', 64], ['letters/pen-pal-1984.txt', 25]
+];
+let ideaN = 0;
+const bytesOf = v => Math.min(PLACED * MB, Math.round(100 * Math.pow(PLACED * MB / 100, v / 100)));
+function showBytes() { $('#fsizeV').textContent = fmtSize(bytesOf(+$('#fsize').value)); }
 function suggest() {
-  const t = TOPICS[suggestN % TOPICS.length], list = NAMES[t];
-  $('#fname').value = t + '/' + list[Math.floor(suggestN / TOPICS.length) % list.length];
-  suggestN++;
-}
-const sizeFromSlider = v => v <= 0 ? 0 : Math.round(Math.pow(10, v / 100 * 9.7));
-function showSize() { $('#fsizeV').textContent = fmtSize(sizeFromSlider(+$('#fsize').value)); }
-
-function toNow() { playing = false; cursor = 1; syncTimeline(); }
-function added(it) {
-  retime(); refreshBuild(); refreshFoot(); addSr(it);
-}
-
-$('#addFile').addEventListener('click', () => {
-  toNow();
-  const name = $('#fname').value.trim() || 'untitled.txt';
-  added(addItem({ kind: 'file', name, size: sizeFromSlider(+$('#fsize').value), t: Date.now() }, true));
-  suggest();
-});
-$('#fname').addEventListener('keydown', e => { if (e.key === 'Enter') $('#addFile').click(); });
-$('#fsize').addEventListener('input', showSize);
-document.querySelectorAll('[data-ev]').forEach(b => {
-  b.querySelector('.dot').style.background = hsl(DNA.eventColor(b.dataset.ev));
-  b.addEventListener('click', () => { toNow(); added(addItem({ kind: b.dataset.ev, t: Date.now() }, true)); });
-});
-
-function plainCount() { return items.filter(i => i.kind === 'file' && !i.built).length; }
-function refreshBuild() {
-  const n = plainCount(), b = $('#build');
-  b.disabled = n === 0;
-  b.textContent = n === 0 ? 'Embeddings built' : (items.some(i => i.built) ? `Build embeddings (${n} new)` : 'Build embeddings');
-}
-$('#build').addEventListener('click', () => {
-  const now = performance.now();
-  let k = 0;
-  const todo = sorted.filter(i => i.kind === 'file' && !i.built);
-  const step = Math.min(70, 900 / Math.max(1, todo.length));
-  for (const it of todo) {   // a gentle wave in time order
-    it.from = DNA.plainColor; it.to = DNA.embeddingToColor(it.vec); it.built = true; it.fadeAt = now + k++ * step;
+  for (let k = 0; k < IDEAS.length; k++) {
+    const [n, v] = IDEAS[(ideaN + k) % IDEAS.length];
+    if (!files.some(f => f.name === n)) { ideaN += k + 1; $('#fname').value = n; $('#fsize').value = v; showBytes(); return; }
   }
-  if (hover) { const h = hover; hover = null; setHover(h); }
-  refreshBuild(); drawTicks();
+  $('#fname').value = ''; showBytes();
+}
+$('#fsize').addEventListener('input', showBytes);
+$('#add').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('#fname').value.trim();
+  if (!name) { $('#fname').focus(); return; }
+  if (!addFile({ name, bytes: bytesOf(+$('#fsize').value) })) { say(name + ' is already here'); return; }
+  say('Added ' + name); suggest();
 });
 
-function bindSlider(id, key, fmt, after) {
-  const el = $('#' + id), out = el.parentNode.querySelector('output');
-  const show = () => { out.textContent = fmt(+el.value); };
-  el.addEventListener('input', () => { S[key] = +el.value; show(); after && after(); });
-  show();
-  return el;
+/* Dot size: two sliders that push each other, so the smallest is never above the largest. */
+const minEl = $('#minR'), maxEl = $('#maxR');
+function syncSize() {
+  minEl.value = S.min; maxEl.value = S.max;
+  minEl.nextElementSibling.textContent = S.min.toFixed(2).replace(/0$/, '') + ' px';
+  maxEl.nextElementSibling.textContent = S.max.toFixed(2).replace(/0$/, '') + ' px';
 }
-const redots = () => {
-  for (const it of items) {
-    const nd = makeDots(it);
-    it.dots = nd.map((d, k) => Object.assign(it.dots[k] || { sparkAt: -1e9, sparkPow: 0, x: 0, y: 0 }, { r: d.r, dx: d.dx, dy: d.dy }));
-    it.dots.length = nd.length;
-  }
-  refreshFoot();
+minEl.addEventListener('input', () => { const v = +minEl.value; setSizeRange(v, Math.max(v, S.max)); });
+maxEl.addEventListener('input', () => { const v = +maxEl.value; setSizeRange(Math.min(v, S.min), v); });
+
+/* The name is the seed: each agent's cluster looks like its own. */
+$('#agentName').addEventListener('input', e => { S.name = e.target.value; makeLook(); relayout(); render(); });
+
+/* ---------- the test hook (Eraser) ---------- */
+const q2 = v => Math.round(v * 100) / 100;
+window.dna = {
+  // addedAt: wall-clock ms of the add; blinkPhase: 0…1, where in the shared period this file blinks;
+  // lastBlink: page-clock ms of its latest blink (null before the first). period: ms per beat.
+  getFiles: () => files.map(f => ({ id: f.id, name: f.name, bytes: f.bytes, topic: f.topic, dots: f.dots.length, addedAt: f.addedAt, blinkPhase: Math.round(f.phase * 1000) / 1000, lastBlink: f.beatAt })),
+  blinkPeriod: () => Math.round(look.period * 1000),
+  addFile,                            // {name, bytes, topic?} -> true, or false for an empty or duplicate name
+  addFiles,                           // [{id, name, sizeBytes, addedAt?}] -> how many were queued (a duplicate id is skipped)
+  removeFile,                         // by id or name
+  setSizeRange,
+  getSizeRange: () => ({ min: S.min, max: S.max }),
+  dotCount: () => files.reduce((s, f) => s + f.dots.length, 0),
+  litOrder: () => litLog.map(e => ({ fileId: e.fileId, litAt: e.litAt })),
+  queueIdle: () => { tick(clock()); return queueIdle(); },
+  // Lit dots that have a spot (at most 60), resting positions in avatar px.
+  getDots: () => [...layout.pts.keys()].map(d => { const p = restingDot(d); return { fileId: d.f.id, x: q2(p.x), y: q2(p.y), r: q2(p.r), color: colorOf(d.f.topic), topic: d.f.topic }; })
 };
-bindSlider('minR', 'minR', v => v.toFixed(2) + ' px', redots);
-bindSlider('maxR', 'maxR', v => v.toFixed(1) + ' px', redots);
-bindSlider('speed', 'speed', v => v.toFixed(2) + '×', () => { pass = null; });
-bindSlider('rnd', 'rnd', v => v.toFixed(2), () => { pass = null; });
-bindSlider('chain', 'chain', v => v.toFixed(2)).addEventListener('change', () => { nextSpark = performance.now() + 500; });
 
-/* ---------- timeline controls ---------- */
-const PLAY = 'M0 0L10 6L0 12Z', PAUSE = 'M0 0H3.5V12H0ZM6.5 0H10V12H6.5Z';
-function syncTimeline() {
-  scrub.value = Math.round(cursor * 1000);
-  const t = cursorTime(cursor);
-  const when = $('#when');
-  when.textContent = t == null ? 'Now' : fmtTime(t);
-  when.style.left = `calc(${cursor} * (100% - 16px) + 8px)`;
-  scrub.setAttribute('aria-valuetext', when.textContent);
-  $('#playTx').textContent = playing ? 'Pause' : cursor >= 0.999 ? 'Replay' : 'Play';
-  $('#playIcon').setAttribute('d', playing ? PAUSE : PLAY);
-  const marks = $('#ticks').children;
-  for (let i = 0; i < marks.length; i++) marks[i].classList.toggle('later', cursor < 0.999 && +marks[i].dataset.p > cursor);
-}
-function drawTicks() {
-  const box = $('#ticks'); box.textContent = '';
-  for (const it of sorted) {
-    const m = document.createElement('i');
-    if (it.kind !== 'file') m.className = 'ev';
-    m.style.left = (it.tpos * 100) + '%';
-    m.style.background = hsl(it.to);
-    m.dataset.p = it.tpos;
-    box.appendChild(m);
-  }
-  syncTimeline();
-}
-$('#play').addEventListener('click', () => {
-  if (playing) playing = false;
-  else { if (cursor >= 0.999) cursor = 0; playing = true; }
-  syncTimeline();
-});
-scrub.addEventListener('input', () => { playing = false; cursor = +scrub.value / 1000; syncTimeline(); });
-scrub.addEventListener('pointerdown', () => { dragging = true; });
-window.addEventListener('pointerup', () => { dragging = false; });
-
-/* ---------- words for screen readers and the footer ---------- */
-function srText(it) { return it.kind === 'file' ? `File ${it.name}, ${fmtSize(it.size)}, ${fmtTime(it.t)}` : `${KIND_WORD[it.kind]} event, ${fmtTime(it.t)}`; }
-function addSr(it) { const li = document.createElement('li'); li.textContent = srText(it); $('#srList').appendChild(li); }
-function refreshFoot() {
-  let dots = 0, files = 0; for (const it of items) { dots += it.dots.length; if (it.kind === 'file') files++; }
-  $('#foot').textContent = `${dots} lights · ${files} files · ${items.length - files} events`;
-  cv.setAttribute('aria-label', `Fireflies field: ${files} files and ${items.length - files} events as ${dots} lights`);
-}
-
-/* ---------- start ---------- */
-seedHistory();
-retime();
-sorted.forEach(addSr);
-suggest(); showSize(); refreshBuild(); refreshFoot(); syncTimeline();
-requestAnimationFrame(frame);
+/* ---------- start: a sample agent (about 12 MB, 12 dots), same on every reload, already lit ----------
+   Each sample was "added" a while ago (hours to days apart), so each blinks on its own beat. */
+makeLook();
+const H = 3600e3, D = 24 * H, T0 = Date.now();
+[
+  ['recipes/plum-cake-draft.txt', 3200, 41 * D], ['recipes/grandmas-soup-scan.pdf', 2.4e6, 38 * D],
+  ['letters/to-aunt-ida.md', 6100, 20 * D], ['letters/postcards-1998.zip', 9e5, 19 * D + 20 * H],
+  ['garden/seed-list.csv', 900, 9 * D], ['garden/rose-bed-photos.zip', 2.8e6, 8 * D + 3 * H],
+  ['recipes/bread-notes.md', 14000, 2 * D], ['travel/rail-trip-notes.md', 12000, 5 * H]
+].forEach(([name, bytes, ago]) => { const f = makeFile({ name, bytes, addedAt: T0 - ago }, -1e9); placeBeat(f); files.push(f); f.dots.forEach(d => { d.litAt = -1e9; d.slot = freeSlot(); }); });
+relayout(); render();
+shown = layout.scale;
+syncSize(); suggest();
+requestAnimationFrame(t => { last = t; frame(t); });
 })();
 </script>
 </body>

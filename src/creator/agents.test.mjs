@@ -4,7 +4,7 @@ import { mkdtemp, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
-import { createAgents, shortDescription, summary } from "./agents.mjs";
+import { CHAT_KEEP, createAgents, shortDescription, summary, withTurn } from "./agents.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { emptyDraft } from "./draft.mjs";
 import { ClaudeCliError } from "../engine/index.mjs";
@@ -18,6 +18,15 @@ function ticking() {
   return () => new Date((t += 1000));
 }
 const freshStore = async () => createAgentStore({ home: await mkdtemp(join(home, "h-")), now: ticking() });
+
+test("withTurn adds the user's line and Sketcher's, and keeps only the newest CHAT_KEEP", () => {
+  assert.deepEqual(withTurn(undefined, "hi", "hello"), [{ who: "you", text: "hi" }, { who: "sketcher", text: "hello" }]);
+  let chat = [];
+  for (let i = 0; i < CHAT_KEEP; i++) chat = withTurn(chat, `q${i}`, `a${i}`);
+  assert.equal(chat.length, CHAT_KEEP);
+  assert.deepEqual(chat.at(-1), { who: "sketcher", text: `a${CHAT_KEEP - 1}` });
+  assert.equal(chat[0].who, "you", "a cut never starts on an answer");
+});
 
 // An engine that replays a scripted reply and records what it was asked.
 function scriptedEngine(deltas, { sessionId = "sess-1", text = deltas.join("") } = {}) {
@@ -57,6 +66,31 @@ test("store: markSaved sets saved; a missing or odd id is a clear not-found", as
   assert.equal((await store.markSaved(id)).draft.status, "saved");
   await assert.rejects(store.loadAgent("0123456789ab"), { kind: "not-found", message: /0123456789ab/ });
   await assert.rejects(store.loadAgent("../../etc"), { kind: "not-found" });
+});
+
+test("store: deleteAgent removes only that agent's folder; a missing or odd id is not-found", async () => {
+  const dir = await mkdtemp(join(home, "h-"));
+  const store = createAgentStore({ home: dir, now: ticking() });
+  const gone = await store.createAgent();
+  const kept = await store.createAgent();
+  await store.deleteAgent(gone.id);
+  assert.deepEqual(await readdir(join(dir, "agents")), [kept.id]);
+  await assert.rejects(store.loadAgent(gone.id), { kind: "not-found" });
+  await assert.rejects(store.deleteAgent(gone.id), { kind: "not-found" });
+  await assert.rejects(store.deleteAgent(".."), { kind: "not-found" });
+  assert.deepEqual(await readdir(join(dir, "agents")), [kept.id]);
+});
+
+test("store: texts live in the agent's folder, start empty and never escape it", async () => {
+  const store = await freshStore();
+  const { id } = await store.createAgent();
+  assert.equal(await store.readText(id, "system-prompt.md"), "");
+  await store.writeText(id, "skills/ab12cd34/SKILL.md", "# Soup");
+  assert.equal(await store.readText(id, "skills/ab12cd34/SKILL.md"), "# Soup");
+  for (const rel of ["../agent.json", "/etc/passwd", "a//b", ""]) {
+    await assert.rejects(store.readText(id, rel), { kind: "bad-input" });
+  }
+  await assert.rejects(store.writeText("0123456789ab", "x.md", "x"), { kind: "not-found" });
 });
 
 test("store: listAgents is newest first by updatedAt", async () => {
@@ -104,7 +138,19 @@ test("agents: a chat turn applies the patch, autosaves it and keeps the session"
   const turn = await agents.chat(id, "a loud coach");
   assert.deepEqual(turn.changed, ["name", "persona"]);
   assert.equal(turn.say, "Sketched.");
-  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [] });
+  const chat = [{ who: "you", text: "a loud coach" }, { who: "sketcher", text: "Sketched." }];
+  assert.deepEqual(await agents.get(id), { id, draft: turn.draft, sessionId: "sess-1", files: [], chat, dna: [] });
+});
+
+test("agents: dropped files are stamped by the clock and show up as dna on the list and the view", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]), now: () => new Date("2026-11-20T08:00:00Z") });
+  const { id } = await agents.create();
+  await agents.edit(id, { name: "Ada" });
+  await agents.addFiles(id, [{ path: "talks/one.mp4", size: 2048 }]);
+  const expected = [{ id: "talks/one.mp4", name: "one.mp4", sizeBytes: 2048, addedAt: "2026-11-20T08:00:00.000Z", topic: "talks", state: "unprocessed" }];
+  assert.deepEqual((await agents.list())[0].dna, expected);
+  assert.deepEqual((await agents.get(id)).dna, expected);
 });
 
 test("agents: dropped files join the DNA list, the creator routes them by path", async () => {
@@ -175,6 +221,16 @@ test("agents: empty agents are hidden from the list and reused by create (R8)", 
   assert.notEqual(fresh.id, empty.id);
   const list = await agents.list();
   assert.deepEqual(list.map((a) => a.draft), [{ name: "Tony", status: "draft", description: "" }]);
+});
+
+test("agents: an agent built from a folder (files, no words) is on the list, not reused", async () => {
+  const store = await freshStore();
+  const agents = createAgents({ store, engine: scriptedEngine([]) });
+  const { id } = await agents.create();
+  await agents.addFiles(id, [{ path: "Recipes/soup.md", size: 30 }]);
+  const list = await agents.list();
+  assert.deepEqual(list.map((a) => [a.id, a.dna.length]), [[id, 1]]);
+  assert.notEqual((await agents.create()).id, id);
 });
 
 test("agents: the list carries a short description from persona, else instructions", async () => {

@@ -8,6 +8,7 @@ import { BadRequest, sendJson } from "./http.mjs";
 import { matchRoute } from "./router.mjs";
 import { agentRoutes } from "./routes/agents.mjs";
 import { askRoute } from "./routes/ask.mjs";
+import { materialRoutes } from "./routes/material.mjs";
 import { mockRoutes } from "./routes/mock.mjs";
 import { createAgents, createAgentStore } from "../creator/index.mjs";
 import { summary } from "../creator/agents.mjs";
@@ -17,8 +18,7 @@ import { createLogger, newTraceId } from "../log/logger.mjs";
 const log = createLogger("server");
 const PUBLIC = new URL("./public/", import.meta.url);
 // Every script the page imports; a module missing here 404s and the page stays blank.
-const PAGE_MODULES = ["app", "sketch", "tab-focus", "components",
-  "block-a", "block-b", "block-c", "block-d", "block-e", "block-f", "agent-list", "firefly-gather"];
+const PAGE_MODULES = ["agent-list", "firefly-gather", "firefly-orbit", "fireflies-dna", "file-intake", "creation-screen", "left-side"];
 
 function staticFile(name, contentType) {
   return async (_req, res) => {
@@ -28,6 +28,7 @@ function staticFile(name, contentType) {
 }
 
 export function createApp(engine, { store = createAgentStore() } = {}) {
+  const agents = createAgents({ store, engine });
   const routes = {
     "GET /": staticFile("agent-home.html", "text/html; charset=utf-8"),
     "GET /new": staticFile("new-agent.html", "text/html; charset=utf-8"),
@@ -35,22 +36,22 @@ export function createApp(engine, { store = createAgentStore() } = {}) {
     "GET /agents/:id": staticFile("agent-page.html", "text/html; charset=utf-8"),
     // The home's mock sets (0, 1, 10, 50), in the real /api/agents shape: `/?demo=50`.
     "GET /mock/home/:count": async (_req, res, { params }) => sendJson(res, 200, homeAgents(params.count).map(summary)),
-    "GET /app.css": staticFile("app.css", "text/css; charset=utf-8"),
-    "GET /magic.css": staticFile("magic.css", "text/css; charset=utf-8"),
     ...Object.fromEntries(PAGE_MODULES
       .map((name) => [`GET /${name}.js`, staticFile(`${name}.js`, "text/javascript; charset=utf-8")])),
     ...mockRoutes(),
     "GET /api/health": async (_req, res) => sendJson(res, 200, await engine.checkCli()),
     "POST /api/ask": askRoute(engine),
-    ...agentRoutes(createAgents({ store, engine })),
+    ...agentRoutes(agents),
+    ...materialRoutes(agents),
   };
 
   return createServer(async (req, res) => {
     const traceId = newTraceId();
-    const match = matchRoute(routes, req.method, new URL(req.url, "http://local").pathname);
+    const url = new URL(req.url, "http://local");
+    const match = matchRoute(routes, req.method, url.pathname);
     if (!match) return sendJson(res, 404, { error: "Not found." });
     try {
-      await match.handler(req, res, { traceId, params: match.params });
+      await match.handler(req, res, { traceId, params: match.params, query: url.searchParams });
     } catch (error) {
       handleError(error, req, res, traceId);
     }

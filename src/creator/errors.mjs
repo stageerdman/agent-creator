@@ -1,10 +1,17 @@
 // Errors the creator module raises itself. `kind` mirrors ClaudeCliError so
 // callers (the server's one error handler) can react without parsing text.
-export class AgentNotFound extends Error {
+export class NotFound extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NotFound";
+    this.kind = "not-found";
+  }
+}
+
+export class AgentNotFound extends NotFound {
   constructor(id) {
     super(`No agent with id "${id}".`);
     this.name = "AgentNotFound";
-    this.kind = "not-found";
   }
 }
 

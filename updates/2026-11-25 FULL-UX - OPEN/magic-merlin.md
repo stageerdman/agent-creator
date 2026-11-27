@@ -632,6 +632,16 @@ pronouns.
 **Sketcher**, the pane is **Sketch**). No on-screen word for the home
 screen (it's just "Agent Creator"); never "Library".
 
+**Added by CREATION-SCREEN** (`Reports/creation-screen-magic-moments.md`
+§8): labels `System prompt` · `Knowledge` · `Skills` · `Adjust DNA` ·
+`Adjust Knowledge` · `Create new skill`; microcopy `[n] files` ·
+`dim ones are simply not used` · `who [Name] is` · `what [Name] knows` ·
+`what [Name] can do` · `nothing yet · drag a firefly here` ·
+`[n] waiting` · `studied once Knowledge is ready` · `[n] used` ·
+`[file] → [part] · Undo` · `Taking out…`. On the creation screen the
+user's label **Knowledge** replaces **What [Name] knows**, which becomes
+its microcopy.
+
 **Removed by the cut review** (`cuts-eraser.md`), never to be shown:
 `Couldn't be read` (now part of **Set aside**) · `Imported from [file]` ·
 `Change face…` · `See what [Name] knows` · `Add more on this`.

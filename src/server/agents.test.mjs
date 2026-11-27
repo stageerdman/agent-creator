@@ -8,6 +8,7 @@ import { fakeSpawn } from "../engine/testing/fakeSpawn.mjs";
 import { createAgentStore } from "../creator/index.mjs";
 import { createApp } from "./app.mjs";
 import { parseSse } from "./testing/sse.mjs";
+import { streamChat } from "./public/left-side.js";
 
 // The real engine and creator, with the CLI swapped for the fake and the
 // agents kept in a temp folder.
@@ -85,6 +86,34 @@ test("dropped files land in the DNA list, never the chat; the creator routes the
   assert.deepEqual(saved.files.map((f) => [f.path, f.feeds]), [["notes/deep/a.md", ["rag"]], ["bio.pdf", ["instructions"]]]);
 });
 
+// The Left Side's own client (streamChat) against this server: the panel talks to the real creator.
+const pageFetch = (path, options) => fetch(`${base}${path}`, options);
+
+test("the Sketcher panel: streams the answer, routes files, and the talk is there after a reload", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "bio.pdf" }] });
+  const seen = [];
+  let changes = 0;
+  const message = '{"name":"Tony","files":{"bio.pdf":"instructions"}}';
+  const text = await streamChat({ fetch: pageFetch, id, message, onText: (t) => seen.push(t), onChange: () => changes++ });
+  assert.equal(text, "Here's a first sketch.");
+  assert.equal(seen.at(-1), text);
+  assert.equal(changes, 2, "one draft and one files event");
+  const saved = await json("GET", `/api/agents/${id}`);
+  assert.equal(saved.draft.name, "Tony");
+  assert.deepEqual(saved.files[0].feeds, ["instructions"]);
+  assert.deepEqual(saved.chat, [{ who: "you", text: message }, { who: "sketcher", text }]);
+});
+
+test("the Sketcher panel: an engine failure throws and leaves the saved talk alone", async () => {
+  scenario = "stream-fail";
+  const id = await newAgent();
+  await assert.rejects(streamChat({ fetch: pageFetch, id, message: "hi" }), /chat: /);
+  assert.deepEqual((await json("GET", `/api/agents/${id}`)).chat, []);
+  await assert.rejects(streamChat({ fetch: pageFetch, id: "0123456789ab", message: "hi" }), /status 404/);
+});
+
 test("a files body without paths is 400", async () => {
   const id = await newAgent();
   assert.equal((await call("POST", `/api/agents/${id}/files`, { files: [] })).status, 400);
@@ -106,11 +135,21 @@ test("Keep sets saved; a later hand edit sets it back to draft", async () => {
   assert.equal((await json("PUT", `/api/agents/${id}/draft`, { name: "Kept two" })).status, "draft");
 });
 
+test("DELETE removes the agent: gone from the list and a 404 after; a second delete is 404", async () => {
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Red Pen" });
+  assert.deepEqual(await json("DELETE", `/api/agents/${id}`), { deleted: id });
+  assert.ok((await json("GET", "/api/agents")).every((a) => a.id !== id));
+  assert.equal((await call("GET", `/api/agents/${id}`)).status, 404);
+  assert.equal((await call("DELETE", `/api/agents/${id}`)).status, 404);
+});
+
 test("the list hides empty agents and POST reuses the empty one", async () => {
   const empty = await newAgent();
   assert.equal(await newAgent(), empty);
   const list = await json("GET", "/api/agents");
-  assert.ok(list.every((a) => a.id !== empty && a.draft.name && a.updatedAt));
+  // Listed agents have a name or files (a files-only agent stays reachable).
+  assert.ok(list.every((a) => a.id !== empty && (a.draft.name || a.dna.length) && a.updatedAt));
   assert.deepEqual(list.map((a) => a.updatedAt), [...list.map((a) => a.updatedAt)].sort().reverse());
 });
 
@@ -119,7 +158,12 @@ test("GET /api/agents items carry createdAt for the home's age and order", async
   await json("PUT", `/api/agents/${id}/draft`, { name: "Dated" });
   const row = (await json("GET", "/api/agents")).find((a) => a.id === id);
   assert.ok(row.createdAt && !Number.isNaN(Date.parse(row.createdAt)));
-  assert.deepEqual(Object.keys(row).sort(), ["createdAt", "draft", "id", "updatedAt"]);
+  assert.deepEqual(Object.keys(row).sort(), ["createdAt", "dna", "draft", "id", "updatedAt"]);
+  assert.deepEqual(row.dna, []);
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "notes/a.md", size: 7 }] });
+  const [file] = (await json("GET", "/api/agents")).find((a) => a.id === id).dna;
+  assert.deepEqual([file.id, file.sizeBytes, file.topic], ["notes/a.md", 7, "notes"]);
+  assert.ok(!Number.isNaN(Date.parse(file.addedAt)));
   assert.deepEqual(Object.keys(row.draft).sort(), ["description", "name", "status"]);
 });
 
@@ -139,6 +183,7 @@ test("the home's mock sets: 0, 1, 10, 50, in the API shape, always with createdA
     const list = await json("GET", `/mock/home/${n}`);
     assert.equal(list.length, n);
     assert.ok(list.every((a) => a.id && a.draft.name && a.createdAt && a.updatedAt && "description" in a.draft));
+    assert.ok(list.every((a) => Array.isArray(a.dna) && a.dna.every((f) => f.id && f.sizeBytes > 0 && f.topic && !Number.isNaN(Date.parse(f.addedAt)))));
   }
   const fifty = await json("GET", "/mock/home/50");
   assert.ok(fifty.some((a) => a.draft.status === "learning"));

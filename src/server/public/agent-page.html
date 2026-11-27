@@ -22,14 +22,30 @@
   .back:hover { color: var(--text); }
   main { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 48px)); text-align: center; }
   h1 { margin: 0; font-size: 34px; font-weight: 500; letter-spacing: .02em; overflow-wrap: anywhere; }
+  .logo { display: block; width: 112px; height: 112px; margin: 0 auto 16px; }
+  .logo[hidden] { display: none; }
   p { margin: 8px 0 0; color: var(--quiet); overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
 <a class="back" href="/">← Agents</a>
-<main aria-live="polite"><h1 id="name"></h1><p id="desc"></p></main>
+<main aria-live="polite"><canvas class="logo" id="logo" aria-hidden="true" hidden></canvas><h1 id="name"></h1><p id="desc"></p></main>
 <script type="module">
 import { nameOf, descOf } from '/agent-list.js';
+import { createDna } from '/fireflies-dna.js';
+const mq = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mq.matches, busy = true;
+mq.addEventListener('change', e => { reduced = e.matches; busy = true; });
+// The agent's face: the same Fireflies DNA cluster as its row on the home, just bigger.
+function face(a) {
+  const cv = document.getElementById('logo'); cv.hidden = false;
+  const logo = createDna(cv, { name: nameOf(a), files: a.dna || [] });
+  window.dnaLogos = [{ id: a.id, name: nameOf(a), logo }];   // read-only, for checks
+  cv.addEventListener('pointerenter', () => { logo.notice(reduced); busy = true; });
+  let last = performance.now();
+  const frame = t => { const dt = Math.min(.05, (t - last) / 1000); last = t; if (!reduced || busy) busy = logo.draw(t, dt, reduced); requestAnimationFrame(frame); };
+  requestAnimationFrame(t => { last = t; frame(t); });
+}
 const id = decodeURIComponent(location.pathname.split('/').pop() || '');
 const demo = new URLSearchParams(location.search).get('demo');
 const back = document.querySelector('.back'); if (demo != null) back.href = '/?demo=' + encodeURIComponent(demo);
@@ -37,7 +53,7 @@ const show = (name, desc) => { document.getElementById('name').textContent = nam
 try {
   const r = await fetch(demo != null ? '/mock/home/' + encodeURIComponent(demo) : '/api/agents');
   const a = r.ok ? (await r.json()).find(x => x.id === id) : null;
-  if (a) show(nameOf(a), descOf(a)); else show('This agent isn’t here', 'It may have been removed.');
+  if (a) { face(a); show(nameOf(a), descOf(a)); } else show('This agent isn’t here', 'It may have been removed.');
 } catch { show('Couldn’t open this agent', 'Go back and try again.'); }
 </script>
 </body>

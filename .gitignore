@@ -8,6 +8,7 @@ package-lock.json
 # Live walkthrough scratch (agent home it creates, local probes)
 .walkthrough-home/
 .scratch/
+.scratch-home/
 # Browser-check screenshots (scripts live in updates/*/checks/)
 .tmp-test/
 
