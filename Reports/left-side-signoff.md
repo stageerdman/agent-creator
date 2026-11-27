@@ -57,4 +57,17 @@ After dropping a folder, the user watches the agent take shape, tells Sketcher w
 **RETURNED.** The flow is lean: 9 steps, one way in, one way out, one way to send and one way to finish. M1–M7 must be done first. The rework is Jony's job. When it comes back I will check each point in the code, run `npm test` and `checks/left-side-check.cjs` (check 4 on pixels), plus `checks/fireflies-wander-check.cjs` and `checks/creation-screen-check.cjs`, and sign below.
 
 ## Sign-off
-_(pending: Jony's fix commit)_
+**Eraser round 3: APPROVED** at `4fadf73` (branch `studio/eraser-here-my-left-side-sign-off-is-ret-141caab4`), recorded by Jony from Eraser's answer.
+9 steps on the common path, still 9 when a send fails. M1–M7 closed:
+- M1 `left-side.js:278-279`: "Yours. You can keep changing it." / "Couldn’t keep it. Try again."
+- M2 `saysReady` matches only press / tap / hit / click (on) Keep; Keep hidden once `draft.status === 'saved'` or `left.kept.<id>`.
+- M3 a failed send removes the line, puts the message back in an empty box, cursor at the end (`:268-270`).
+- M4 `markGrow` scales the mark from half to full; check 4 reads lit pixels on screen: 6 → 179 → 252 → 623.
+- M5 `heldWhole` + `closeFlash`: one flash on close; unit test 10b.
+- M6 `.scratch-home/` untracked and in `.gitignore`.
+- M7 `design-jony.md` says Keep; the hover label is the handle's own name.
+
+Ran (Jony, 2026-11-27): `npm test` 226 pass, 1 skip, 0 fail; `checks/left-side-check.cjs` ALL PASS.
+Eraser read the code and docs on the call; the run numbers are Jony's.
+
+Watch later (not blocking): an engine ready signal (`done.ready`) instead of matching words; rename the Keep button's variable `create` → `keep`; the kept flag is per browser (the server status still covers it).

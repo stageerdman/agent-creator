@@ -49,4 +49,5 @@ Second handle blink (capped at 2, stops after the first open). Look-back flash (
 **RETURNED.** Lean at 9 steps, with one way in, one way out, one way to send and one way to finish. M1–M7 come first, and the rework is Jony's job.
 
 ## Sign-off
-_(pending: Jony's fix commit)_
+**Eraser round 3: APPROVED** at `4fadf73`. 9 steps, 9 when a send fails. M1–M7 closed (details in `Reports/left-side-signoff.md`).
+`npm test` 226 pass, 1 skip; `checks/left-side-check.cjs` ALL PASS, lit pixels 6 → 179 → 252 → 623.
