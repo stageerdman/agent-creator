@@ -1,24 +1,27 @@
-/* firefly-gather.js: the home dissolves into fireflies that fly into the plus.
+/* firefly-gather.js: the + is a call; the home's light gathers into the waiting ring.
  *
- *   import { gatherToPlus, isGathering } from '/firefly-gather.js';
- *   await gatherToPlus(rootEl, plusEl, { durationMs: 1200 });
+ *   import { gatherToRing, isGathering } from '/firefly-gather.js';
+ *   const { epoch } = await gatherToRing(rootEl, plusEl);          // D = 1000 ms
+ *   sessionStorage['glade.call'] = JSON.stringify({ epoch, t: Date.now() });
  *   location.href = '/new';
  *
- * Meaning: the plus calls, and the screen answers. The call spreads outward
- * from the plus, each part of the page it reaches turns into fireflies, and
- * they all swirl in on soft curves and become the plus. The plus glows once:
- * "here is where your new agent begins." Timing and feel: 02-merlin-motion.md.
+ * Meaning (Reports/one-flow-magic-moment.md §4): the call spreads outward from the plus, each part
+ * of the page it reaches turns into fireflies, and they swirl into the 30 slots of the ring that
+ * /new shows. 30 of them become the ring's flies; the rest merge into the nearest one. Nothing goes
+ * into the plus, and the plus does not glow.
  *
  * Rules this module keeps:
- * - It never blocks navigation. Any error resolves the promise at once, and a
- *   timer resolves it even if animation frames stop (hidden tab).
+ * - It never blocks navigation. Any error resolves at once ({ epoch: null }), and a timer resolves
+ *   it even if animation frames stop (hidden tab).
  * - One run at a time. A call while one is running returns the same promise.
- * - Reduced motion: a plain fade of 160 ms, no fireflies.
- * - Its own full-screen canvas, removed at the end. The faded UI is left
- *   faded (so nothing flashes back before /new paints) and is restored when
- *   the page comes back from the back/forward cache.
- * - The look is the original Fireflies one: same sprites, colours, flash().
+ * - Reduced motion: a plain fade of 160 ms, no fireflies; /new shows the ring at rest.
+ * - Its own full-screen canvas, kept after the run and still drawing the ring until the page goes,
+ *   so no frame shows neither. The faded UI and the ring are undone when the page comes back from
+ *   the back/forward cache.
+ * - The ring is drawn with firefly-orbit.js's own flies, places and sprite.
  */
+
+import { makeFlies, ringPos, dnaSprite, clampR, inOutQuad } from './firefly-orbit.js';
 
 export const MAX_FLIES = 400;
 const REDUCED_FADE_MS = 160;
@@ -36,9 +39,6 @@ const easeInOut = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 /* The real firefly flash: rise 120 ms ease-out, fall 900 ms ease-in. */
 function flash(dt) { if (dt < 0 || dt > 1020) return 0; if (dt < 120) return easeOut(dt / 120); const x = (dt - 120) / 900; return 1 - x * x; }
-/* The plus's answer: the same flash shape, squeezed into the last fifth of
- * the run so it is fully out by the end (nothing pops when the canvas goes). */
-function glowPulse(k) { const x = (k - .8) / .2; if (x <= 0 || x >= 1) return 0; return x < .3 ? easeOut(x / .3) : 1 - Math.pow((x - .3) / .7, 2); }
 
 let sprites = null;
 function sprite(doc, rgb, core) {
@@ -176,38 +176,50 @@ function fadeOut(el, ms, delay) {
   return null;
 }
 
+let kept = null;             // the ring canvas left standing after a run, until the page goes
+
+/* Back to the home (the back/forward cache): the UI exactly as it was, no ring over it. */
+export function restoreHome() {
+  while (leftFaded.length) { try { leftFaded.pop().cancel(); } catch { /* ignore */ } }
+  if (kept) { try { kept.stop(); } catch { /* ignore */ } kept = null; }
+}
+
 function hookRestore(win) {
   if (restoreHooked || typeof win.addEventListener !== 'function') return;
   restoreHooked = true;
-  // Back to the home from /new: bring the UI back exactly as it was.
-  win.addEventListener('pageshow', e => {
-    if (!e.persisted) return;
-    while (leftFaded.length) { try { leftFaded.pop().cancel(); } catch { /* ignore */ } }
-  });
+  win.addEventListener('pageshow', e => { if (e.persisted) restoreHome(); });
+  win.addEventListener('pagehide', () => { if (kept) kept.pause(); });
 }
 
-export function gatherToPlus(rootEl, plusEl, options = {}) {
+/* The + is a call: the home's light flies into the 30 slots of the ring that /new shows.
+ * Resolves { epoch }: the wall-clock ms at which the ring stands (t = D). /new's orbit takes that
+ * epoch, so its first frame is this run's last: same flies, same places, same sprite, same light.
+ * The canvas is not removed at the end; it keeps drawing the ring until the page goes. */
+export function gatherToRing(rootEl, plusEl, options = {}) {
   if (running) return running;
   active = true;
   const run = new Promise(resolve => {
-    let done = false, canvas = null, raf = 0, safety = 0;
+    let done = false, canvas = null, raf = 0, safety = 0, epoch = null;
     const win = globalThis;
-    const finish = () => {
+    const stopFrames = () => { try { if (raf && win.cancelAnimationFrame) win.cancelAnimationFrame(raf); } catch { /* ignore */ } raf = 0; };
+    const drop = () => { stopFrames(); try { canvas && canvas.remove(); } catch { /* ignore */ } canvas = null; };
+    const finish = ok => {
       if (done) return; done = true;
-      try { if (raf && win.cancelAnimationFrame) win.cancelAnimationFrame(raf); } catch { /* ignore */ }
       clearTimeout(safety);
-      try { canvas && canvas.remove(); } catch { /* ignore */ }
-      active = false; running = null; resolve();
+      if (!ok || !canvas) { drop(); epoch = ok ? epoch : null; }
+      active = false; running = null; resolve({ epoch });
     };
     try {
-      const D = Math.max(0, Number(options.durationMs ?? 1200) || 0);
+      const D = Math.max(0, Number(options.durationMs ?? 1000) || 0);
       const reduced = options.reducedMotion ?? prefersReduced();
       const doc = win.document;
       hookRestore(win);
+      if (kept) { kept.stop(); kept = null; }
 
       if (reduced) {
+        // No flight: the home fades, /new shows the ring at rest.
         fadeOut(rootEl, REDUCED_FADE_MS, 0);
-        safety = setTimeout(finish, REDUCED_FADE_MS);
+        safety = setTimeout(() => finish(true), REDUCED_FADE_MS);
         return;
       }
 
@@ -215,6 +227,8 @@ export function gatherToPlus(rootEl, plusEl, options = {}) {
       const [px, py] = centreOf(plusEl, vw, vh);
       const pts = samplePoints(rootEl, { max: options.maxFlies ?? MAX_FLIES, points: options.points, vw, vh });
       const { FLY, WARM } = getSprites(doc);
+      const DNA = dnaSprite(doc);
+      const ring = makeFlies();
 
       canvas = doc.createElement('canvas');
       canvas.setAttribute('aria-hidden', 'true');
@@ -223,80 +237,117 @@ export function gatherToPlus(rootEl, plusEl, options = {}) {
       const ctx = canvas.getContext('2d');
       (doc.body || doc.documentElement).appendChild(canvas);
 
-      // The call spreads from the plus: near parts light first, far parts last.
-      let far = 1; for (const [x, y] of pts) far = Math.max(far, Math.hypot(x - px, y - py));
-      const flies = pts.map(([x, y], i) => {
-        const dx = px - x, dy = py - y, dist = Math.hypot(dx, dy), k = dist / far, j = Math.random();
-        const spawn = D * (.03 + .19 * k + .03 * j);                     // 36–300 ms at 1.2 s
-        const arrive = D * clamp(.56 + .28 * Math.pow(k, .8) + .04 * (Math.random() - .5), .52, .86);
-        // one shared turn for every path, so the streams swirl in together
-        const bend = dist * (.16 + .2 * Math.random());
-        const nx = dist ? -dy / dist : 0, ny = dist ? dx / dist : 0;
-        return {
-          x0: x, y0: y, cx: (x + px) / 2 + nx * bend, cy: (y + py) / 2 + ny * bend,
-          spawn, leave: spawn + D * .07, arrive, img: i % 3 === 2 ? WARM : FLY,
-          wob: Math.random() * 6.283, size: 16 + Math.random() * 6,
-        };
-      });
+      const flies = planFlights(pts, ring, { px, py, vw, vh, D });
+      for (const f of flies) f.img = f.id % 3 === 2 ? WARM : FLY;
 
       // The real UI goes as the call reaches it: quick, gentle ease-in.
       fadeOut(rootEl, D * .28, D * .04);
 
-      // The plus answers: it warms as fireflies land, then one soft pulse.
-      if (plusEl && typeof plusEl.animate === 'function') {
-        const off = 'drop-shadow(0 0 0 rgba(216,242,106,0))';
-        plusEl.animate([
-          { filter: off, transform: 'scale(1)', offset: 0 },
-          { filter: 'drop-shadow(0 0 6px rgba(216,242,106,.55))', transform: 'scale(1)', offset: .8 },
-          { filter: 'drop-shadow(0 0 14px rgba(246,255,214,.9))', transform: 'scale(1.08)', offset: .87 },
-          { filter: off, transform: 'scale(1)', offset: 1 },
-        ], { duration: D, easing: 'linear' });
-      }
-
       const t0 = win.performance ? win.performance.now() : Date.now();
+      epoch = Date.now() + D;
+      const drawRing = tt => {
+        for (const f of ring) {
+          const p = ringPos(f, tt, vw, vh);
+          const r = clampR(f.r0);
+          ctx.globalAlpha = f.a0; ctx.drawImage(DNA, p.x - r, p.y - r, 2 * r, 2 * r);
+        }
+      };
       const draw = now => {
-        if (done) return;
+        raf = 0;
+        if (!canvas) return;
         try {
           const t = now - t0;
+          if (!Number.isFinite(t)) throw new Error('no time');
           ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, vw, vh);
           ctx.globalCompositeOperation = 'lighter';
-          let landed = 0;
-          for (const f of flies) {
-            if (t < f.spawn) continue;
-            if (t >= f.arrive) { landed++; continue; }
-            const lit = flash(t - f.spawn);                       // it lights up where the UI was
-            let x = f.x0, y = f.y0, size = f.size, alpha = .34 + .62 * lit;
-            if (t > f.leave) {
-              const u = easeInOut(clamp((t - f.leave) / (f.arrive - f.leave), 0, 1)), v = 1 - u;
-              x = v * v * f.x0 + 2 * v * u * f.cx + u * u * px;
-              y = v * v * f.y0 + 2 * v * u * f.cy + u * u * py;
-              const w = Math.sin(t / 140 + f.wob) * 3 * v;          // a living wobble, gone at the end
-              x += w; y -= w * .6;
-              if (u > .82) { const e = (u - .82) / .18; size *= 1 - .6 * e; alpha *= 1 - .7 * e; }  // drawn in
-            } else {
-              y -= (t - f.spawn) * .012;                            // a breath of lift before it goes
-            }
-            ctx.globalAlpha = clamp(alpha, 0, 1);
-            ctx.drawImage(f.img, x - size / 2, y - size / 2, size, size);
-          }
-          // the light gathering at the plus
-          const fill = flies.length ? landed / flies.length : clamp(t / D, 0, 1);
-          const pulse = glowPulse(t / D);
-          const halo = 28 + 26 * fill + 30 * pulse;
-          ctx.globalAlpha = clamp(.15 * fill + .55 * pulse, 0, .8);
-          if (ctx.globalAlpha > .01) ctx.drawImage(FLY, px - halo / 2, py - halo / 2, halo, halo);
+          if (t >= D) drawRing(t - D);                               // the ring stands; /new goes on from here
+          else for (const f of flies) drawFly(ctx, f, t, D, vw, vh, DNA);
           ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-          if (t >= D) return finish();
+          if (t >= D) finish(true);
           raf = win.requestAnimationFrame(draw);
-        } catch { finish(); }
+        } catch { if (done) drop(); else finish(false); }
+      };
+      kept = {
+        stop: drop,
+        pause: stopFrames,
       };
       raf = win.requestAnimationFrame(draw);
       // Frames can stop (hidden tab, busy main thread). Navigation never waits on them.
-      safety = setTimeout(finish, D + 250);
+      safety = setTimeout(() => finish(true), D + 250);
     } catch {
-      finish();
+      finish(false);
     }
   });
   if (active) running = run;   // an instant error already finished it
   return run;
+}
+
+/* Who flies where (pure, so it can be tested). Each of the 30 ring slots takes the nearest spawn
+ * point: that firefly becomes the orbit fly. Every other one flies to the nearest slot and merges
+ * into it. Targets are the slot's place at the arrival time (tt = arrive - D), so they land moving. */
+export function planFlights(pts, ring, { px, py, vw, vh, D, rand = Math.random }) {
+  let far = 1; for (const [x, y] of pts) far = Math.max(far, Math.hypot(x - px, y - py));
+  const flies = pts.map(([x, y], id) => {
+    const k = Math.hypot(px - x, py - y) / far, j = rand();
+    const spawn = D * (.03 + .19 * k + .03 * j);                        // the call spreads from the plus
+    const arrive = D * clamp(.56 + .28 * Math.pow(k, .8) + .04 * (rand() - .5), .52, .86);
+    return { id, x0: x, y0: y, spawn, leave: spawn + D * .07, arrive, wob: rand() * 6.283, size: 16 + rand() * 6, slot: -1, own: false };
+  });
+  // the 30: greedy, each slot the nearest free point (seen from where it will be at about .7 D)
+  const mid = ring.map(f => ringPos(f, -.3 * D, vw, vh));
+  const free = new Set(flies.map(f => f.id));
+  ring.forEach((_, s) => {
+    let best = -1, bd = Infinity;
+    for (const id of free) { const f = flies[id], d = Math.hypot(f.x0 - mid[s].x, f.y0 - mid[s].y); if (d < bd) { bd = d; best = id; } }
+    if (best >= 0) { free.delete(best); flies[best].slot = s; flies[best].own = true; }
+  });
+  // a slot no point reached (a near-empty home) is lit from the plus itself
+  ring.forEach((_, s) => {
+    if (flies.some(f => f.own && f.slot === s)) return;
+    flies.push({ id: flies.length, x0: px, y0: py, spawn: 0, leave: D * .07, arrive: D * .7, wob: rand() * 6.283, size: 16, slot: s, own: true });
+  });
+  for (const f of flies) {
+    if (!f.own) {
+      let bd = Infinity;
+      mid.forEach((m, s) => { const d = Math.hypot(f.x0 - m.x, f.y0 - m.y); if (d < bd) { bd = d; f.slot = s; } });
+    }
+    const rf = ring[f.slot], end = ringPos(rf, f.arrive - D, vw, vh);
+    // one shared turn for every path, so the streams swirl in together
+    const dx = end.x - f.x0, dy = end.y - f.y0, dist = Math.hypot(dx, dy), bend = dist * (.16 + .2 * rand());
+    const nx = dist ? -dy / dist : 0, ny = dist ? dx / dist : 0;
+    Object.assign(f, { rf, cx: (f.x0 + end.x) / 2 + nx * bend, cy: (f.y0 + end.y) / 2 + ny * bend });
+  }
+  return flies;
+}
+
+/* One firefly of the call at time t (ms since the press). */
+function drawFly(ctx, f, t, D, vw, vh, DNA) {
+  if (t < f.spawn) return;
+  if (!f.own && t >= f.arrive) return;                                // merged into its slot
+  const r = clampR(f.rf.r0);
+  if (f.own && t >= f.arrive) {                                        // riding the ring, already the orbit fly
+    const p = ringPos(f.rf, t - D, vw, vh);
+    ctx.globalAlpha = f.rf.a0; ctx.drawImage(DNA, p.x - r, p.y - r, 2 * r, 2 * r); return;
+  }
+  const lit = flash(t - f.spawn);                                      // it lights up where the UI was
+  let x = f.x0, y = f.y0, size = f.size, alpha = .34 + .62 * lit, u = 0;
+  if (t > f.leave) {
+    u = inOutQuad(clamp((t - f.leave) / (f.arrive - f.leave), 0, 1)); const v = 1 - u;
+    const end = ringPos(f.rf, t - D, vw, vh);                           // the slot moves; the path bends to it
+    const ex = end.x, ey = end.y;
+    x = v * v * f.x0 + 2 * v * u * f.cx + u * u * ex;
+    y = v * v * f.y0 + 2 * v * u * f.cy + u * u * ey;
+    const w = Math.sin(t / 140 + f.wob) * 3 * v;                        // a living wobble, gone at the end
+    x += w; y -= w * .6;
+  } else {
+    y -= (t - f.spawn) * .012;                                         // a breath of lift before it goes
+  }
+  if (!f.own) {
+    if (u > .82) { const e = (u - .82) / .18; size *= 1 - .6 * e; alpha *= 1 - e; }   // merges, like a drop
+    ctx.globalAlpha = clamp(alpha, 0, 1); ctx.drawImage(f.img, x - size / 2, y - size / 2, size, size); return;
+  }
+  // the orbit fly: the call's glow turns into the ring's own dot over the second half of its path
+  const c = u <= .5 ? 0 : easeInOut((u - .5) / .5);
+  if (c < 1) { ctx.globalAlpha = clamp(alpha * (1 - c), 0, 1); const s = size * (1 - c) + 2 * r * c; ctx.drawImage(f.img, x - s / 2, y - s / 2, s, s); }
+  if (c > 0) { ctx.globalAlpha = f.rf.a0 * c; ctx.drawImage(DNA, x - r, y - r, 2 * r, 2 * r); }
 }

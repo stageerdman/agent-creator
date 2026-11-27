@@ -42,7 +42,10 @@ Spec: `Reports/one-flow-magic-moment.md` (§4–§7, numbers §10).
       `dnaSprite(doc)` exported; `release()` → `{ t, reduced, flies:[{i, ring, r0, a0, r}], at(i, t) → {x,y,tx,ty,v,r,a} }`
       (orbit clears its canvas and stops; caller's field draws from then); `restore()`; `TEXT_REST` .24, `WAKE` .8.
       `answer()`, logo, call dot, m = 6, first-light all deleted. new-agent.html still calls the old API (fixed in wiring step).
-- [ ] firefly-gather.js + agent-home.html + test
+- [x] firefly-gather.js + agent-home.html + test — `gatherToRing(root, plus, { durationMs = 1000 })` → `{ epoch }`
+      (null under Reduce Motion or on error); pure `planFlights(pts, ring, {px,py,vw,vh,D})`; `restoreHome()`
+      (pageshow persisted: un-fade + remove the kept ring canvas). gatherToPlus, plus glow, pulse, halo deleted.
+      Home writes `sessionStorage['glade.call'] = {epoch, t}` only when epoch is set.
 - [ ] file-intake.js + test (walker moved in)
 - [ ] creation-screen.js field adopt + pour + test
 - [ ] new-agent.html wiring

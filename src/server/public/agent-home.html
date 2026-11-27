@@ -104,7 +104,7 @@
 </a>
 
 <script type="module">
-import { gatherToPlus, isGathering } from './firefly-gather.js';
+import { gatherToRing, isGathering } from './firefly-gather.js';
 import { ageLabel, sortAgents, filterAgents, nameOf, descOf } from './agent-list.js';
 import { createDna } from './fireflies-dna.js';
 
@@ -198,13 +198,16 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 
-/* ---------- The plus: fireflies gather into it, then /new (02-merlin-motion.md) ---------- */
+/* ---------- The plus: a call; the home gathers into the ring, /new goes on from it (one-flow §4) ---------- */
 const plus = $('#plus');
 plus.addEventListener('click', async e => {
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;   // a new tab: no motion
   e.preventDefault();
   if (isGathering()) { location.href = '/new'; return; }                             // a second press skips the wait
-  try { await gatherToPlus($('#root'), plus); } finally { location.href = '/new'; }
+  let epoch = null;
+  try { ({ epoch } = await gatherToRing($('#root'), plus)); } catch { /* go anyway */ }
+  try { if (epoch) sessionStorage.setItem('glade.call', JSON.stringify({ epoch, t: Date.now() })); } catch { /* private mode */ }
+  location.href = '/new';
 });
 // ⌘N (Ctrl+N elsewhere): New agent, the usual Mac shortcut.
 addEventListener('keydown', e => {
