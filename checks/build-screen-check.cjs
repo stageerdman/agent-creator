@@ -247,7 +247,6 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
     ok(r.made === 1, `7. ${how}: exactly one agent made`, String(r.made));
     if (how === 'pick') ok(JSON.stringify(r.files) === JSON.stringify(['Recipes/bread.txt', 'Recipes/soup.md']), '7. pick: the folder\'s files, hidden file left out', JSON.stringify(r.files));
     else ok(r.files && r.files.length === 2, '7. drop: the dropped files', JSON.stringify(r.files));
-    // a second drop during first light does nothing
     // a second drop on the field lands in the agent (the menu's zones own it), never a second agent
     if (how === 'drop') { const n = await countAgents(); await drop(r.p, 'files'); await r.p.waitForTimeout(600); ok(await countAgents() === n, '7. a second drop makes no second agent'); }
     ok(r.p.errors.length === 0, `7. ${how}: no page errors`, JSON.stringify(r.p.errors));
