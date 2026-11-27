@@ -241,3 +241,50 @@ Details are in `research-roadmap-columbo.md` (same folder).
 | H8 | P3–P12 and the four other planned features each have a roadmap slot (1–10). | **met** (slotted) |
 
 E4 note for Jony: the `embedded` event **does not exist yet**, so E4 stays as it is for now.
+
+---
+
+## Eraser re-run (2026-11-28)
+
+Re-run on branch `studio/give-every-issue-an-owner-re-run-the-aud-fb0a7104` (HEAD `6433a94`), after Jony (`2e55d7a`, `8de1021`, `0a2fe92`), Merlin (`0623a88`, `73c4210`, `ec27a95`) and Columbo (research rows). Old rows above are left as written. This table lists only the rows that changed. Rows not listed keep their status and their owner above.
+
+**How I checked**
+- `npm test`: **260 tests, 259 pass, 1 skipped (live CLI), 0 fail**.
+- `checks/left-side-check.cjs` (Chrome + WebKit, real server, scratch home): **ALL PASS** (steps 1–8). Note: none of its steps press or expect **Create**.
+- `checks/agent-page-check.cjs` (Chrome + WebKit): **ALL PASS**, but it **stubs** `POST /api/agents/*/talk` with `page.route` (line 24). Against the real server the same request returns **404**, so I checked it by hand.
+- `checks/real-home-check.cjs webkit`: **ALL PASS**.
+
+| # | Was | Now | Evidence / one-line reason |
+|---|---|---|---|
+| C9 | missing | **met** | `agent-page.html` Edit (top right) → `/new?agent=id`; `new-agent.html:269-274` loads that agent straight into the split. agent-page-check C9 PASS. |
+| G1 | missing | **met** | Profile view with Good at / Medium / Not trained for; agent-page-check G1 PASS (Chrome + WebKit). |
+| G2 | missing | **met** | DNA view in order: Instructions, Made from, RAG files, Quality, one view at a time; agent-page-check G2 PASS. |
+| G4 | missing | **missing (regressed into dead UI)** | The talk box shows for a created agent, but `streamTalk` posts to `/api/agents/:id/talk`, which no route serves (`src/server/routes/` has agents, ask, material, mock only). On the real server that's a **404**, so every message fails. The browser check passes only because it fakes the endpoint. |
+| F14 | missing | **missing** | Same cause as G4: the formatted answer and the quiet "Used ·" line are only ever drawn from a stub. No real answer, and no record of what was used. |
+| F10 | partly | **missing (regression)** | `left-side.js` now shows Create only on a server `ready` event or `done.ready` (`2e55d7a`). But `src/server/routes/agents.mjs:30` sends `done { say, sessionId }` and nothing in `src/` sends `ready`. On the real app, Create **never appears**. Before, it appeared through the word match. No test or check drives a real server turn to Create. |
+| F12 | partly | **met** | The server sends one `allocate { file, section }` per changed file (`agents.mjs:29`, `0623a88`). left-side-check step 8: 6 allocates, 6 glowed and flew, Knowledge took each one. |
+| F13 | partly | **met** | The glow comes from each file's own allocate, not from "processed" (`73c4210`); test F13 and check step 8 PASS. |
+| G7 | partly | **met** | The magic list names only moments that exist on main (`ec27a95`). |
+| H9 | missing | **met** | Every open line in issues.txt names one owner, or is closed with a reason (`6433a94`). The CHAT ready flag line is reopened (the server never sends it), and the missing `/talk` route is filed. |
+| E4 | partly | **partly** | Owner Uncle Bob (slot 1): the `embedded` event doesn't exist yet. |
+| A11 / A12 / D8 / F15 / G5 / G8 / H8 / C8 | — | as in Columbo's table above | Research done. App work is planned, with owners. |
+| F8 / B7 | — | not re-judged here | They have their own items. |
+
+**Clutter and double paths (Jony's, Merlin's and Columbo's work)**
+- Agent page: one Edit, one Profile | DNA switch, one talk box. No second way to do any of them. Clean.
+- Left side: one arrow that opens and closes (no second close arrow, check step 3). One way to sort files (the chat sends allocate; there's no second sort control).
+- Home: exactly one way to start a new agent (the plus), and no old wording (real-home-check 2).
+- Wording: both pages say "Press Enter to try again". Consistent.
+- Watch-for (not blocking): the home row description shows raw markdown when a persona holds it (real-home-check row: `You help with **taxes**.`). Plain-text descriptions should drop the markers (`agent-list.js` descOf, or `shortDescription` on the server).
+
+### Verdict
+
+**RETURNED to Jony.** Two shipped controls answer to signals the server never sends: Create (F10) and Talk (G4/F14). On the real app, one never shows and the other always fails. That's worse than before for F10. Precise fixes:
+
+1. **F10:** Create must come from a signal the server really sends. Agree it with Uncle Bob, who owns the server: for example the creator's draft block carries `ready: true`, and `agents.mjs` passes it on as `done.ready` or a `ready` event. Add a server test that a ready turn sends the flag, and a left-side-check step that drives one mocked engine turn on the real server until Create shows, then presses it. Until the server sends it, don't ship a client that waits for it.
+2. **G4/F14:** either the real `POST /api/agents/:id/talk` exists (Uncle Bob: route, engine call over the agent's DNA, `used` in `done`, talks saved per agent, with a server test), or the talk box is hidden until it does. No dead UI. agent-page-check must hit the real route (with a mocked engine), not `page.route`.
+3. **Watch-for:** strip markdown from home descriptions (see above).
+
+Target: every row except E4, F15 and the planned research rows reads **met**. Then I re-check and sign.
+
+— Eraser
