@@ -222,3 +222,22 @@ Every partly or missing row, plus Eraser's watch-for notes, has exactly one owne
 - **Merlin:** F12 (show files moving when the chat allocates them), F13 (per-file glow on allocation), G7 (the magic list names only moments that exist on main).
 - **Columbo:** A11 (RAG plan), A12 (txt memory), C8 (retire rule 3 in the roadmap), D8 (one-line start), F15 (what "access to files" means), G5 (which of Know/Identity/Share the MVP needs), G8 (Features list stops marking the full UX as shipped), H8 (planned features get roadmap slots).
 - **Eraser:** H9 (an owner for every open line in issues.txt).
+
+---
+
+## Research rows: what changed (Columbo, 2026-11-28)
+
+Details are in `research-roadmap-columbo.md` (same folder).
+
+| # | What changed | Row now reads |
+|---|---|---|
+| A11 | RAG plan written. "Really embedded" means: extracted, chunked, embedded locally, stored per agent, and found again by a search. The server then sends `{type:"embedded", file}`. Owner: Uncle Bob (slot 1). | **planned**: the research part is met; the app part is still missing until slot 1 ships |
+| A12 | txt memory means a `.txt` copy of every used source, kept per agent (step 1 of A11). Owner: Uncle Bob (slot 1). | **planned**: the research part is met |
+| C8 | Rule 3 marked RETIRED in `AGENT-SELECTION-HOME/00-roadmap.md`. Rule 2 (the look) still holds. | **met** (rule retired) |
+| D8 | Ruling: out of the MVP for now (folder-first was the user's own design). Owner: Jony (slot 5). | **planned, out of MVP** |
+| F15 | "Access" means the Sketcher chat can see, move, edit and, when asked, **read** the files. Reading on request is the gap. Owner: Uncle Bob (slot 2). | **partly**: the meaning is settled; the read-on-request part is still missing |
+| G5 | Know = C9 (no separate screen). Identity → slot 7. Share → slot 6. Profile, DNA and Talk come back on `/agents/:id` (Jony). | **met** (scoped); later screens planned |
+| G8 | Features: "Full UX prototype" goes back to *now*. Sketch Profile and DNA show their real progress. Every remaining journey has a slot. | **met** (list corrected) |
+| H8 | P3–P12 and the four other planned features each have a roadmap slot (1–10). | **met** (slotted) |
+
+E4 note for Jony: the `embedded` event **does not exist yet**, so E4 stays as it is for now.
