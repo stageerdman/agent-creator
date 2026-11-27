@@ -44,7 +44,7 @@ export function allocations(files, changed) {
 export function sectionFiles(files, feed) {
   return files
     .filter((file) => file.feeds.includes(feed) || (file.baked ?? []).includes(feed))
-    .map((file) => ({ path: file.path, name: file.name, size: file.size ?? null, state: sectionState(file, feed) }));
+    .map((file) => ({ path: file.path, name: file.name, size: file.size ?? null, state: sectionState(file, feed), text: file.text ?? null }));
 }
 
 const sectionState = (file, feed) => (file.feeds.includes(feed) ? stateOf(file, feed) : "removed");

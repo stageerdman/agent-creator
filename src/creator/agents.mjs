@@ -7,6 +7,7 @@ import { createMaterial } from "./agentMaterial.mjs";
 import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 import { createTalk } from "./agentTalk.mjs";
+import { createSourceMemory } from "./sourceText/memory.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
 // instructions, cut to about 80 characters. Empty when neither has text.
@@ -35,13 +36,16 @@ export const withTurn = (chat = [], message, say) =>
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
 // Files, sections and texts are their own use cases (agentMaterial.mjs,
-// agentTexts.mjs), offered here so callers hold one object.
-export function createAgents({ store, engine, now = () => new Date(), readSource }) {
-  const material = createMaterial({ store, now });
+// agentTexts.mjs), offered here so callers hold one object. `readOriginal`
+// reads a file's original bytes once, to keep its copy (sourceText/memory.mjs).
+export function createAgents({ store, engine, now = () => new Date(), readOriginal }) {
+  const memory = createSourceMemory({ store, readOriginal });
+  const material = createMaterial({ store, memory, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),
-    ...createTalk({ store, engine, readSource }),
+    ...createTalk({ store, engine, memory }),
+    putSource: memory.putSource,
 
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
@@ -71,9 +75,10 @@ export function createAgents({ store, engine, now = () => new Date(), readSource
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
       const chat = withTurn(latest.chat, message, turn.say);
       await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
+      const files = routed.changed.length ? await memory.copySources(id, { traceId }) : routed.files;
       // A kept agent is never "ready to create" again, nor is an empty draft.
       const ready = turn.ready === true && draft.status !== "saved" && !isEmpty(draft);
-      return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId, ready };
+      return { say: turn.say, draft, changed, files, filesChanged: routed.changed, sessionId: turn.sessionId, ready };
     },
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.

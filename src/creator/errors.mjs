@@ -15,6 +15,17 @@ export class AgentNotFound extends NotFound {
   }
 }
 
+// A file with no plain text in it (binary, empty, a broken PDF). `reason` is
+// the short word the file record keeps so the screen can say why.
+export class CantExtract extends Error {
+  constructor(name, reason, cause) {
+    super(`No text in ${name}: ${reason}.`, cause ? { cause } : undefined);
+    this.name = "CantExtract";
+    this.kind = "cant-extract";
+    this.reason = reason;
+  }
+}
+
 // Input the creator can't use, e.g. a file with no path.
 export class BadInput extends Error {
   constructor(message) {

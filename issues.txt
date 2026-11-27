@@ -7,7 +7,20 @@
       on 2026-11-28 in updates/2026-11-27 REQUIREMENTS-AUDIT - OPEN/
       research-roadmap-columbo.md (A11/A12): server sends
       {type:"embedded", file}; then E4 (Knowledge bright only when
-      embedded) can follow. Owner: Uncle Bob (roadmap slot 1).
+      embedded) can follow. Owner: Uncle Bob (roadmap slot 1). Step 1
+      done 2026-11-28: every used file has a plain-text copy at
+      <home>/agents/<id>/sources/<path>.txt (updates/2026-11-28 TXT-MEMORY);
+      embedding/chunking should read those copies.
+
+- [ ] Browser drops send no bytes yet, so a file dropped on the page (no
+      disk path) gets no .txt copy. The server takes them: PUT
+      /api/agents/:id/sources?path=<rel> with the raw file as body →
+      { path, text }. Wire file-intake.js to send it after POST .../files.
+      Owner: Jony.
+
+- [ ] A .txt copy made from disk is not refreshed when its original
+      changes later (it is kept on purpose so moves don't break the agent).
+      Decide whether a re-scan should refresh it. Owner: Uncle Bob.
 
 - [ ] SKILL.md and references/ are in Chinese (started as a verbatim vendor
       copy of upstream nuwa-skill, then deliberately forked 2026-11-05 — see

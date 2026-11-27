@@ -17,5 +17,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.6"
+  },
+  "dependencies": {
+    "unpdf": "^2.2.3"
   }
 }

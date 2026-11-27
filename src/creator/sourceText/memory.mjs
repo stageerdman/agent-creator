@@ -1,0 +1,82 @@
+// The agent's own copy of every file it uses: plain text kept at
+// `sources/<path>.txt` in its folder, so nothing depends on the original
+// staying where it was. Each file records how its copy went in `text`:
+// "ok", or the reason it has none ("binary", "empty", "unreadable-pdf").
+
+import { readFile } from "node:fs/promises";
+import { CantExtract, NotFound } from "../errors.mjs";
+import { normalPath } from "../files.mjs";
+import { createLogger } from "../../log/logger.mjs";
+import { extractPlainText } from "./extract.mjs";
+
+const log = createLogger("sourceMemory");
+
+export const sourceCopyOf = (path) => `sources/${path}.txt`;
+
+const isUsed = (file) => !file.removed && file.feeds.length > 0;
+const needsCopy = (file) => isUsed(file) && !file.text && file.source;
+
+// `readOriginal(absolutePath)` → bytes; passed in so tests need no real files.
+export function createSourceMemory({ store, readOriginal = readFile }) {
+  // Writes the copy, → the `text` mark. Only CantExtract becomes a mark.
+  async function keepText(id, path, bytes) {
+    try {
+      await store.writeText(id, sourceCopyOf(path), await extractPlainText(path, bytes));
+      return "ok";
+    } catch (error) {
+      if (!(error instanceof CantExtract)) throw error;
+      return error.reason;
+    }
+  }
+
+  // Marks are put on the list as it is *now*: copying takes a while.
+  async function saveMarks(id, marks) {
+    if (!marks.size) return (await store.loadAgent(id)).files ?? [];
+    const latest = await store.loadAgent(id);
+    const files = (latest.files ?? []).map((file) => (marks.has(file.path) ? { ...file, text: marks.get(file.path) } : file));
+    await store.saveDraft(id, { files });
+    return files;
+  }
+
+  // An original that can't be read now (moved, no access) gets no mark,
+  // so the next change tries again.
+  async function copyOne(id, file, traceId) {
+    let bytes;
+    try {
+      bytes = await readOriginal(file.source);
+    } catch (error) {
+      log.warn("copySources", "original not readable, will retry", { id, path: file.path, error, traceId });
+      return null;
+    }
+    return keepText(id, file.path, bytes);
+  }
+
+  return {
+    // Copies every used file that has an original on disk and no copy yet. → files.
+    async copySources(id, { traceId } = {}) {
+      const record = await store.loadAgent(id);
+      const marks = new Map();
+      for (const file of (record.files ?? []).filter(needsCopy)) {
+        const mark = await copyOne(id, file, traceId);
+        if (mark) marks.set(file.path, mark);
+      }
+      return saveMarks(id, marks);
+    },
+
+    // Content the page hands over for a file already in the list. → { path, text }.
+    async putSource(id, path, bytes) {
+      const clean = normalPath(path);
+      const record = await store.loadAgent(id);
+      if (!(record.files ?? []).some((file) => file.path === clean)) throw new NotFound(`No file "${clean}" in this agent.`);
+      const text = await keepText(id, clean, bytes);
+      await saveMarks(id, new Map([[clean, text]]));
+      return { path: clean, text };
+    },
+
+    readCopy: (id, path) => store.readText(id, sourceCopyOf(path)),
+
+    async forgetCopies(id, paths) {
+      for (const path of paths) await store.deleteText(id, sourceCopyOf(path));
+    },
+  };
+}

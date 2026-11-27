@@ -3,7 +3,7 @@
 // (agentMaterial.mjs, agentTexts.mjs). A section is "system-prompt",
 // "knowledge" or "skill:<skillId>" (encode the colon or not, both work).
 
-import { BadRequest, readJson, requireFiles, sendJson, streamEvents } from "../http.mjs";
+import { BadRequest, readBytes, readJson, requireFiles, sendJson, streamEvents } from "../http.mjs";
 
 export function materialRoutes(agents) {
   return {
@@ -26,6 +26,13 @@ export function materialRoutes(agents) {
         const onFiles = (files) => send("files", { files });
         send("done", await agents.scan(params.id, paths, { onFiles, signal }));
       });
+    },
+
+    // A file the page read itself (no path on disk): raw bytes, ?path=notes/a.pdf
+    // → { path, text } with text "ok" or why no .txt copy could be made.
+    "PUT /api/agents/:id/sources": async (req, res, { params, query }) => {
+      const path = requireQuery(query, "path");
+      sendJson(res, 200, await agents.putSource(params.id, path, await readBytes(req)));
     },
 
     "GET /api/agents/:id/sections/:section/files": async (_req, res, { params }) =>

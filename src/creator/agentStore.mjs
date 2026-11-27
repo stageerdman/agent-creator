@@ -7,7 +7,8 @@
 // `talk` is the user's talk with the kept agent: [{ who, text, used? }].
 // `files` is the DNA file list (see files.mjs): paths, sizes, feeds and
 // added-at stamps, never content. Texts the agent is built into (its system
-// prompt, knowledge, skill bodies) are files in the same folder (readText).
+// prompt, knowledge, skill bodies) are files in the same folder (readText),
+// and so is the plain-text copy of every used file (sourceText/memory.mjs).
 
 import { randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -86,6 +87,11 @@ export function createAgentStore({ home = defaultHome(), now = () => new Date() 
 
     async writeText(id, rel, text) {
       await writeAtomic(await textFileOf(id, rel), text);
+    },
+
+    // Never written is fine: deleting is idempotent.
+    async deleteText(id, rel) {
+      await rm(await textFileOf(id, rel), { force: true });
     },
 
     async markSaved(id) {

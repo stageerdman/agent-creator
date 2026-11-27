@@ -1,7 +1,8 @@
 // Small HTTP helpers shared by the routes: JSON bodies in, JSON or
 // Server-Sent Events out.
 
-const MAX_BODY_BYTES = 1_000_000;
+const MAX_JSON_BYTES = 1_000_000;
+const MAX_UPLOAD_BYTES = 50_000_000;
 
 export class BadRequest extends Error {
   constructor(message) {
@@ -10,12 +11,20 @@ export class BadRequest extends Error {
   }
 }
 
-export async function readJson(req) {
-  let body = "";
+// The raw request body (an uploaded file), refused past `maxBytes`.
+export async function readBytes(req, maxBytes = MAX_UPLOAD_BYTES) {
+  const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    body += chunk;
-    if (body.length > MAX_BODY_BYTES) throw new BadRequest("Request body too large.");
+    size += chunk.length;
+    if (size > maxBytes) throw new BadRequest("Request body too large.");
+    chunks.push(chunk);
   }
+  return Buffer.concat(chunks);
+}
+
+export async function readJson(req) {
+  const body = (await readBytes(req, MAX_JSON_BYTES)).toString("utf8");
   try {
     return JSON.parse(body || "{}");
   } catch {

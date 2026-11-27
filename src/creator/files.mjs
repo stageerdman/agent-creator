@@ -3,7 +3,9 @@
 // reads what is inside. Pure functions, so the server, tests and the page
 // agree on what a route means.
 //
-// File: { path, name, size, feeds, addedAt, source?, baked?, removed? }.
+// File: { path, name, size, feeds, addedAt, source?, baked?, removed?, text? }.
+// `text` is "ok" once its plain-text copy is kept, else why it has none
+// (sourceText/memory.mjs).
 // `path` is relative to what the user dropped or picked ("notes/week 1.md")
 // and is the file's identity. `addedAt` (ISO) is when it joined; files saved
 // before it was kept have none. `source` is its absolute place on disk when a
