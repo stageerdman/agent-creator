@@ -87,17 +87,18 @@ export const blinkLevel = (dt, reduced) => reduced ? (dt >= 0 && dt < STILL_BLIN
 export const markGrow = (cur, whole) => !(whole > 0) || cur >= whole ? 1 : .5 + .5 * Math.sqrt(Math.max(0, cur) / whole);
 export const dotsOf = list => Math.min(PLACED, (list || []).reduce((n, f) => n + dotsFor(f.sizeBytes), 0));
 
-/* Sketcher proposes Keep in the creator's own words, "press Keep" (or tap / hit / click Keep). */
-export const saysReady = text => /\b(press|tap|hit|click)\s+(on\s+)?keep\b/i.test(String(text || ''));
+/* The server says the draft is ready to create: `event: ready` {ready:true}, or done {ready:true}.
+   A real flag from the engine, never guessed from Sketcher's words. */
+export const isReady = (event, data) => !!data && data.ready === true && (event === 'ready' || event === 'done');
 
-/* The agent is kept (the server's draft status "saved"). */
+/* The agent is created (the server's draft status "saved"). */
 export const isKept = a => !!(a && a.draft && a.draft.status === 'saved');
 
 /* Keep happens once: never again once the draft is saved (or this browser saw it kept). */
 export const kept = (store, a) => isKept(a) || (!!a && store['left.kept.' + a.id] === '1');
 
-/* Show Keep: only when Sketcher proposes it and the agent is not and never was kept. */
-export const showKeep = (text, kept) => !kept && saysReady(text);
+/* Show Create: only when the server says ready and the agent is not and never was created. */
+export const showCreate = (ready, kept) => !kept && !!ready;
 
 /* Server-sent events, as text arrives: → [{ event, data }] and the unfinished rest. */
 export function parseEvents(buf) {
@@ -122,17 +123,19 @@ export const sortLeave = (t, last) => Math.max(t + WAKE_MS, last + SORT_GAP);
 
 /* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
    onText(all text so far) as it streams; onChange(event) when the draft or the files changed;
-   onAllocate({ file, section }) once per file Sketcher sorted (after files).
+   onAllocate({ file, section }) once per file Sketcher sorted (after files);
+   onReady() once when the server says the draft can be created (event ready, or done.ready).
    → Sketcher's whole answer. Throws on any failure (no answer counts as one). */
-export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {}, onAllocate = () => {} }) {
+export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {}, onAllocate = () => {}, onReady = () => {} }) {
   const r = await fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
   if (!r.ok || !r.body) throw new Error(`chat: status ${r.status}`);
   const rd = r.body.getReader(), dec = new TextDecoder();
-  let buf = '', text = '';
+  let buf = '', text = '', ready = false;
   for (;;) {
     const { value, done } = await rd.read(); if (done) break;
     const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
     for (const { event, data } of out.events) {
+      if (!ready && isReady(event, data)) { ready = true; onReady(); }
       if (event === 'delta' && data && data.text) onText(text += data.text);
       else if (event === 'files' || event === 'draft') onChange(event);
       else if (event === 'allocate' && data && data.file) onAllocate({ file: data.file, section: data.section || 'none' });
@@ -295,8 +298,9 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     const onText = text => { say(reply, text); reply.classList.remove('wait'); reply.classList.add('md'); log.scrollTop = log.scrollHeight; };
     try {
       const onChange = ev => { pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
-      const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate: sortFile });
-      if (showKeep(text, wasKept)) create.hidden = false;
+      let ready = false;
+      await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate: sortFile, onReady: () => { ready = true; } });
+      if (showCreate(ready, wasKept)) create.hidden = false;
     } catch {
       // The message goes back in the box, so Enter tries again (no retyping, no retry button).
       mine.remove(); if (!box.value) box.value = message;
@@ -309,8 +313,8 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     create.disabled = true;
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/save`, { method: 'POST' });
-      if (!r.ok) throw new Error(); wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
-    } catch { line('sketcher err', 'Couldn’t keep it. Try again.'); }
+      if (!r.ok) throw new Error(); wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Created. You can keep changing it.');
+    } catch { line('sketcher err', 'Couldn’t create it. Try again.'); }
     create.disabled = false;
   });
 

@@ -132,6 +132,6 @@ test("the turn message lists file paths and feeds, never content", () => {
 test("after Keep the prompt says so and drops the Keep pointer", () => {
   const prompt = buildTurnMessage({ message: "hi", draft: draft({ status: "saved" }) });
   assert.match(prompt, /status="kept"/);
-  assert.match(prompt, /already pressed Keep/);
+  assert.match(prompt, /already pressed Create/);
   assert.match(prompt, /hand since you last changed them: none\./);
 });

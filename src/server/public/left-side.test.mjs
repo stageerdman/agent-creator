@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showKeep, isKept, timings, blinkLevel,
-  saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
+  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showCreate, isKept, timings, blinkLevel,
+  isReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
   menuSectionOf, glowLevel, sortLeave, streamChat, GLOW_MS, TOOK_MS, SORT_GAP, STILL_BLINK,
 } from './left-side.js';
 
@@ -122,9 +122,10 @@ test('10b. a whole flash while the panel is open is held: ONE flash plays on clo
   assert.equal(closeFlash({ held: false, changed: true, reduced: true }), false);
 });
 
-test('Keep shows only when proposed, and never once the agent is or was kept', () => {
-  assert.equal(showKeep('Press Keep when you like it.', false), true);
-  assert.equal(showKeep('Press Keep when you like it.', true), false);
+test('Create shows only on the server ready flag, and never once the agent is or was created', () => {
+  assert.equal(showCreate(true, false), true);
+  assert.equal(showCreate(true, true), false);
+  assert.equal(showCreate(false, false), false, 'no flag, no button, whatever Sketcher says');
   assert.equal(isKept({ draft: { status: 'saved' } }), true);
   assert.equal(isKept({ draft: { status: 'draft' } }), false);
   assert.equal(isKept(null), false);
@@ -144,13 +145,12 @@ test('the little ones: mark size, ready words, server events', () => {
   assert.equal(markSize(2000, 2000), 240);
   assert.equal(markSize(200, 200), 140);
   assert.equal(markSize(500, 900), 200);
-  assert.ok(saysReady('Ada is ready. Press Keep.'));
-  assert.ok(!saysReady('Tell me more about the readers.'));
-  assert.ok(!saysReady('Are you ready to tell me who reads it?'), 'only "press keep" proposes Keep, not "ready"');
-  assert.ok(!saysReady('Ready when you are. What should it read first?'));
-  assert.ok(!saysReady('Is it ready? Not yet.'));
-  assert.ok(saysReady('Looks good. Tap Keep when you like.') && saysReady('hit keep') && saysReady('Click on Keep.'));
-  assert.ok(!saysReady('I’ll keep that in mind.') && !saysReady('Press on, keeper.'));
+  assert.ok(isReady('ready', { type: 'ready', ready: true }));
+  assert.ok(isReady('done', { say: 'Hi', ready: true }));
+  assert.ok(!isReady('done', { say: 'Hi', ready: false }));
+  assert.ok(!isReady('done', { say: 'If that’s Ada, press Create.' }), 'words never bring the button');
+  assert.ok(!isReady('delta', { text: 'ready', ready: true }));
+  assert.ok(!isReady('ready', null));
   const store = {};
   assert.equal(kept(store, { id: 'a', draft: { status: 'draft' } }), false);
   assert.equal(kept(store, { id: 'a', draft: { status: 'saved' } }), true);
@@ -200,4 +200,15 @@ test('F12/F13. streamChat: onAllocate once per allocate event, onChange on files
   assert.deepEqual(changes, ['files']);
   assert.deepEqual(sorted, [{ file: 'a.md', section: 'knowledge' }, { file: 'b.md', section: 'knowledge' }, { file: 'c.md', section: 'none' }]);
   assert.equal(say, 'Moving them.');
+});
+
+test('F10. streamChat: onReady once from the server flag (ready event and/or done.ready), never from words', async () => {
+  const run = async events => {
+    const body = events.map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join('');
+    let n = 0; await streamChat({ fetch: async () => new Response(body), id: 'x', message: 'hi', onReady: () => n++ }); return n;
+  };
+  assert.equal(await run([['delta', { text: 'Hi' }], ['ready', { type: 'ready', ready: true }], ['done', { say: 'Hi', ready: true }]]), 1);
+  assert.equal(await run([['done', { say: 'Hi', ready: true }]]), 1);
+  assert.equal(await run([['done', { say: 'If that’s Ada, press Create.', ready: false }]]), 0);
+  assert.equal(await run([['done', { say: 'If that’s Ada, press Create.' }]]), 0);
 });
