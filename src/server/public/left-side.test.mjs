@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, timings, blinkLevel,
+  gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showKeep, isKept, timings, blinkLevel,
   saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER,
 } from './left-side.js';
 import { createDna, PLACED } from './fireflies-dna.js';
@@ -99,6 +99,22 @@ test('10. the look-back fires only if the mark changed while open', () => {
   assert.equal(lookBack(true, true), false);
 });
 
+test('10b. a whole flash while the panel is open is held: ONE flash plays on close', () => {
+  assert.equal(closeFlash({ held: true, changed: true }), true, 'held whole + changed: still one flash');
+  assert.equal(closeFlash({ held: true, changed: false }), true);
+  assert.equal(closeFlash({ held: false, changed: true }), true, 'the look-back');
+  assert.equal(closeFlash({ held: false, changed: false }), false);
+  assert.equal(closeFlash({ held: false, changed: true, reduced: true }), false);
+});
+
+test('Keep shows only when proposed, and never once the agent is or was kept', () => {
+  assert.equal(showKeep('Press Keep when you like it.', false), true);
+  assert.equal(showKeep('Press Keep when you like it.', true), false);
+  assert.equal(isKept({ draft: { status: 'saved' } }), true);
+  assert.equal(isKept({ draft: { status: 'draft' } }), false);
+  assert.equal(isKept(null), false);
+});
+
 test('11. Reduce Motion: no flyers, dots stay home, 0 ms transitions, the blink is a plain step', () => {
   assert.equal(planRefresh([{ id: 'x', x: 1 }], { reduced: true }).flyers.length, 0);
   const area = { w: 800, h: 600, pad: 32 }, P = wanderParams('f/1.md');
@@ -115,6 +131,7 @@ test('the little ones: mark size, ready words, server events', () => {
   assert.equal(markSize(500, 900), 200);
   assert.ok(saysReady('Ada is ready. Press Keep.'));
   assert.ok(!saysReady('Tell me more about the readers.'));
+  assert.ok(!saysReady('Are you ready to tell me who reads it?'), 'only "press keep" proposes Keep, not "ready"');
   const { events, rest } = parseEvents('event: delta\ndata: {"text":"Hi"}\n\nevent: done\ndata: {}\n\nevent: del');
   assert.deepEqual(events, [{ event: 'delta', data: { text: 'Hi' } }, { event: 'done', data: {} }]);
   assert.equal(rest, 'event: del');

@@ -70,6 +70,9 @@ export function blinkAllowed(store, id, which, { processed = 0, waited = 0 } = {
 /* The look-back: one notice on close, only if the mark changed while the panel was open. */
 export const lookBack = (changed, reduced) => !!changed && !reduced;
 
+/* On close: a whole flash held while the panel was open, or the look-back. Either way, ONE flash. */
+export const closeFlash = ({ changed = false, held = false, reduced = false } = {}) => !!held || lookBack(changed, reduced);
+
 /* Every transition the left side sets, in ms (all 0 under Reduce Motion). */
 export const timings = reduced => reduced
   ? { handle: 0, label: 0, open: 0, close: 0, flight: 0 }
@@ -79,7 +82,13 @@ export const timings = reduced => reduced
 export const blinkLevel = (dt, reduced) => reduced ? (dt >= 0 && dt < STILL_BLINK ? 1 : .55) : .55 + .45 * flash(dt);
 
 /* Sketcher says the agent is ready: then it proposes Keep (the creator's own word: "press Keep"). */
-export const saysReady = text => /\bready\b|press keep/i.test(String(text || ''));
+export const saysReady = text => /press keep/i.test(String(text || ''));
+
+/* The agent is kept (the server's draft status "saved"). */
+export const isKept = a => !!(a && a.draft && a.draft.status === 'saved');
+
+/* Show Keep: only when Sketcher proposes it and the agent is not and never was kept. */
+export const showKeep = (text, kept) => !kept && saysReady(text);
 
 /* Server-sent events, as text arrives: → [{ event, data }] and the unfinished rest. */
 export function parseEvents(buf) {
@@ -100,7 +109,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
-  let open = false, changedWhileOpen = false, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
+  let open = false, changedWhileOpen = false, heldWhole = false, kept = false, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
   const geo = () => { const W = win.innerWidth, H = win.innerHeight, fw = Math.max(160, W - MENU_W), L = markSize(fw, H); return { W, H, fw, L, cx: fw / 2, cy: H / 2 }; };
@@ -119,7 +128,10 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     if (fresh || !mark) mark = createDna(markEl, { name, files: list });
     else mark.setFiles(list);
     if (changed && open) changedWhileOpen = true;
-    if (wholeDue(store, id, { shown: list.length, live: prev.live, atStart: fresh })) later(() => mark.notice(reduced), WHOLE_WAIT);
+    if (wholeDue(store, id, { shown: list.length, live: prev.live, atStart: fresh })) {
+      if (open) heldWhole = true;   // held: the one flash plays on close
+      else later(() => { if (open) heldWhole = true; else mark.notice(reduced); }, WHOLE_WAIT);
+    }
     kick();
   }
 
@@ -127,6 +139,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function onDna(a, { still = false } = {}) {
     const next = a.dna || [];
     if (a.id !== id) return start(a, still);
+    if (isKept(a)) { kept = true; create.hidden = true; }   // once kept, Keep never comes back
     const nm = nameOf(a);
     if (nm !== name) { name = nm; setMark(applied, true); }
     const t = now(), g = geo();
@@ -149,6 +162,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function start(a, still) {
     timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = [];
     id = a.id; name = nameOf(a); files = a.dna || [];
+    heldWhole = false; kept = isKept(a); create.hidden = true;
     known = new Map(files.map(f => [f.id, f.state]));
     const res = gatheredFiles(files); prev = { shown: res.shown, live: res.live };
     flown = new Set(files.filter(f => f.state === 'processed').map(f => f.id));
@@ -188,7 +202,11 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     panel.style.transition = `transform ${T().close}ms cubic-bezier(.4,0,1,1)`;
     panel.classList.remove('open'); panel.setAttribute('inert', ''); handle.setAttribute('aria-expanded', 'false');
     handle.focus();
-    const end = () => { if (!open) panel.hidden = true; if (lookBack(changedWhileOpen, reduced)) mark.notice(reduced); changedWhileOpen = false; };
+    const end = () => {
+      if (!open) panel.hidden = true;
+      if (mark && closeFlash({ changed: changedWhileOpen, held: heldWhole, reduced })) mark.notice(reduced);
+      changedWhileOpen = false; heldWhole = false;
+    };
     if (T().close) later(end, T().close); else end();
   }
   handle.addEventListener('click', openPanel);
@@ -204,7 +222,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const message = box.value.trim(); if (!message || busy || !id) return;
-    busy = true; box.value = ''; line('you', message);
+    busy = true; box.value = ''; const mine = line('you', message);
     const reply = line('sketcher wait', 'Sketching…'); let text = '';
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
@@ -221,16 +239,20 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
         }
       }
       if (!text) throw new Error('empty');
-      if (saysReady(text)) create.hidden = false;
-    } catch { reply.textContent = 'Sketcher couldn’t answer. Try again.'; reply.className = 'sketcher err'; }
+      if (showKeep(text, kept)) create.hidden = false;
+    } catch {
+      // The message goes back in the box, so Enter tries again (no retyping, no retry button).
+      mine.remove(); if (!box.value) box.value = message;
+      reply.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; reply.className = 'sketcher err';
+    }
     busy = false; log.scrollTop = log.scrollHeight;
   });
   create.addEventListener('click', async () => {
     create.disabled = true;
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/save`, { method: 'POST' });
-      if (!r.ok) throw new Error(); create.hidden = true; line('sketcher', `${name} is yours.`);
-    } catch { line('sketcher err', 'Couldn’t create it. Try again.'); }
+      if (!r.ok) throw new Error(); kept = true; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
+    } catch { line('sketcher err', 'Couldn’t keep it. Try again.'); }
     create.disabled = false;
   });
 
