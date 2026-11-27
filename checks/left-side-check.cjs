@@ -353,9 +353,9 @@ async function arrowLineOnce(kind, w, h, id) {
     requestAnimationFrame(tick);
   }));
   // Same duration and easing from the same start: the arrow's X is the panel's right edge scaled to its own
-  // travel (the full panel width on desktop; under 640px it stops minWidth short of the screen edge).
+  // travel (the full panel width on desktop; under 640px it stops one tab width short of the screen edge).
   const ride = (sl, label) => {
-    const minW = closed.minW, live = sl.frames.filter(f => f.w > 0);
+    const minW = closed.handle.width, live = sl.frames.filter(f => f.w > 0);
     // 4px: at the fastest point of the close ease-in the edge moves ~4px per ms, so the two rect reads of one frame may be 1 ms apart.
     const bad = live.filter(f => Math.abs(f.left - Math.max(0, f.right) * Math.min(f.w, w - minW) / f.w) > 4);
     const edge = live.length ? Math.min(live[0].w, w - minW) : null;
@@ -375,7 +375,8 @@ async function arrowLineOnce(kind, w, h, id) {
   }
   ok([closed, open, again].every(s => Math.abs(s.ink.cy - (s.handle.bottom - s.handle.top) / 2) <= 0.75), `10. ${tag}: the arrow's ink sits on the tab's middle line`, JSON.stringify([closed, open, again].map(s => s.ink.cy)));
   ok(Math.abs(open.ink.cx - closed.ink.cx) <= 0.75, `10. ${tag}: the flip turns the arrow in place (no sideways shift inside the tab)`, JSON.stringify({ closed: closed.ink.cx, open: open.ink.cx }));
-  const edge = Math.min(open.panelW, w - open.minW);
+  const edge = Math.min(open.panelW, w - closed.handle.width);
+  ok(open.handle.left + open.handle.width <= w + 0.5, `10. ${tag}: open, the whole arrow is on screen`, JSON.stringify({ right: open.handle.left + open.handle.width, screen: w }));
   ok(closed.handle.left === 0 && again.handle.left === 0 && Math.abs(open.handle.left - edge) <= 1, `10. ${tag}: only X changes: left 0 closed, the panel's edge open`, JSON.stringify({ closed: closed.handle.left, open: open.handle.left, edge, again: again.handle.left }));
   ok(closed.expanded === 'false' && open.expanded === 'true' && again.expanded === 'false', `10. ${tag}: aria-expanded false / true / false`);
   ok([closed, open, again].every(s => s.handle.width >= 44), `10. ${tag}: the arrow is at least 44px wide in every state`, JSON.stringify([closed, open, again].map(s => s.handle.width)));

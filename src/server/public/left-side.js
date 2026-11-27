@@ -243,7 +243,10 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   /* ---- the panel ---- */
   // One arrow opens and closes: the handle rides the panel's right edge (same ms, same easing, same
   // height) and its chevron mirrors › → ‹. Narrow screens: the panel is full width, so it stops just inside.
-  const edgeX = () => Math.max(0, Math.min(panel.getBoundingClientRect().width, win.innerWidth - (parseFloat(win.getComputedStyle(handle).minWidth) || 44)));
+  // The tab's resting width (padding + chevron + gap, 48px), not min-width and not with a hovered label,
+  // so the whole arrow stays on screen.
+  const tabW = () => { const l = handle.querySelector('.label'); return Math.max(parseFloat(win.getComputedStyle(handle).minWidth) || 44, handle.offsetWidth - (l ? l.offsetWidth : 0)); };
+  const edgeX = () => Math.max(0, Math.min(panel.getBoundingClientRect().width, win.innerWidth - tabW()));
   function slide(ms, ease) {
     const tr = `transform ${ms}ms ${ease}`;
     panel.style.transition = tr; handle.style.transition = tr;
