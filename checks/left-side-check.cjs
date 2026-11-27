@@ -180,6 +180,8 @@ async function run(agents, isLost, setLost) {
   ok((await linfo(sp)).panel.open && Math.round(pw2) === 390, '6. small screen: a tap opens the panel across the whole width', String(pw2));
   const hr2 = await sp.evaluate(() => { const r = document.querySelector('#handle').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
   ok(Math.round(hr2.y) === Math.round(hr.y) && hr2.x + hr2.w <= 390, '6. small screen: the open arrow stays on screen at the same height', JSON.stringify(hr2));
+  const lr = await sp.evaluate(() => Math.round(document.querySelector('#sketcher-log').getBoundingClientRect().right));
+  ok(lr <= Math.floor(hr2.x), '6. small screen: the chat ends before the arrow, no words hide under it', JSON.stringify({ logRight: lr, arrowLeft: hr2.x }));
   await sp.click('#handle'); await sp.waitForTimeout(600);
   ok(!(await linfo(sp)).panel.open, '6. small screen: the same arrow (‹) closes it');
 

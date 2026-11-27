@@ -138,6 +138,8 @@
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     #sketcher { background: rgba(12,14,10,.64); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
   }
+  /* Narrow screens: the panel is full width and the arrow rests just inside its right edge; keep words clear of it. */
+  @media (max-width: 639px) { #sketcher { padding-right: 56px; } }
   #sketcher[hidden] { display: none; }
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
