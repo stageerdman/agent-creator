@@ -3,8 +3,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showKeep, isKept, timings, blinkLevel,
-  saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER,
+  saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
 } from './left-side.js';
+
+test('M4. the likeness grows as it fills: half size at nothing, full when whole, rising at every step', () => {
+  assert.equal(markGrow(0, 0), 1);
+  assert.equal(markGrow(0, 40), .5);
+  assert.equal(markGrow(40, 40), 1);
+  assert.equal(markGrow(60, 40), 1);
+  let last = 0;
+  for (let c = 0; c <= 40; c++) { const f = markGrow(c, 40); assert.ok(f > last, `step ${c}`); last = f; }
+  // lit area ∝ f² × the logo's own (flat to falling, ~24 → 21.7 units² from 10 to 40 dots): still rises
+  assert.ok(markGrow(20, 40) ** 2 * 23.8 > markGrow(10, 40) ** 2 * 24);
+  assert.ok(markGrow(40, 40) ** 2 * 21.7 > markGrow(20, 40) ** 2 * 23.8);
+  assert.equal(dotsOf([]), 0);
+  assert.ok(dotsOf(Array.from({ length: 200 }, () => ({ sizeBytes: 1e6 }))) <= PLACED);
+});
 import { createDna, PLACED } from './fireflies-dna.js';
 import { wanderAt, wanderParams } from './creation-screen.js';
 
@@ -132,6 +146,15 @@ test('the little ones: mark size, ready words, server events', () => {
   assert.ok(saysReady('Ada is ready. Press Keep.'));
   assert.ok(!saysReady('Tell me more about the readers.'));
   assert.ok(!saysReady('Are you ready to tell me who reads it?'), 'only "press keep" proposes Keep, not "ready"');
+  assert.ok(!saysReady('Ready when you are. What should it read first?'));
+  assert.ok(!saysReady('Is it ready? Not yet.'));
+  assert.ok(saysReady('Looks good. Tap Keep when you like.') && saysReady('hit keep') && saysReady('Click on Keep.'));
+  assert.ok(!saysReady('I’ll keep that in mind.') && !saysReady('Press on, keeper.'));
+  const store = {};
+  assert.equal(kept(store, { id: 'a', draft: { status: 'draft' } }), false);
+  assert.equal(kept(store, { id: 'a', draft: { status: 'saved' } }), true);
+  store['left.kept.b'] = '1';
+  assert.equal(kept(store, { id: 'b', draft: { status: 'draft' } }), true);
   const { events, rest } = parseEvents('event: delta\ndata: {"text":"Hi"}\n\nevent: done\ndata: {}\n\nevent: del');
   assert.deepEqual(events, [{ event: 'delta', data: { text: 'Hi' } }, { event: 'done', data: {} }]);
   assert.equal(rest, 'event: del');

@@ -128,9 +128,14 @@ test("wander: every fly really roams (never stuck), turns gently, never jitters"
 
 test("wander: 10,000 flies cost little per frame", () => {
   const ids = Array.from({ length: 10000 }, (_, i) => `big/f${i}.md`), ps = ids.map((id) => wanderParams(id));
-  const t = performance.now();
-  for (let i = 0; i < ids.length; i++) wanderAt(ids[i], 12345, AREA, false, ps[i]);
-  assert.ok(performance.now() - t < 30, "10,000 wanderAt calls well under a frame budget");
+  // best of 5 after a warm-up: a busy machine (the whole suite runs in parallel) shouldn't fail a cost check
+  let best = Infinity;
+  for (let run = 0; run < 6; run++) {
+    const t = performance.now();
+    for (let i = 0; i < ids.length; i++) wanderAt(ids[i], 12345 + run, AREA, false, ps[i]);
+    if (run) best = Math.min(best, performance.now() - t);
+  }
+  assert.ok(best < 30, `10,000 wanderAt calls well under a frame budget (${best.toFixed(1)} ms)`);
 });
 
 test("shine is rare: at any moment only a few of 3,000 fireflies glow, never all at once", () => {

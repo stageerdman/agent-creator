@@ -97,3 +97,17 @@ Browser checks rerun after the fixes (`checks/run.cjs`): 19/19 in WebKit (672 li
 **APPROVED (round 3)**: Eraser, 2026-11-27, on `6dd9c07`. F1–F3 hold on main's page. Nothing to cut.
 
 **APPROVED.** All four rules can be seen and played with, there's no clutter, it runs smoothly at 600+ lights, and it respects reduced motion. The non-blocking watch item (big heads clipped at the edge) stays open.
+
+## Recheck (round 3, on main's rewritten page, commit 6dd9c07)
+
+*Main rewrote the page after round 2 (no `dna-magic` block, cluster avatar). Jony rechecked F1–F3 there. Eraser approved by reading the page and took Jony's run results as reported.*
+
+| Fix | On main | Result |
+|---|---|---|
+| F1 | `FIRST_SLOTS [0,.67,.33,1,.5,.17,.83]`, the same in the page, `src/server/public/fireflies-dna.js` and Merlin's doc | **Pass.** First 4 topics 49° apart, 7 topics 24° apart. Kept on purpose: on the ~150° cool arc, five at ≥35° would push seven below 20° |
+| F2 | The two sliders (both 2–9) push each other | **Pass.** Min 8 pushes max to 8, max 2 pulls min to 2, labels read 2.0 / 2.0. Merlin's table updated to match |
+| F3 | The Hover text says "every dot of that file's seed head" | **Pass** |
+
+Checks (`FIREFLIES-DNA-CLUSTER/checks/run.cjs`): 112/120 in Chrome and 112/120 in WebKit, with the same 8 failing in both, all outside round 1. Six are U2 pixel probes that still expect a cluster-wide beat; the check is out of date and Eraser will update it. Two are the Reduce Motion pace, now **F4**, a new item (60 ms per dot with no per-file cap means Reduce Motion users wait longest). `npm test`: 225 pass, 0 fail, 1 skipped.
+
+**APPROVED (round 3)** for F1–F3. Watch: past 7 topics the golden-step hues start to crowd together.

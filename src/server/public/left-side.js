@@ -81,11 +81,19 @@ export const timings = reduced => reduced
 /* The handle's chevron opacity dt ms into a blink. */
 export const blinkLevel = (dt, reduced) => reduced ? (dt >= 0 && dt < STILL_BLINK ? 1 : .55) : .55 + .45 * flash(dt);
 
-/* Sketcher says the agent is ready: then it proposes Keep (the creator's own word: "press Keep"). */
-export const saysReady = text => /press keep/i.test(String(text || ''));
+/* The mark grows as it fills: the shared logo shrinks each dot as the count rises (so its lit area
+   stays flat), so here the whole canvas scales from half size to full. cur, whole: dots placed now / when whole. */
+export const markGrow = (cur, whole) => !(whole > 0) || cur >= whole ? 1 : .5 + .5 * Math.sqrt(Math.max(0, cur) / whole);
+export const dotsOf = list => Math.min(PLACED, (list || []).reduce((n, f) => n + dotsFor(f.sizeBytes), 0));
+
+/* Sketcher proposes Keep in the creator's own words, "press Keep" (or tap / hit / click Keep). */
+export const saysReady = text => /\b(press|tap|hit|click)\s+(on\s+)?keep\b/i.test(String(text || ''));
 
 /* The agent is kept (the server's draft status "saved"). */
 export const isKept = a => !!(a && a.draft && a.draft.status === 'saved');
+
+/* Keep happens once: never again once the draft is saved (or this browser saw it kept). */
+export const kept = (store, a) => isKept(a) || (!!a && store['left.kept.' + a.id] === '1');
 
 /* Show Keep: only when Sketcher proposes it and the agent is not and never was kept. */
 export const showKeep = (text, kept) => !kept && saysReady(text);
@@ -131,7 +139,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
-  let open = false, changedWhileOpen = false, heldWhole = false, kept = false, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
+  let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
   const geo = () => { const W = win.innerWidth, H = win.innerHeight, fw = Math.max(160, W - MENU_W), L = markSize(fw, H); return { W, H, fw, L, cx: fw / 2, cy: H / 2 }; };
@@ -150,6 +158,9 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     if (fresh || !mark) mark = createDna(markEl, { name, files: list });
     else mark.setFiles(list);
     if (changed && open) changedWhileOpen = true;
+    grow = markGrow(dotsOf(list), gatheredFiles(files).P);
+    markEl.style.transition = reduced || fresh ? 'none' : '';
+    markEl.style.transform = grow === 1 ? '' : `scale(${grow.toFixed(4)})`;
     if (wholeDue(store, id, { shown: list.length, live: prev.live, atStart: fresh })) {
       if (open) heldWhole = true;   // held: the one flash plays on close
       else later(() => { if (open) heldWhole = true; else mark.notice(reduced); }, WHOLE_WAIT);
@@ -161,7 +172,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function onDna(a, { still = false } = {}) {
     const next = a.dna || [];
     if (a.id !== id) return start(a, still);
-    if (isKept(a)) { kept = true; create.hidden = true; }   // once kept, Keep never comes back
+    if (kept(store, a)) { wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; }   // once kept, Keep never comes back
     const nm = nameOf(a);
     if (nm !== name) { name = nm; setMark(applied, true); }
     const t = now(), g = geo();
@@ -184,7 +195,8 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function start(a, still) {
     timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = [];
     id = a.id; name = nameOf(a); files = a.dna || [];
-    heldWhole = false; kept = isKept(a); create.hidden = true;
+    heldWhole = false; wasKept = kept(store, a); create.hidden = true;
+    if (wasKept) store['left.kept.' + id] = '1';
     log.replaceChildren(); for (const m of a.chat || []) line(m.who === 'you' ? 'you' : 'sketcher', m.text);   // the talk so far, after a reload too
     known = new Map(files.map(f => [f.id, f.state]));
     const res = gatheredFiles(files); prev = { shown: res.shown, live: res.live };
@@ -250,11 +262,12 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     const onText = text => { reply.textContent = text; reply.classList.remove('wait'); log.scrollTop = log.scrollHeight; };
     try {
       const text = await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange: pull });
-      if (showKeep(text, kept)) create.hidden = false;
+      if (showKeep(text, wasKept)) create.hidden = false;
     } catch {
       // The message goes back in the box, so Enter tries again (no retyping, no retry button).
       mine.remove(); if (!box.value) box.value = message;
       reply.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; reply.className = 'sketcher err';
+      box.focus(); box.setSelectionRange(box.value.length, box.value.length);
     }
     busy = false; log.scrollTop = log.scrollHeight;
   });
@@ -262,7 +275,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     create.disabled = true;
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/save`, { method: 'POST' });
-      if (!r.ok) throw new Error(); kept = true; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
+      if (!r.ok) throw new Error(); wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Yours. You can keep changing it.');
     } catch { line('sketcher err', 'Couldn’t keep it. Try again.'); }
     create.disabled = false;
   });
@@ -297,7 +310,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
           f.from = p; f.tan = { x: (p.x - q.x) / d, y: (p.y - q.y) / d }; f.off = { x: (s.x - .5) * .5, y: (s.y - .5) * .5 };
         }
         const u = (t - f.leave) / FLY_MS; if (u >= 1) return false;
-        const to = { x: g.cx + f.off.x * g.L, y: g.cy + f.off.y * g.L };
+        const to = { x: g.cx + f.off.x * g.L * grow, y: g.cy + f.off.y * g.L * grow };
         const p = flightAt(f.from, f.tan, to, u); x = p.x; y = p.y; a = flyerAlpha(u, { start: WAKE, extra: true });
       }
       ctx.globalAlpha = a * .16; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill();
@@ -315,7 +328,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     setReduced(v) { reduced = !!v; kick(); },
     isOpen: () => open,
     info: () => ({
-      agent: id, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
+      agent: id, grow, kept: wasKept, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
       handle: { shown: !handle.hidden && handle.classList.contains('in'), blinks, blinkAt },
       panel: { open, hidden: panel.hidden }, mark: mark ? mark.info() : null,
       rect: (() => { const r = markEl.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })(),
