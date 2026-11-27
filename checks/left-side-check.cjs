@@ -23,13 +23,15 @@ const dropFiles = (page, n, x, y) => page.evaluate(({ n, x, y }) => {
   document.body.dispatchEvent(new DragEvent('dragover', at));
   document.body.dispatchEvent(new DragEvent('drop', at));
 }, { n, x, y });
-// How much of the likeness is lit: bright pixels on #mark.
+// How much of the likeness is lit on screen: bright pixels on #mark, times its on-screen scale²
+// (the mark grows as it fills by a CSS scale, which the canvas's own pixels don't see).
 const lit = page => page.evaluate(() => {
   const c = document.querySelector('#mark'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  const m = new DOMMatrix(getComputedStyle(c).transform === 'none' ? undefined : getComputedStyle(c).transform), s = Math.hypot(m.a, m.b);
   let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] + d[i + 1] + d[i + 2] > 300) n++;
-  return n;
+  return n * s * s;
 });
-const litOver = async (page, ms = 4000, every = 100) => {
+const litOver = async (page, ms = 3000, every = 100) => {
   let sum = 0, n = 0;
   for (const t0 = Date.now(); Date.now() - t0 < ms; n++) { sum += await lit(page); await sleep(every); }
   return Math.round(sum / Math.max(1, n));
@@ -55,13 +57,20 @@ const focused = page => page.evaluate(() => document.activeElement && document.a
 
 async function run(agents, isLost, setLost) {
   {
-  const browser = await pw.chromium.launch({ channel: 'chrome' });
   console.log('== chrome against ' + base);
   const errors = [];
-  browser.on('disconnected', () => setLost(true));
   const watch = page => { page.on('pageerror', e => errors.push(e.message)); page.on('response', r => { if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) errors.push(r.status() + ' ' + r.url()); }); };
-  const page = await browser.newPage({ viewport: { width: 1200, height: 820 } });
-  watch(page);
+  // Chrome here gets quit from outside ~25 s after it starts, so each long part opens a fresh one.
+  let browser = null, page = null;
+  const launch = async () => {
+    if (browser) { browser.removeAllListeners('disconnected'); await Promise.race([browser.close().catch(() => {}), sleep(3000)]); }
+    browser = await pw.chromium.launch({ channel: 'chrome' });
+    if (process.env.TRACE) console.log('.. fresh chrome');
+    setLost(false); browser.on('disconnected', () => setLost(true));
+    page = await browser.newPage({ viewport: { width: 1200, height: 820 } });
+    watch(page);
+  };
+  await launch();
 
   /* ---------- 1. From Start: a drop makes the agent, the handle slides in ---------- */
   await page.goto(base + '/'); await page.waitForTimeout(700);
@@ -99,14 +108,28 @@ async function run(agents, isLost, setLost) {
   const paths = a.dna.map(f => f.id);
   await agents.assign(id, 'knowledge', a.dna.map(f => ({ path: f.id, name: f.name, size: f.sizeBytes })));
   const steps = [];
-  // What the eye sees: lit pixels, averaged over 4 s (two or more beats), so one frame's blinks can't decide it.
-  let before = await litOver(page);
+  const visit = async () => { await launch(); await page.goto(`${base}/new?agent=${id}`); await until(async () => (await linfo(page)).handle.shown, 6000); await page.waitForTimeout(800); };
+  // What the eye sees: lit pixels, averaged over 3 s (two or more beats), so one frame's blinks can't decide it.
+  // Watched live as the files are used; if Chrome is quit from outside mid-step, that step is read again on a fresh visit.
+  const measure = async (want, live) => {
+    for (let k = 0; k < 3; k++) {
+      try {
+        if (live && k === 0) {
+          await until(async () => (await page.evaluate(() => window.creation.info())).field && (await linfo(page)).flown >= want, 6000);
+          await page.waitForTimeout(1800);   // the flights land and the mark has grown (600 ms)
+        } else if (k > 0 || !page) await visit();
+        const now = await litOver(page);
+        return { now, info: await linfo(page), fresh: k > 0 };
+      } catch (e) { if (!/has been closed/.test(String(e && e.message))) throw e; console.log('.. chrome quit from outside: reading this step on a fresh visit'); }
+    }
+    throw new Error('has been closed (three times in one step)');
+  };
+  await visit();
+  let before = (await measure(0, false)).now;
   for (const share of [.25, .5, 1]) {
     await agents.markProcessed(id, 'knowledge', paths.slice(0, Math.round(paths.length * share)));
     const want = Math.round(paths.length * share);
-    await until(async () => (await page.evaluate(() => window.creation.info())).field && (await linfo(page)).flown >= want, 6000);
-    await page.waitForTimeout(2200);   // the flights land
-    const now = await litOver(page), info = await linfo(page);
+    const { now, info } = await measure(want, true);
     steps.push({ share, litPixels: now, placed: info.mark.placed, applied: info.applied, flown: info.flown });
     ok(now > before && info.flown >= want, `4. at ${share * 100}% used the likeness is brighter on screen than before`, JSON.stringify(steps[steps.length - 1]) + ' before=' + before);
     before = now;
@@ -115,6 +138,7 @@ async function run(agents, isLost, setLost) {
   ok(L.shown === L.live && L.live > 0, '4. all used: the whole likeness is shown', JSON.stringify({ shown: L.shown, live: L.live }));
 
   /* ---------- 5. Reduced motion: still mark, panel without sliding ---------- */
+  await launch();
   const rp = page;
   await rp.emulateMedia({ reducedMotion: 'reduce' });
   await rp.goto(`${base}/new?agent=${id}`);
