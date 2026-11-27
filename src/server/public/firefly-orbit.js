@@ -319,6 +319,8 @@ export function entriesOfFiles(files) {
 export async function entriesOfDrop(dataTransfer, onFirst = () => {}) {
   const items = [...(dataTransfer && dataTransfer.items || [])].filter(i => i.kind === 'file');
   const roots = items.map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
+  // Taken now, while the drop is live: a top-level file whose entry can't be read (WebKit, a file with no disk path) still counts.
+  const loose = items.map(i => (i.getAsFile ? i.getAsFile() : null));
   const out = [];
   let told = false;
   // onFirst always runs after this call has returned its promise, even for loose files found at once.
@@ -329,12 +331,12 @@ export async function entriesOfDrop(dataTransfer, onFirst = () => {}) {
     const more = () => reader.readEntries(batch => { if (!batch.length) return res(all); all.push(...batch); more(); }, () => res(all));
     more();
   });
-  async function walk(entry) {
+  async function walk(entry, fallback = null) {
     if (!entry || entry.name.startsWith('.')) return;
-    if (entry.isFile) { const f = await fileOf(entry); if (f) push({ path: clean(entry.fullPath || entry.name), size: +f.size || 0 }); return; }
+    if (entry.isFile) { const f = (await fileOf(entry)) || fallback; if (f) push({ path: clean(entry.fullPath || entry.name), size: +f.size || 0 }); return; }
     if (entry.isDirectory) for (const child of await readAll(entry)) await walk(child);
   }
-  if (roots.some(Boolean)) { for (const r of roots) await walk(r); }
+  if (roots.some(Boolean)) { for (let k = 0; k < roots.length; k++) await walk(roots[k], loose[k]); }
   else entriesOfFiles(dataTransfer && dataTransfer.files).forEach(push);   // no entry API: loose files only
   return out;
 }

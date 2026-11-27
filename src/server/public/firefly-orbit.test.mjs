@@ -157,3 +157,11 @@ test("entries: loose files without the entry API still answer, and onFirst comes
   assert.deepEqual(await entries, [{ path: "note.md", size: 5 }]);
   assert.equal(seen, entries);
 });
+
+test("entries: a dropped file whose entry can't be read (WebKit, no disk path) still counts", async () => {
+  const entry = { isFile: true, name: "note.md", fullPath: "/note.md", file: (_ok, fail) => fail(new Error("NotFoundError")) };
+  const item = { kind: "file", webkitGetAsEntry: () => entry, getAsFile: () => ({ name: "note.md", size: 5 }) };
+  let first = 0;
+  assert.deepEqual(await entriesOfDrop({ items: [item] }, () => first++), [{ path: "note.md", size: 5 }]);
+  assert.equal(first, 1);
+});
