@@ -2,7 +2,9 @@
 // shell) call. Store and engine are passed in; no HTTP here.
 
 import { applyPatch, isEmpty, trackHandEdits, trackHandLines } from "./draft.mjs";
-import { addFiles, dnaOf, routeFiles } from "./files.mjs";
+import { dnaOf, routeFiles } from "./files.mjs";
+import { createMaterial } from "./agentMaterial.mjs";
+import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
 
 // The home's one-line description: the first sentence of persona, else of
@@ -26,8 +28,14 @@ const view = ({ id, draft, sessionId, files = [], createdAt, updatedAt }) =>
   ({ id, draft, sessionId, files, dna: dnaOf(files, createdAt || updatedAt) });
 const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !record.files?.length;
 
+// Files, sections and texts are their own use cases (agentMaterial.mjs,
+// agentTexts.mjs), offered here so callers hold one object.
 export function createAgents({ store, engine, now = () => new Date() }) {
+  const material = createMaterial({ store, now });
   return {
+    ...material,
+    ...createTexts({ store, material, now }),
+
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
       const unused = (await store.listAgents()).find(isUnused);
@@ -66,15 +74,6 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       const handEdited = trackHandEdits(record.handEdited, changed, "hand");
       const handLines = trackHandLines(record.handLines, record.draft, draft, "hand");
       return (await store.saveDraft(id, { draft, handEdited, handLines })).draft;
-    },
-
-    // Dropped or picked files join the DNA file list, unrouted. Never the chat.
-    // `dna` lets the screen draw the new logo without a second request.
-    async addFiles(id, entries) {
-      const record = await store.loadAgent(id);
-      const { files, added } = addFiles(record.files ?? [], entries, now().toISOString());
-      if (added.length) await store.saveDraft(id, { files });
-      return { files, added, dna: dnaOf(files, record.createdAt || record.updatedAt) };
     },
 
     keep: async (id) => (await store.markSaved(id)).draft,
