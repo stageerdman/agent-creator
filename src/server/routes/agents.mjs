@@ -2,6 +2,7 @@
 // A missing agent throws AgentNotFound; the app's error handler makes it a 404.
 // Files, sections and texts are in material.mjs.
 
+import { allocations } from "../../creator/index.mjs";
 import { readJson, requireMessage, sendJson, streamEvents } from "../http.mjs";
 
 export function agentRoutes(agents) {
@@ -15,7 +16,8 @@ export function agentRoutes(agents) {
     },
 
     // SSE: delta* → draft { draft, changed } and/or files { files, changed }
-    // (each only if something changed) → done { say, sessionId } | error.
+    // (each only if something changed), then allocate { file, section } per
+    // changed file and section it now goes to ("none" if it feeds nothing) → done { say, sessionId } | error.
     "POST /api/agents/:id/chat": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
       await agents.get(params.id); // 404 before the stream opens
@@ -24,6 +26,7 @@ export function agentRoutes(agents) {
         const turn = await agents.chat(params.id, message, { onSay, signal, traceId });
         if (turn.changed.length) send("draft", { draft: turn.draft, changed: turn.changed });
         if (turn.filesChanged.length) send("files", { files: turn.files, changed: turn.filesChanged });
+        for (const allocation of allocations(turn.files, turn.filesChanged)) send("allocate", allocation);
         send("done", { say: turn.say, sessionId: turn.sessionId });
       });
     },

@@ -1,11 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { addFiles, dnaOf, routeFiles } from "./files.mjs";
-import { assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles } from "./sections.mjs";
+import { allocations, assignFiles, feedFor, markProcessed, rebuilt, removeFile, sectionFiles } from "./sections.mjs";
 
 const skills = [{ id: "ab12cd34", name: "Coaching" }];
 const fresh = () => addFiles([], [{ path: "notes/a.md", size: 3 }, { path: "notes/b.md" }, { path: "bio.pdf" }]).files;
 const states = (files, feed) => sectionFiles(files, feed).map((file) => [file.path, file.state]);
+
+test("allocations: one { file, section } per feed of each changed file, in changed order; no feed is none", () => {
+  const files = assignFiles(routeFiles(fresh(), { "notes/a.md": "both", "bio.pdf": "none" }).files, "skill:ab12cd34", ["notes/a.md"]).files;
+  assert.deepEqual(allocations(files, ["bio.pdf", "notes/a.md"]), [
+    { file: "bio.pdf", section: "none" },
+    { file: "notes/a.md", section: "knowledge" },
+    { file: "notes/a.md", section: "system-prompt" },
+    { file: "notes/a.md", section: "skill:ab12cd34" },
+  ]);
+});
 
 test("feedFor: the menu's sections map to feeds; unknown ones fail fast", () => {
   assert.equal(feedFor("system-prompt"), "instructions");
