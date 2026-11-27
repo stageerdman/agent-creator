@@ -96,11 +96,23 @@ async function run(agents, isLost, setLost) {
   ok(!L.panel.open && L.panel.hidden && page.url() === url, '2. Esc closes it and stays on the screen', page.url());
   ok((await focused(page)) === 'handle', '2. focus goes back to the handle', await focused(page));
 
-  /* ---------- 3. Keyboard and the close button ---------- */
+  /* ---------- 3. Keyboard, and one arrow that slides out with the panel and closes it ---------- */
+  const arrow = () => page.evaluate(() => {
+    const h = document.querySelector('#handle'), c = h.querySelector('.chev'), p = document.querySelector('#sketcher').getBoundingClientRect(), r = h.getBoundingClientRect();
+    return { top: Math.round(r.top), left: Math.round(r.left), panelRight: Math.round(p.right), flip: getComputedStyle(c).transform, label: h.getAttribute('aria-label') };
+  });
+  const shut = await arrow();
   await page.focus('#handle'); await page.keyboard.press('Enter'); await page.waitForTimeout(500);
   ok((await linfo(page)).panel.open, '3. Enter on the focused handle opens it');
-  await page.click('#sketcher-close'); await page.waitForTimeout(500);
-  ok(!(await linfo(page)).panel.open, '3. the ‹ close button closes it');
+  const out = await arrow();
+  ok(out.top === shut.top, '3. open: the arrow is at the very same height as when closed', JSON.stringify({ shut, out }));
+  ok(Math.abs(out.left - out.panelRight) <= 1 && out.left > shut.left, '3. open: the arrow rode out to the panel edge', JSON.stringify(out));
+  ok(/^matrix\(-1/.test(out.flip) && out.label === 'Close Sketcher', '3. open: the arrow points back (‹) and is named Close Sketcher', JSON.stringify(out));
+  ok(await page.evaluate(() => !document.querySelector('#sketcher-close')), '3. there is no second close arrow in the panel');
+  await page.mouse.click(out.left + 20, out.top + 24); await page.waitForTimeout(500);
+  const back = await arrow();
+  ok(!(await linfo(page)).panel.open && back.top === shut.top && back.left === shut.left && !/^matrix\(-1/.test(back.flip), '3. a click on the same spot closes it; the arrow is back where it was, pointing ›', JSON.stringify(back));
+  await page.focus('#handle');
   await page.keyboard.press('Space'); await page.waitForTimeout(500);
   ok((await linfo(page)).panel.open, '3. Space on the handle opens it');
   await page.keyboard.press('Escape'); await page.waitForTimeout(500);
@@ -166,8 +178,10 @@ async function run(agents, isLost, setLost) {
   await sp.click('#handle'); await sp.waitForTimeout(600);
   const pw2 = await sp.evaluate(() => document.querySelector('#sketcher').getBoundingClientRect().width);
   ok((await linfo(sp)).panel.open && Math.round(pw2) === 390, '6. small screen: a tap opens the panel across the whole width', String(pw2));
-  await sp.click('#sketcher-close'); await sp.waitForTimeout(600);
-  ok(!(await linfo(sp)).panel.open, '6. small screen: ‹ closes it');
+  const hr2 = await sp.evaluate(() => { const r = document.querySelector('#handle').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
+  ok(Math.round(hr2.y) === Math.round(hr.y) && hr2.x + hr2.w <= 390, '6. small screen: the open arrow stays on screen at the same height', JSON.stringify(hr2));
+  await sp.click('#handle'); await sp.waitForTimeout(600);
+  ok(!(await linfo(sp)).panel.open, '6. small screen: the same arrow (‹) closes it');
 
   ok(errors.length === 0, 'no page errors or failed requests', errors.slice(0, 5).join(' | '));
   if (isLost()) throw new Error('browser lost');

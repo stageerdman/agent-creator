@@ -118,7 +118,7 @@
   body.left canvas#mark { opacity: 1; }
   canvas#sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
   #menu { z-index: 2; }
-  #handle { position: fixed; left: 0; top: 50%; z-index: 3; display: flex; align-items: center; gap: 6px; min-width: 44px; height: 48px;
+  #handle { position: fixed; left: 0; top: 50%; z-index: 5; display: flex; align-items: center; gap: 6px; min-width: 44px; height: 48px;
     padding: 0 12px 0 10px; border: 0; border-radius: 0 12px 12px 0; background: rgba(6,11,8,.5); color: var(--fly); cursor: pointer;
     font: 500 13px/1 var(--font); transform: translateX(-100%); -webkit-tap-highlight-color: transparent; outline: none; }
   #handle[hidden] { display: none; }
@@ -128,6 +128,10 @@
   #handle:hover .chev, #handle:focus-visible .chev { opacity: 1; transform: translateX(2px); }
   #handle:hover .label, #handle:focus-visible .label { max-width: 80px; opacity: 1; }
   #handle:focus-visible { box-shadow: 0 0 0 1px rgba(216,242,106,.45); }
+  /* Open: the same arrow rides the panel's edge, points back (‹) and nudges left on hover; no label. */
+  #handle[aria-expanded="true"] .chev { transform: scaleX(-1); }
+  #handle[aria-expanded="true"]:hover .chev, #handle[aria-expanded="true"]:focus-visible .chev { transform: scaleX(-1) translateX(2px); }
+  #handle[aria-expanded="true"] .label { max-width: 0 !important; opacity: 0 !important; }
   #sketcher { position: fixed; left: 0; top: 0; bottom: 0; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
     padding: 20px 20px 20px 24px; border-radius: 0 16px 16px 0; color: #E8EFE0; font: 400 14px/1.45 var(--font);
     background: rgba(12,14,10,.92); transform: translateX(-100%); box-shadow: 0 0 60px rgba(0,0,0,.4); }
@@ -138,8 +142,6 @@
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
   #sketcher h2 { margin: 0; font: 600 17px/1.2 var(--font); }
-  #sketcher-close { width: 44px; height: 44px; margin: -10px 0 -10px -12px; border: 0; border-radius: 10px; background: transparent; color: var(--fly); font: 400 22px/1 var(--font); cursor: pointer; }
-  #sketcher-close:hover, #sketcher-close:focus-visible { background: rgba(216,242,106,.1); outline: none; }
   #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
   #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   #sketcher-log > .you { align-self: flex-end; background: rgba(216,242,106,.14); }
@@ -181,7 +183,7 @@
 <canvas id="sky" aria-hidden="true"></canvas>
 <button id="handle" type="button" aria-label="Open Sketcher" aria-expanded="false" aria-controls="sketcher" hidden><span class="chev" aria-hidden="true">›</span><span class="label" aria-hidden="true">Sketcher</span></button>
 <aside id="sketcher" aria-labelledby="sketcher-title" hidden inert>
-  <div class="top"><button id="sketcher-close" type="button" aria-label="Close Sketcher">‹</button><h2 id="sketcher-title">Sketcher</h2></div>
+  <div class="top"><h2 id="sketcher-title">Sketcher</h2></div>
   <div id="sketcher-log" aria-live="polite"></div>
   <form id="sketcher-form">
     <textarea id="sketcher-box" aria-label="Message to Sketcher" rows="3" enterkeyhint="send"></textarea>
