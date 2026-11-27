@@ -248,10 +248,14 @@ const until = async (page, test, ms) => { const t0 = Date.now(); while (Date.now
 
   /* ---------- 10. Reduce Motion: nothing moves, no speed-up ---------- */
   page = await open(browser, true);
+  // Count repaints of the field. (A raw pixel hash is not enough: Chrome moves a canvas off the GPU after the
+  // first getImageData and the readback can differ by 1 in a few bytes with no repaint at all.)
+  await page.addInitScript(() => { window._fieldPaints = 0; const o = CanvasRenderingContext2D.prototype.clearRect; CanvasRenderingContext2D.prototype.clearRect = function (...a) { if (this.canvas.id === 'field') window._fieldPaints++; return o.apply(this, a); }; });
   await page.goto(base + '/new'); await page.waitForTimeout(800);
-  const h1 = await canvasHash(page), i1 = await info(page); await page.waitForTimeout(1000);
-  const h2 = await canvasHash(page), i2 = await info(page);
-  ok(h1 === h2, '10. RM: two frames 1 s apart are identical', h1 + ' / ' + h2 + ' / ' + await canvasHash(page));
+  const snap = () => page.evaluate(() => { const cv = document.querySelector('#field'); const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let maxd = 0; const p = window._snap; if (p) for (let k = 0; k < d.length; k++) maxd = Math.max(maxd, Math.abs(d[k] - p[k])); window._snap = d; return { paints: window._fieldPaints, maxd }; });
+  const p1 = await snap(), i1 = await info(page); await page.waitForTimeout(1000);
+  const p2 = await snap(), i2 = await info(page);
+  ok(p2.paints === p1.paints && p2.maxd <= 1, '10. RM: no repaint and the same picture 1 s apart', 'paints ' + p1.paints + ' -> ' + p2.paints + ', max pixel delta ' + p2.maxd);
   ok(JSON.stringify(i1.flies) === JSON.stringify(i2.flies) && i2.m === 1, '10. RM: no orbit movement, speed 1');
   await page.mouse.move(500, 400); await page.waitForTimeout(700);
   const i3 = await info(page);
