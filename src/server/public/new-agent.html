@@ -28,30 +28,165 @@
   body.answered #pick:focus-visible { box-shadow: none; }
   /* First light: the new agent's own DNA logo, centred. */
   #logo { position: fixed; left: 50%; top: 50%; width: 56px; height: 56px; transform: translate(-50%, -50%); opacity: 0; pointer-events: none; }
+  #field, #logo, #pick { transition: opacity 600ms ease; }
+  body.split #field, body.split #logo, body.split #pick { opacity: 0; pointer-events: none; }
+
+  /* ---------- the creation screen: the field (left) ---------- */
+  canvas#flies { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  body.split canvas#flies { pointer-events: auto; }
+  #count { position: fixed; left: 50%; top: calc(50% + 72px); transform: translateX(-50%); margin: 0;
+    font: 400 13px/1 var(--font); color: rgba(216,242,106,.6); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 300ms ease; pointer-events: none; }
+  body.counting #count { opacity: 1; }
+  body.split #count { opacity: 1; left: 32px; top: auto; bottom: 28px; transform: none; }
+
+  /* ---------- the menu (right) ---------- */
+  #menu { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; box-sizing: border-box; padding: 40px 32px 32px;
+    overflow-y: auto; color: #E8EFE0; font: 400 14px/1.4 var(--font);
+    background: rgba(6,11,8,.72); border-left: 1px solid rgba(216,242,106,.08);
+    opacity: 0; transform: translateX(24px); transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.7,.2,1); visibility: hidden; }
+  body.split #menu { opacity: 1; transform: none; visibility: visible; }
+  #menu header { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
+  #emblem { width: 56px; height: 56px; flex: none; }
+  #name { margin: 0; font: 600 20px/1.2 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu section { position: relative; padding: 16px; margin: 0 -16px 8px; border-radius: 14px; transition: background 160ms ease; }
+  #menu .head { display: flex; align-items: center; gap: 8px; }
+  #menu h2 { margin: 0; font: 600 15px/1.2 var(--font); }
+  #menu .icon { width: 32px; height: 32px; margin: -6px 0 -6px -6px; padding: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); cursor: pointer; }
+  #menu .icon svg { width: 20px; height: 20px; display: block; }
+  #menu .icon:hover, #menu .icon:focus-visible { background: rgba(216,242,106,.1); outline: none; }
+  #menu .belt { display: block; width: 100%; margin-top: 10px; padding: 8px 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; border-radius: 8px; }
+  #menu .belt:disabled { cursor: default; }
+  #menu .belt:focus-visible { outline: 1px solid rgba(216,242,106,.38); outline-offset: 2px; }
+  #menu .dots { display: flex; flex-wrap: wrap; gap: 6px; min-height: 6px; }
+  #menu .line, #menu p.line { display: block; margin: 8px 0 0; font-size: 12px; color: rgba(232,239,224,.55); }
+  i.d { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--fly); flex: none; }
+  i.d.unprocessed { opacity: .32; }
+  i.d.processed { opacity: .9; box-shadow: 0 0 6px rgba(216,242,106,.6); }
+  i.d.removed { background: #FF6B5E; opacity: .9; box-shadow: 0 0 6px rgba(255,107,94,.5); }
+  #menu .rows { list-style: none; margin: 8px 0 0; padding: 0; }
+  #menu .rows li { display: flex; align-items: center; gap: 10px; min-height: 36px; border-bottom: 1px solid rgba(232,239,224,.06); }
+  #menu .rows .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menu .rows li.removed .n, #menu .rows .out { color: #FF6B5E; }
+  #menu .rows .out { font-size: 12px; }
+  #menu .rows button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: rgba(232,239,224,.6); font: inherit; font-size: 12px; cursor: pointer; }
+  #menu .rows button:hover, #menu .rows button:focus-visible { color: #FF6B5E; background: rgba(255,107,94,.1); outline: none; }
+  #menu .stars { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+  #menu .star { width: 32px; height: 32px; padding: 7px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); cursor: pointer; }
+  #menu .star svg { width: 18px; height: 18px; display: block; fill: currentColor; filter: drop-shadow(0 0 4px rgba(216,242,106,.5)); }
+  #menu .star:hover, #menu .star:focus-visible { background: rgba(216,242,106,.1); outline: none; }
+
+  /* Drop zones: only while something is dragged. */
+  #menu .zone { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 14px;
+    border: 1px dashed rgba(216,242,106,.35); color: var(--fly); font: 600 15px/1 var(--font); opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
+  body.dragging #menu .zone { opacity: 1; }
+  body.dragging #menu section > :not(.zone) { opacity: .15; transition: opacity 160ms ease; }
+  #menu section.hot { background: rgba(216,242,106,.08); }
+  #menu section.hot .zone { border-style: solid; border-color: rgba(216,242,106,.7); }
+
+  /* The confirmation line and the carried firefly. */
+  #note { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 8px); margin: 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-radius: 12px; background: #16211B; color: #E8EFE0; font: 400 13px/1.3 var(--font);
+    opacity: 0; pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; }
+  #note.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #note button { border: 0; background: transparent; color: var(--fly); font: 600 13px/1 var(--font); padding: 6px 4px; cursor: pointer; }
+  #ghost { position: fixed; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; display: none; box-shadow: 0 0 10px rgba(216,242,106,.7); }
+  #ghost.on { display: block; }
+
+  /* The popup. */
+  #sheet { width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 24px; border: 0; border-radius: 16px;
+    background: #111B16; color: #E8EFE0; font: 400 14px/1.5 var(--font); box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+  #sheet::backdrop { background: rgba(6,11,8,.6); }
+  #sheet form { display: flex; flex-direction: column; gap: 12px; }
+  #sheet-title { margin: 0; font: 600 17px/1.2 var(--font); }
+  #sheet input, #sheet textarea { box-sizing: border-box; width: 100%; border: 1px solid rgba(232,239,224,.12); border-radius: 10px; background: #0B1410; color: inherit; font: inherit; padding: 10px 12px; }
+  #sheet input[hidden] { display: none; }
+  #sheet textarea { min-height: 320px; resize: vertical; font: 400 13px/1.55 ui-monospace, "SF Mono", Menlo, monospace; }
+  #sheet input:focus, #sheet textarea:focus { outline: none; border-color: rgba(216,242,106,.5); }
+  #sheet .err { margin: 0; min-height: 1em; color: #FF6B5E; font-size: 12px; }
+  #sheet .close { align-self: flex-end; min-height: 36px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { #menu, #note, #count, #field, #logo, #pick { transition: none; } }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
 <body>
+<canvas id="flies" aria-hidden="true"></canvas>
 <canvas id="field" aria-hidden="true"></canvas>
 <main aria-label="New agent">
   <button id="pick" type="button" aria-label="Select Folder"><span aria-hidden="true">Select Folder</span></button>
   <canvas id="logo" aria-hidden="true"></canvas>
   <p id="status" class="vh" role="status"></p>
   <input id="folder" type="file" webkitdirectory multiple hidden tabindex="-1">
+  <p id="count" aria-live="polite"></p>
 </main>
+<aside id="menu" aria-label="Agent" inert>
+  <header><canvas id="emblem" aria-hidden="true"></canvas><h1 id="name"></h1></header>
+  <section data-section="system-prompt" aria-labelledby="h-sp">
+    <div class="zone" aria-hidden="true">Adjust DNA</div>
+    <div class="head">
+      <button class="icon" type="button" data-open="system-prompt" aria-label="Open system prompt">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M6.5 8 9 10l-2.5 2M10.5 12.5h3"/></svg>
+      </button>
+      <h2 id="h-sp">System prompt</h2>
+    </div>
+    <button class="belt" type="button" aria-expanded="false" disabled><span class="dots" aria-hidden="true"></span><span class="line"></span></button>
+    <ul class="rows" hidden></ul>
+  </section>
+  <section data-section="knowledge" aria-labelledby="h-kn">
+    <div class="zone" aria-hidden="true">Adjust Knowledge</div>
+    <div class="head">
+      <button class="icon" type="button" data-open="knowledge" aria-label="Open knowledge">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5C5 3.5 7.5 3.5 10 5c2.5-1.5 5-1.5 7-.5v11c-2-1-4.5-1-7 .5-2.5-1.5-5-1.5-7-.5z"/><path d="M10 5v11"/></svg>
+      </button>
+      <h2 id="h-kn">Knowledge</h2>
+    </div>
+    <button class="belt" type="button" aria-expanded="false" disabled><span class="dots" aria-hidden="true"></span><span class="line"></span></button>
+    <ul class="rows" hidden></ul>
+  </section>
+  <section data-section="skills" aria-labelledby="h-sk">
+    <div class="zone" aria-hidden="true">Create new skill</div>
+    <div class="head"><h2 id="h-sk">Skills</h2></div>
+    <div class="stars"></div>
+    <p class="line"></p>
+  </section>
+</aside>
+<p id="note" role="status"><span></span><button type="button" hidden>Undo</button></p>
+<div id="ghost" aria-hidden="true"></div>
+<dialog id="sheet" aria-labelledby="sheet-title">
+  <form method="dialog">
+    <h2 id="sheet-title"></h2>
+    <input id="sheet-name" type="text" aria-label="Skill name" hidden>
+    <textarea id="sheet-text" aria-labelledby="sheet-title"></textarea>
+    <p class="err" role="alert"></p>
+    <button class="close" type="submit">Close</button>
+  </form>
+</dialog>
 <script type="module">
 import { createOrbit, entriesOfFiles, entriesOfDrop } from '/firefly-orbit.js';
 import { nameOf } from '/agent-list.js';
+import { mountCreation, postInBatches } from '/creation-screen.js';
 
 const $ = s => document.querySelector(s);
 const pick = $('#pick'), input = $('#folder');
 const rmq = matchMedia('(prefers-reduced-motion: reduce)');
+const screen = mountCreation({ reduced: rmq.matches });
+rmq.addEventListener('change', e => screen.setReduced(e.matches));
+window.creation = { info: () => screen.info() };   // read-only, for checks
+
+/* An agent already made (a reload, or a link): straight to the split, no orbit. */
+const already = new URLSearchParams(location.search).get('agent');
+if (already) {
+  document.body.classList.add('answered');
+  fetch(`/api/agents/${encodeURIComponent(already)}`).then(r => r.ok ? r.json() : Promise.reject())
+    .then(a => screen.open(a, { still: true }),
+          () => { history.replaceState(null, '', '/new'); location.reload(); });
+}
 
 /* The call from home fades into the ring (home only writes it when motion is on). */
 let call = false;
 try { const c = JSON.parse(sessionStorage['glade.call'] || 'null'); sessionStorage.removeItem('glade.call'); call = !!c && Date.now() - c.t < 2000; } catch {}
 
-const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, logo: $('#logo'), reduced: rmq.matches, call: call && !rmq.matches }).start();
+const orbit = createOrbit({ canvas: $('#field'), text: pick.firstElementChild, logo: $('#logo'), reduced: rmq.matches, call: call && !rmq.matches });
+if (!already) orbit.start();
 rmq.addEventListener('change', e => orbit.setReduced(e.matches));
 window.orbit = { info: () => orbit.info() };   // read-only, for checks
 
@@ -61,15 +196,27 @@ async function json(method, url, body) {
   if (!r.ok) throw new Error(method + ' ' + url + ' ' + r.status);
   return r.json();
 }
-/* Create the agent, hand over the paths and sizes, then read its DNA for the logo home will show. */
+/* Create the agent and hand over the paths and sizes in batches: a firefly lands on the field per file
+   as each batch is saved, while the orbit keeps spinning. Then read its DNA for the logo. */
+let made = null;
 async function save(entries) {
   const list = await entries;
   if (!list.length) throw new Error('nothing came');
   const { id } = await json('POST', '/api/agents');
-  try { await json('POST', `/api/agents/${id}/files`, { files: list }); }
+  try { await postInBatches(list, part => json('POST', `/api/agents/${id}/files`, { files: part }), r => screen.grow(r.dna)); }
   catch (e) { fetch(`/api/agents/${id}`, { method: 'DELETE' }).catch(() => {}); throw e; }   // a failed save leaves no agent
-  try { const a = await json('GET', `/api/agents/${id}`); return { name: nameOf(a), files: a.dna || [] }; }
-  catch { return { name: 'Untitled', files: [] }; }
+  try { made = await json('GET', `/api/agents/${id}`); } catch { made = { id, dna: [] }; }
+  return { name: nameOf(made), files: made.dna || [] };
+}
+/* First light, a breath, then the split: the orbit fades and the menu comes in beside the field. */
+function split() {
+  if (orbit.info().state !== 'first-light') return setTimeout(split, 100);
+  setTimeout(() => {
+    document.body.classList.add('split');
+    setTimeout(() => orbit.stop(), 600);
+    history.replaceState(null, '', `/new?agent=${encodeURIComponent(made.id)}`);
+    screen.open(made);
+  }, rmq.matches ? 400 : 1200);
 }
 /* Pick and drop both end here. entries: [{ path, size }] (or a promise of it, for a big drop still being read). */
 function onChosen(entries) {
@@ -77,7 +224,7 @@ function onChosen(entries) {
   const work = save(entries);
   orbit.answer(work);
   document.body.classList.add('answered');
-  work.then(() => { $('#status').textContent = 'New agent'; },
+  work.then(() => { $('#status').textContent = 'New agent'; split(); },
             () => { setTimeout(() => document.body.classList.remove('answered'), 900); });
 }
 
@@ -85,7 +232,7 @@ function onChosen(entries) {
 let picking = false;
 function settlePick() { if (!picking) return; picking = false; orbit.hold(false); }
 pick.addEventListener('click', () => {
-  if (picking || orbit.busy()) return;          // a second click while Finder is open does nothing
+  if (screen.isOpen() || picking || orbit.busy()) return;          // a second click while Finder is open does nothing
   picking = true; orbit.hold(true); input.value = ''; input.click();
 });
 input.addEventListener('change', () => {
@@ -105,11 +252,13 @@ pick.addEventListener('focus', () => { if (pick.matches(':focus-visible')) orbit
 pick.addEventListener('blur', () => orbit.focus(false));
 
 /* ---------- drop anywhere ---------- */
-addEventListener('dragenter', e => { e.preventDefault(); orbit.stir(); });
-addEventListener('dragover', e => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = orbit.busy() ? 'none' : 'copy'; orbit.stir(); });
+/* After the split the creation screen owns dragging (its drop zones); before it, a drop makes the agent. */
+addEventListener('dragenter', e => { if (screen.isOpen()) return; e.preventDefault(); orbit.stir(); });
+addEventListener('dragover', e => { if (screen.isOpen()) return; e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = orbit.busy() ? 'none' : 'copy'; orbit.stir(); });
 addEventListener('drop', e => {
+  if (screen.isOpen()) return;
   e.preventDefault();
-  if (orbit.busy()) return;
+  if (orbit.busy() || already) return;
   const dt = e.dataTransfer;
   const hasFile = [...(dt && dt.items || [])].some(i => i.kind === 'file') || (dt && dt.files && dt.files.length > 0);
   if (!hasFile) { orbit.calm(); return; }          // a link or text: settle back, nothing made
@@ -120,7 +269,7 @@ addEventListener('drop', e => {
 });
 
 /* ---------- leaving ---------- */
-addEventListener('keydown', e => { if (e.key === 'Escape' && !e.defaultPrevented) location.href = '/'; });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('dialog[open]')) location.href = '/'; });
 </script>
 </body>
 </html>

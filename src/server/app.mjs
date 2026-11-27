@@ -18,7 +18,7 @@ import { createLogger, newTraceId } from "../log/logger.mjs";
 const log = createLogger("server");
 const PUBLIC = new URL("./public/", import.meta.url);
 // Every script the page imports; a module missing here 404s and the page stays blank.
-const PAGE_MODULES = ["agent-list", "firefly-gather", "firefly-orbit", "fireflies-dna", "file-intake"];
+const PAGE_MODULES = ["agent-list", "firefly-gather", "firefly-orbit", "fireflies-dna", "file-intake", "creation-screen"];
 
 function staticFile(name, contentType) {
   return async (_req, res) => {
