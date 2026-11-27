@@ -1,6 +1,6 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { askAgent, checkCli } from "../engine/index.mjs";
@@ -14,9 +14,11 @@ import { streamChat } from "./public/left-side.js";
 // agents kept in a temp folder.
 let scenario = "creator-patch";
 const prompts = [];
+const systemPrompts = [];
 const engine = {
   askAgent: (input, options) => {
     prompts.push(input.message);
+    systemPrompts.push(input.systemPrompt);
     return askAgent(input, { ...options, spawn: fakeSpawn(scenario) });
   },
   checkCli: () => checkCli({ binary: "claude", spawn: fakeSpawn("version") }),
@@ -51,7 +53,7 @@ test("chat streams delta*, then draft, then done, and the block never shows", as
   const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
   assert.equal(streamed.trim(), "Here's a first sketch.");
   assert.deepEqual(events.at(-2).data.changed, ["name", "persona"]);
-  assert.deepEqual(events.at(-1).data, { say: "Here's a first sketch.", sessionId: "sess-1" });
+  assert.deepEqual(events.at(-1).data, { say: "Here's a first sketch.", sessionId: "sess-1", ready: false });
 
   const saved = await json("GET", `/api/agents/${id}`);
   assert.equal(saved.draft.name, "Tony");
@@ -141,6 +143,80 @@ test("a reply that changes nothing sends no draft event", async () => {
   assert.deepEqual(events.map((e) => e.event), ["delta", "delta", "done"]);
 });
 
+test("ready comes only from the creator's structured flag, just before done", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  const events = await chat(id, '{"name":"Tony","ready":true}');
+  assert.deepEqual(events.map((e) => e.event).slice(-3), ["draft", "ready", "done"]);
+  assert.deepEqual(events.at(-2).data, { type: "ready", ready: true });
+  assert.equal(events.at(-1).data.ready, true);
+  assert.equal((await json("GET", `/api/agents/${id}`)).draft.ready, undefined, "the flag is not a draft field");
+
+  scenario = "stream-ok";
+  const words = await chat(id, "Looks good, press Keep to create it.");
+  assert.ok(!words.some((e) => e.event === "ready"));
+  assert.equal(words.at(-1).data.ready, false);
+});
+
+test("no ready event once the agent is kept", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Kept" });
+  await json("POST", `/api/agents/${id}/save`);
+  const events = await chat(id, '{"ready":true}');
+  assert.ok(!events.some((e) => e.event === "ready"));
+  assert.equal(events.at(-1).data.ready, false);
+});
+
+const talk = async (id, message) => parseSse((await call("POST", `/api/agents/${id}/talk`, { message })).text);
+
+test("talk: the agent itself answers, streams delta+done with what it used, and never changes the draft", async () => {
+  scenario = "talk-used";
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Coach", persona: "You are a coach." });
+  await json("PUT", `/api/agents/${id}/system-prompt`, { text: "You are Coach, short and kind." });
+  await json("POST", `/api/agents/${id}/skills`, { name: "Plan a run" });
+  const source = join(home, "week1.md");
+  await writeFile(source, "Run 5k on Monday.");
+  await json("POST", `/api/agents/${id}/sections/knowledge/files`, { files: [{ path: "notes/week1.md", size: 17, source }] });
+  await json("POST", `/api/agents/${id}/save`);
+  const before = await json("GET", `/api/agents/${id}`);
+
+  const events = await talk(id, '{"skills":["Plan a run","Ghost"],"files":["notes/week1.md","nope"]}');
+  const names = events.map((e) => e.event);
+  assert.equal(names.at(-1), "done");
+  assert.ok(names.slice(0, -1).every((n) => n === "delta"));
+  assert.equal(events.filter((e) => e.event === "delta").map((e) => e.data.text).join("").trim(), "From your notes:");
+  assert.deepEqual(events.at(-1).data, {
+    say: "From your notes:",
+    used: [{ kind: "skill", name: "Plan a run" }, { kind: "file", name: "notes/week1.md" }],
+  });
+  assert.match(systemPrompts.at(-1), /^You are Coach, short and kind\./);
+  assert.match(systemPrompts.at(-1), /<skill name="Plan a run">/);
+  assert.match(systemPrompts.at(-1), /<file name="notes\/week1\.md">\nRun 5k on Monday\./);
+
+  const after = await json("GET", `/api/agents/${id}`);
+  assert.deepEqual([after.draft, after.files, after.chat], [before.draft, before.files, before.chat]);
+  assert.deepEqual(after.talk, [
+    { who: "you", text: '{"skills":["Plan a run","Ghost"],"files":["notes/week1.md","nope"]}' },
+    { who: "agent", text: "From your notes:", used: events.at(-1).data.used },
+  ]);
+});
+
+test("talk: earlier lines go in the message; a missing agent is 404, an empty message 400", async () => {
+  scenario = "talk-used";
+  const id = await newAgent();
+  await json("PUT", `/api/agents/${id}/draft`, { name: "Echo" });
+  await json("POST", `/api/agents/${id}/save`);
+  await talk(id, "{}");
+  await talk(id, "{}");
+  assert.match(prompts.at(-1), /<earlier_talk>\nUser: \{\}\nYou: From your notes:\n<\/earlier_talk>/);
+  assert.equal((await json("GET", `/api/agents/${id}`)).talk.length, 4);
+  assert.equal((await call("POST", "/api/agents/0123456789ab/talk", { message: "hi" })).status, 404);
+  assert.equal((await call("POST", `/api/agents/${id}/talk`, { message: " " })).status, 400);
+  assert.deepEqual((await json("GET", `/api/agents/${await newAgent()}`)).talk, []);
+});
+
 test("Keep sets saved; a later hand edit sets it back to draft", async () => {
   const id = await newAgent();
   await json("PUT", `/api/agents/${id}/draft`, { name: "Kept one" });
@@ -222,35 +298,27 @@ test("F10: done carries ready only when the creator says so, and never after Cre
   scenario = "creator-patch";
   const id = await newAgent();
   const plain = await chat(id, '{"name":"Tony","persona":"You are loud."}');
-  assert.equal(plain.at(-1).data.ready, undefined);
+  assert.equal(plain.at(-1).data.ready, false);
   const ready = await chat(id, '{"instructions":"Coach daily.","ready":true}');
   assert.equal(ready.at(-1).event, "done");
   assert.equal(ready.at(-1).data.ready, true);
   await call("POST", `/api/agents/${id}/save`);
   const after = await chat(id, '{"ready":true}');
-  assert.equal(after.at(-1).data.ready, undefined);
+  assert.equal(after.at(-1).data.ready, false);
   const empty = await newAgent();
-  assert.equal((await chat(empty, '{"ready":true}')).at(-1).data.ready, undefined, "an empty draft is never ready");
+  assert.equal((await chat(empty, '{"ready":true}')).at(-1).data.ready, false, "an empty draft is never ready");
 });
 
 test("G4/F14: talk answers a created agent, names only what it has, and keeps the talk", async () => {
   const id = await newAgent();
   scenario = "creator-patch";
   await chat(id, '{"name":"Tony","persona":"You are loud.","instructions":"Coach daily."}');
-  scenario = "stream-ok";
+  scenario = "talk-used";
   assert.equal((await call("POST", `/api/agents/${id}/talk`, { message: "hi" })).status, 400, "a draft can't talk yet");
   await call("POST", `/api/agents/${id}/save`);
-  await json("POST", `/api/agents/${id}/skills`, { name: "Tax" });
-
-  const events = parseSse((await call("POST", `/api/agents/${id}/talk`, { message: 'Hi <used>["Tax","Bogus","Knowledge"]</used>' })).text);
-  const streamed = events.filter((e) => e.event === "delta").map((e) => e.data.text).join("");
-  assert.ok(!streamed.includes("<used>"), "the used block never streams");
-  assert.deepEqual(events.at(-1), { event: "done", data: { say: "Echo: Hi", used: [{ name: "Tax", kind: "skill" }] } });
-  assert.match(prompts.at(-1) ?? "", /Hi/);
-
+  assert.equal((await talk(id, "{}")).at(-1).event, "done");
   const saved = await json("GET", `/api/agents/${id}`);
   assert.deepEqual(saved.talk.map((t) => t.who), ["you", "agent"]);
-  assert.deepEqual(saved.talk[1].used, [{ name: "Tax", kind: "skill" }]);
   assert.equal(saved.draft.status, "saved", "talking never turns it back into a draft");
   assert.equal((await call("POST", "/api/agents/0123456789ab/talk", { message: "hi" })).status, 404);
 });

@@ -119,7 +119,7 @@ test("creatorTurn streams without the block, trusts the final result, resumes th
     { engine, onSay: (t) => said.push(t) },
   );
   assert.equal(said.join(""), "Hi! ");
-  assert.deepEqual(turn, { say: "Hello!", patch: { name: "Tina" }, sessionId: "sess-1" });
+  assert.deepEqual(turn, { say: "Hello!", patch: { name: "Tina" }, sessionId: "sess-1", ready: false });
   assert.equal(engine.calls[0].resumeSessionId, "old");
   assert.match(engine.calls[0].systemPrompt, /You are the Sketcher/);
   // A resumed session ignores a new system prompt, so the live draft rides in the message.

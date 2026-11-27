@@ -36,20 +36,21 @@
       below.
 
 - [x] TALK route missing (Eraser, 2026-11-28). Closed 2026-11-28
-      (Columbo, integration): POST /api/agents/:id/talk now exists
-      (src/creator/agentTalk.mjs). Only a created agent talks (a draft is
-      400). Its prompt is its system prompt (or persona + instructions),
-      its knowledge text and its skills' bodies. done { say, used }, where
-      `used` names only skills / Knowledge it has. The talk and its session
-      are kept in agent.json. Server test "G4/F14: talk ...".
+      (Uncle Bob a55f15b + Columbo merge): POST /api/agents/:id/talk exists
+      (agentTalk.mjs, talkPrompt.mjs). Only a created agent talks (a draft
+      is 400). Its prompt is its system prompt, skill bodies, knowledge.md
+      and readable rag/skill files (capped). done { say, used }, where
+      `used` names only what it has. The talk is kept in agent.json.
+      Server test "G4/F14: talk ...".
       Still open: agent-page-check.cjs fakes the route with page.route;
       it should hit the real one with the fake engine. Owner: Jony.
 
 - [x] CHAT ready flag (Jony → Uncle Bob, 2026-11-27). Closed 2026-11-28
       (Columbo, integration): the Sketcher puts "ready": true in its draft
       block when it says the agent looks ready (prompt rule 5); the server
-      passes it on as done { ready: true }, only for a non-empty draft that
-      isn't created (the page also hides it if it was created before). Server test "F10: done carries ready ...".
+      sends ready { ready: true } and done { ready }, only for a non-empty
+      draft that isn't created (Uncle Bob a55f15b + Columbo). The page reads
+      the flag, not words. Server test "F10: done carries ready ...".
       Still open: no browser check drives a real turn to Create. Owner: Jony.
 
 - [ ] Eraser's eye-check.cjs (e435071), Reduce Motion off: the "dots appear

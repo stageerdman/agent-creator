@@ -1,48 +1,55 @@
-// G4/F14: talking to a created agent over its DNA. The agent's prompt is
-// made from what it is built into: its system prompt (or persona and
-// instructions), its knowledge text and its skills' bodies. No RAG yet (A11
-// plan): the knowledge text goes in whole. The answer may end with one
-// `<used>["Skill name", "Knowledge"]</used>` block; it never shows, and only
-// names the agent really has reach the page.
+// Talking to a kept agent (G4): the agent itself answers, from its system
+// prompt, skill bodies, knowledge and readable files (talkPrompt.mjs). The
+// talk is kept in the record; it never changes the draft or the files.
 
-import { createHash } from "node:crypto";
-import { splitReply, streamFilter } from "./creatorReply.mjs";
+import { readFile } from "node:fs/promises";
+import { askWithBlock } from "./askWithBlock.mjs";
+import { buildTalkMessage, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
+import { createLogger } from "../log/logger.mjs";
 import { BadInput } from "./errors.mjs";
 
+const log = createLogger("agentTalk");
 export const TALK_KEEP = 200;
-const KNOWLEDGE = "Knowledge";
+const TALK_CONTEXT = 40; // earlier lines the agent sees again
+const FILE_CAP = 100_000; // characters per file
+const TOTAL_CAP = 400_000; // characters over all files
 
-export function buildTalkPrompt({ draft, systemPrompt = "", knowledge = "", skills = [] }) {
-  const own = systemPrompt.trim() || [draft.persona, draft.instructions].map((t) => (t ?? "").trim()).filter(Boolean).join("\n\n");
-  const parts = [own || `You are ${draft.name || "a helpful agent"}.`];
-  if (knowledge.trim()) parts.push(`<knowledge>\n${knowledge.trim()}\n</knowledge>`);
-  for (const skill of skills) parts.push(`<skill name=${JSON.stringify(skill.name)}>\n${skill.body.trim()}\n</skill>`);
-  if (knowledge.trim() || skills.length) {
-    const names = [...skills.map((s) => s.name), ...(knowledge.trim() ? [KNOWLEDGE] : [])];
-    parts.push(`If your answer draws on the knowledge or a skill above, end with one line <used>${JSON.stringify(names)}</used> listing only the ones you drew on, from: ${names.join(", ")}. Never mention this line.`);
+const feedsTalk = (file) => !file.removed && file.source && file.feeds.some((feed) => feed === "rag" || feed.startsWith("skill:"));
+
+export const defaultReadSource = (path) => readFile(path, "utf8");
+
+export function createTalk({ store, engine, readSource = defaultReadSource }) {
+  async function skillsOf(id, record) {
+    return Promise.all((record.skills ?? []).map(async (skill) => ({ name: skill.name, body: await store.readText(id, `skills/${skill.id}/SKILL.md`) })));
   }
-  return parts.join("\n\n");
-}
 
-// → [{ name, kind }]: the names the answer gave that the agent really has.
-export function usedOf(raw, { skills = [], knowledge = "" }) {
-  const match = /<used>([\s\S]*?)<\/used>/.exec(raw ?? "");
-  if (!match) return [];
-  let names;
-  try { names = JSON.parse(match[1]); } catch { return []; }
-  if (!Array.isArray(names)) return [];
-  const used = [];
-  for (const name of new Set(names.filter((n) => typeof n === "string"))) {
-    if (skills.some((s) => s.name === name)) used.push({ name, kind: "skill" });
-    else if (name === KNOWLEDGE && knowledge.trim()) used.push({ name, kind: "knowledge" });
+  // The built knowledge.md first, then each readable source until the cap.
+  async function filesOf(id, record, traceId) {
+    const files = [{ path: "knowledge.md", text: await store.readText(id, "knowledge.md") }];
+    let total = files[0].text.length;
+    for (const file of (record.files ?? []).filter(feedsTalk)) {
+      if (total >= TOTAL_CAP) break;
+      const text = await readable(file, traceId);
+      if (!text) continue;
+      const kept = text.slice(0, Math.min(FILE_CAP, TOTAL_CAP - total));
+      files.push({ path: file.path, text: kept });
+      total += kept.length;
+    }
+    return files;
   }
-  return used;
-}
 
-const stripUsed = (text) => splitReply(text.replace(/<used>/g, "<draft>").replace(/<\/used>/g, "</draft>")).say;
-const hash = (text) => createHash("sha256").update(text).digest("hex").slice(0, 16);
+  // Binary or unreadable files are left out of the context, never fatal.
+  async function readable(file, traceId) {
+    try {
+      const text = await readSource(file.source);
+      return text.includes("\0") ? "" : text;
+    } catch (error) {
+      log.warn("readable", "skipped unreadable file", { path: file.path, error, traceId });
+      return "";
+    }
+  }
 
-export function createTalk({ store, engine }) {
+  // Only a created agent talks; a draft gets a plain 400 before any stream.
   async function canTalk(id) {
     const record = await store.loadAgent(id);
     if (record.draft.status !== "saved") throw new BadInput("Create the agent first, then talk to it.");
@@ -52,30 +59,23 @@ export function createTalk({ store, engine }) {
   return {
     canTalk,
 
-    // One turn. A changed prompt (the agent was edited) starts a new session,
-    // because a resumed session keeps its first system prompt.
-    async talk(id, message, { onSay = () => {}, signal, traceId } = {}) {
+    // → { say, used: [{ kind, name }] }. Never resumed: each call gets the
+    // newest system prompt, with the earlier talk in the message.
+    async talk(id, message, { onSay, signal, traceId } = {}) {
       const record = await canTalk(id);
-      const [systemPrompt, knowledge] = await Promise.all([store.readText(id, "system-prompt.md"), store.readText(id, "knowledge.md")]);
-      const skills = await Promise.all((record.skills ?? []).map(async (s) => ({ name: s.name, body: await store.readText(id, `skills/${s.id}/SKILL.md`) })));
-      const prompt = buildTalkPrompt({ draft: record.draft, systemPrompt, knowledge, skills });
-      const key = hash(prompt);
-      const resume = record.talkSession?.prompt === key ? record.talkSession.id : undefined;
-
-      const filter = streamFilter("used");
-      const emit = (text) => text && onSay(text);
-      const reply = await engine.askAgent(
-        { message, systemPrompt: prompt, resumeSessionId: resume },
-        { onDelta: (text) => emit(filter.push(text)), signal, traceId },
-      );
-      emit(filter.flush());
-      const say = stripUsed(reply.text);
-      const used = usedOf(reply.text, { skills, knowledge });
-
+      const systemPrompt = await store.readText(id, "system-prompt.md");
+      const skills = await skillsOf(id, record);
+      const files = await filesOf(id, record, traceId);
+      const input = {
+        message: buildTalkMessage({ message, talk: (record.talk ?? []).slice(-TALK_CONTEXT) }),
+        systemPrompt: buildTalkPrompt({ systemPrompt, draft: record.draft, skills, files }),
+      };
+      const reply = await askWithBlock(engine, input, "used", { onSay, signal, traceId });
+      const used = usedOf(reply.patch, { skills, files });
       const latest = await store.loadAgent(id);
-      const talk = [...(latest.talk ?? []), { who: "you", text: message }, { who: "agent", text: say, used }].slice(-TALK_KEEP);
-      await store.saveDraft(id, { talk, talkSession: { id: reply.sessionId, prompt: key } });
-      return { say, used };
+      const talk = [...(latest.talk ?? []), { who: "you", text: message }, { who: "agent", text: reply.say, used }].slice(-TALK_KEEP);
+      await store.saveDraft(id, { talk });
+      return { say: reply.say, used };
     },
   };
 }

@@ -36,6 +36,13 @@ const scenarios = {
     out(delta(block.slice(3)));
     out(result(`Here's a first sketch. ${block}`));
   },
+  // A kept agent answering, naming what it drew on: the block is the message.
+  "talk-used": () => {
+    const block = `<used>${message}</used>`;
+    out(delta("From your notes: <us"));
+    out(delta(block.slice(3)));
+    out(result(`From your notes: ${block}`));
+  },
   "once-ok":() => out(result(`Echo: ${message}`)),
   "once-bad-json": () => process.stdout.write("not json\n"),
   "version": () => process.stdout.write("9.9.9 (Claude Code)\n"),

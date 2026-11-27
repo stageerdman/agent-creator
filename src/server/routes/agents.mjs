@@ -17,8 +17,8 @@ export function agentRoutes(agents) {
 
     // SSE: delta* → draft { draft, changed } and/or files { files, changed }
     // (each only if something changed), then allocate { file, section } per
-    // changed file and section it now goes to ("none" if it feeds nothing) → done { say, sessionId, ready? } | error.
-    // `ready: true` only when the creator says the draft can be created (F10).
+    // changed file and section it now goes to ("none" if it feeds nothing) → ready { type, ready: true }
+    // only when the creator flags the agent ready (never once kept) → done { say, sessionId, ready } | error.
     "POST /api/agents/:id/chat": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
       await agents.get(params.id); // 404 before the stream opens
@@ -28,19 +28,18 @@ export function agentRoutes(agents) {
         if (turn.changed.length) send("draft", { draft: turn.draft, changed: turn.changed });
         if (turn.filesChanged.length) send("files", { files: turn.files, changed: turn.filesChanged });
         for (const allocation of allocations(turn.files, turn.filesChanged)) send("allocate", allocation);
-        send("done", { say: turn.say, sessionId: turn.sessionId, ...(turn.ready ? { ready: true } : {}) });
+        if (turn.ready) send("ready", { type: "ready", ready: true });
+        send("done", { say: turn.say, sessionId: turn.sessionId, ready: turn.ready });
       });
     },
 
-    // G4/F14: talk to a created agent over its DNA. SSE: delta* → done { say, used } | error.
-    // `used` is [{ name, kind: "skill" | "knowledge" }], only what the answer drew on.
+    // Talk to the kept agent itself. SSE: delta* → done { say, used: [{ kind, name }] } | error.
     "POST /api/agents/:id/talk": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
-      await agents.canTalk(params.id); // 404 / 400 before the stream opens
+      await agents.canTalk(params.id); // 404 / 400 (not created yet) before the stream opens
       await streamEvents(res, traceId, async ({ send, signal }) => {
         const onSay = (text) => send("delta", { text });
-        const turn = await agents.talk(params.id, message, { onSay, signal, traceId });
-        send("done", { say: turn.say, used: turn.used });
+        send("done", await agents.talk(params.id, message, { onSay, signal, traceId }));
       });
     },
 

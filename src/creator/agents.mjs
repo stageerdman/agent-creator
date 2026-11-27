@@ -36,11 +36,12 @@ const isUnused = (record) => isEmpty(record.draft) && !record.sessionId && !reco
 
 // Files, sections and texts are their own use cases (agentMaterial.mjs,
 // agentTexts.mjs), offered here so callers hold one object.
-export function createAgents({ store, engine, now = () => new Date() }) {
+export function createAgents({ store, engine, now = () => new Date(), readSource }) {
   const material = createMaterial({ store, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),
+    ...createTalk({ store, engine, readSource }),
 
     // Reuses an untouched empty agent, so hidden empty ones never pile up (R8).
     async create() {
@@ -70,13 +71,10 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
       const chat = withTurn(latest.chat, message, turn.say);
       await store.saveDraft(id, { draft, handEdited, handLines, files: routed.files, sessionId: turn.sessionId, chat });
-      // F10: Create shows when the creator says ready in its block, and only
-      // for a draft with something in it that was never created.
-      const ready = turn.patch?.ready === true && draft.status !== "saved" && !isEmpty(draft);
+      // A kept agent is never "ready to create" again, nor is an empty draft.
+      const ready = turn.ready === true && draft.status !== "saved" && !isEmpty(draft);
       return { say: turn.say, draft, changed, files: routed.files, filesChanged: routed.changed, sessionId: turn.sessionId, ready };
     },
-
-    ...createTalk({ store, engine, now }),
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.
     async edit(id, fields) {
