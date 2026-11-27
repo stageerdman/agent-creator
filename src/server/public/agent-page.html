@@ -110,7 +110,7 @@ try {
   else { const r = await fetch('/api/agents/' + encodeURIComponent(id)); a = r.ok ? await r.json() : null; }
   if (a) { face(a); await mountAgentPage({ a, demo: demo != null }); document.getElementById('views').hidden = false; }
   else show('This agent isn’t here', 'It may have been removed.');
-} catch { show('Couldn’t open this agent', 'Go back and try again.'); }
+} catch (e) { console.error('agent page:', e); show('Couldn’t open this agent', 'Go back and try again.'); }
 </script>
 </body>
 </html>

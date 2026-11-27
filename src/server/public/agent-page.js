@@ -73,7 +73,7 @@ export async function mountAgentPage({ doc = document, fetch = window.fetch.bind
   // The material, read once. In demo there is no server: the row's own files are all there is.
   const [prompt, knowledge, skills] = demo ? [null, [], []] : await Promise.all([
     getJson(fetch, base + '/system-prompt', null),
-    getJson(fetch, base + '/sections/knowledge/files', []),
+    getJson(fetch, base + '/sections/knowledge/files', { files: [] }).then(k => (k && k.files) || []),
     getJson(fetch, base + '/skills', { skills: [] }).then(s => (s && s.skills) || []),
   ]);
   const instructions = (prompt && prompt.text) || (a.draft && a.draft.instructions) || '';
