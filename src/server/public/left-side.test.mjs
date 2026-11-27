@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showKeep, isKept, timings, blinkLevel,
   saysReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
+  menuSectionOf, glowLevel, sortLeave, streamChat, GLOW_MS, TOOK_MS, SORT_GAP, STILL_BLINK,
 } from './left-side.js';
 
 test('M4. the likeness grows as it fills: half size at nothing, full when whole, rising at every step', () => {
@@ -158,4 +159,45 @@ test('the little ones: mark size, ready words, server events', () => {
   const { events, rest } = parseEvents('event: delta\ndata: {"text":"Hi"}\n\nevent: done\ndata: {}\n\nevent: del');
   assert.deepEqual(events, [{ event: 'delta', data: { text: 'Hi' } }, { event: 'done', data: {} }]);
   assert.equal(rest, 'event: del');
+});
+
+test('F12. each sorted file names its menu section; none / missing → nowhere', () => {
+  assert.equal(menuSectionOf('knowledge'), 'knowledge');
+  assert.equal(menuSectionOf('transcript'), 'transcript');
+  assert.equal(menuSectionOf('skill:writing'), 'skills');
+  assert.equal(menuSectionOf('none'), null);
+  assert.equal(menuSectionOf(undefined), null);
+});
+
+test('F13. a firefly glows from its own allocate: 0 before, lit inside GLOW_MS, out after; Reduce Motion a plain step', () => {
+  assert.equal(glowLevel(-1, false), 0);
+  assert.ok(glowLevel(GLOW_MS / 4, false) > 0);
+  assert.equal(glowLevel(GLOW_MS, false), 0);
+  assert.equal(glowLevel(10, true), 1);
+  assert.equal(glowLevel(STILL_BLINK, true), 0);
+  assert.ok(TOOK_MS > 0);
+});
+
+test('F12. a burst of sorted files leaves one by one, never before the glow', () => {
+  const first = sortLeave(1000, -Infinity);
+  assert.ok(first > 1000);
+  const second = sortLeave(1000, first);
+  assert.equal(second - first, SORT_GAP);
+  assert.equal(sortLeave(5000, first), sortLeave(5000, -Infinity), 'a later burst is not held back by an old one');
+});
+
+test('F12/F13. streamChat: onAllocate once per allocate event, onChange on files', async () => {
+  const sse = [
+    ['delta', { text: 'Moving ' }], ['files', {}],
+    ['allocate', { file: 'a.md', section: 'knowledge' }], ['allocate', { file: 'b.md', section: 'knowledge' }],
+    ['allocate', { file: 'c.md' }], ['done', { say: 'Moving them.' }],
+  ].map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join('');
+  let sent;
+  const fetch = async (url, init) => { sent = JSON.parse(init.body); return new Response(sse); };
+  const changes = [], sorted = [];
+  const say = await streamChat({ fetch, id: 'x', message: 'move outstanding files to knowledge', onChange: e => changes.push(e), onAllocate: a => sorted.push(a) });
+  assert.equal(sent.message, 'move outstanding files to knowledge');
+  assert.deepEqual(changes, ['files']);
+  assert.deepEqual(sorted, [{ file: 'a.md', section: 'knowledge' }, { file: 'b.md', section: 'knowledge' }, { file: 'c.md', section: 'none' }]);
+  assert.equal(say, 'Moving them.');
 });

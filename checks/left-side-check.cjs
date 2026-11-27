@@ -185,6 +185,40 @@ async function run(agents, isLost, setLost) {
   await sp.click('#handle'); await sp.waitForTimeout(600);
   ok(!(await linfo(sp)).panel.open, '6. small screen: the same arrow (‹) closes it');
 
+  /* ---------- 8. "move outstanding files to knowledge": each file glows on its own allocate and flies to Knowledge ---------- */
+  // The chat route stands in for the AI only: it really moves the files (agents.assign, as the server's
+  // routeFiles would), then answers with the server's own events, one allocate per file.
+  await launch();
+  await page.goto(base + '/new'); await page.waitForTimeout(700);
+  await dropFiles(page, 6, 300, 300);
+  await until(async () => (await linfo(page)).handle.shown, 8000);
+  const id2 = (await linfo(page)).agent;
+  const b = await (await fetch(`${base}/api/agents/${id2}`)).json();
+  const sent = [];
+  await page.route('**/api/agents/*/chat', async route => {
+    const body = JSON.parse(route.request().postData() || '{}'); sent.push(body.message);
+    await agents.assign(id2, 'knowledge', b.dna.map(f => ({ path: f.id, name: f.name, size: f.sizeBytes })));
+    const ev = (e, d) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`;
+    await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body:
+      ev('delta', { text: 'Moving them to Knowledge.' }) + ev('files', {}) +
+      b.dna.map(f => ev('allocate', { file: f.id, section: 'knowledge' })).join('') + ev('done', { say: 'Moving them to Knowledge.' }) });
+  });
+  await page.click('#handle'); await page.waitForTimeout(500);
+  await page.fill('#sketcher-box', 'move outstanding files to knowledge');
+  await page.keyboard.press('Enter');
+  let sawFlying = 0, sawGlow = 0;
+  const sortedIn = await until(async () => {
+    const s = await linfo(page); sawFlying = Math.max(sawFlying, s.sorting); sawGlow = Math.max(sawGlow, s.glowing);
+    return s.sorted.count === b.dna.length && s.sorting === 0 && s.took >= b.dna.length;
+  }, 8000);
+  const s8 = await linfo(page), c8 = await page.evaluate(() => window.creation.info());
+  ok(sent.length === 1 && sent[0] === 'move outstanding files to knowledge', '8. the real sentence went to the chat', JSON.stringify(sent));
+  ok(sortedIn >= 0 && s8.sorted.count === b.dna.length, `8. each of the ${b.dna.length} files got its own allocate`, JSON.stringify(s8.sorted.count));
+  ok(sawGlow > 0 && sawFlying > 0, '8. the files glowed and flew (seen in the air)', JSON.stringify({ sawGlow, sawFlying }));
+  ok(s8.took >= b.dna.length, '8. Knowledge took each one with a soft light', String(s8.took));
+  ok((c8.sections.knowledge || []).length === b.dna.length, '8. the Knowledge section now lists them', JSON.stringify(Object.keys(c8.sections)));
+  await page.unroute('**/api/agents/*/chat');
+
   ok(errors.length === 0, 'no page errors or failed requests', errors.slice(0, 5).join(' | '));
   if (isLost()) throw new Error('browser lost');
   await browser.close();
