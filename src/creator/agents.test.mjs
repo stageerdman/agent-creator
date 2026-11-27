@@ -72,6 +72,18 @@ test("store: deleteAgent removes only that agent's folder; a missing or odd id i
   assert.deepEqual(await readdir(join(dir, "agents")), [kept.id]);
 });
 
+test("store: texts live in the agent's folder, start empty and never escape it", async () => {
+  const store = await freshStore();
+  const { id } = await store.createAgent();
+  assert.equal(await store.readText(id, "system-prompt.md"), "");
+  await store.writeText(id, "skills/ab12cd34/SKILL.md", "# Soup");
+  assert.equal(await store.readText(id, "skills/ab12cd34/SKILL.md"), "# Soup");
+  for (const rel of ["../agent.json", "/etc/passwd", "a//b", ""]) {
+    await assert.rejects(store.readText(id, rel), { kind: "bad-input" });
+  }
+  await assert.rejects(store.writeText("0123456789ab", "x.md", "x"), { kind: "not-found" });
+});
+
 test("store: listAgents is newest first by updatedAt", async () => {
   const store = await freshStore();
   const first = await store.createAgent();
