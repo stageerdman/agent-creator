@@ -74,7 +74,7 @@ test("GET /agents/:id serves a page, not raw JSON", async () => {
 });
 
 test("GET serves the screens' scripts", async () => {
-  for (const [path, type] of [["/agent-list.js", "javascript"], ["/firefly-gather.js", "javascript"], ["/firefly-orbit.js", "javascript"],["/fireflies-dna.js", "javascript"]]) {
+  for (const [path, type] of [["/agent-list.js", "javascript"], ["/firefly-gather.js", "javascript"], ["/firefly-orbit.js", "javascript"],["/fireflies-dna.js", "javascript"], ["/left-side.js", "javascript"]]) {
     const response = await fetch(`${base}${path}`);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-type"), new RegExp(type), path);
