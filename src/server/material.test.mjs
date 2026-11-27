@@ -67,6 +67,18 @@ test("sections: drop onto one, list it, remove a file", async () => {
   assert.equal((await call("GET", `/api/agents/${id}/sections/persona/files`)).status, 400);
 });
 
+test("sources: uploaded bytes become the file's .txt copy; unknown file 404, no path 400", async () => {
+  const id = await newAgent();
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "a.md", size: 2 }] });
+  const put = (path, bytes) => fetch(`${base}/api/agents/${id}/sources${path ? `?path=${encodeURIComponent(path)}` : ""}`, { method: "PUT", body: bytes });
+  const ok = await put("a.md", Buffer.from("hi"));
+  assert.deepEqual([ok.status, await ok.json()], [200, { path: "a.md", text: "ok" }]);
+  const binary = await put("a.md", Buffer.from([0, 1, 2, 0]));
+  assert.equal((await binary.json()).text === "ok", false);
+  assert.equal((await put("nope.md", Buffer.from("x"))).status, 404);
+  assert.equal((await put("", Buffer.from("x"))).status, 400);
+});
+
 test("system prompt reads and saves; knowledge reads", async () => {
   const id = await newAgent();
   assert.deepEqual((await json("GET", `/api/agents/${id}/system-prompt`)).body, { text: "" });
