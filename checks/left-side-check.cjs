@@ -220,7 +220,7 @@ async function webkitChat(agents, id) {
       edgeText: edge ? edge.innerText : '', scripts: count(log, 'script'), pwned: !!window.__pwned,
     };
   });
-  ok(r.coachText && !r.coachText.includes('**') && !r.coachText.includes('`'), '7. webkit: no raw ** or backtick on screen in the Release Coach reply', JSON.stringify(r.coachText.slice(0, 80)));
+  ok(r.coachText && !r.coachText.includes('**') && !r.coachText.includes('`') && !/^\s*>/m.test(r.coachText), '7. webkit: no raw **, backtick or line-start > on screen in the Release Coach reply', JSON.stringify(r.coachText.slice(0, 80)));
   ok(r.strong === 3 && r.ol === 1 && r.li === 3 && r.code === 4 && r.quote === 1 && r.em === 1, '7. webkit: bold, numbered list, code, quote and italics are formatted', JSON.stringify({ strong: r.strong, ol: r.ol, li: r.li, code: r.code, quote: r.quote, em: r.em }));
   ok(r.youText.includes('**release**'), '7. webkit: your own line stays plain text', JSON.stringify(r.youText));
   ok(!!r.pre && r.pre.sw > r.pre.cw && r.logSW <= r.logCW + 1, '7. webkit: a long code line scrolls inside its block, the chat does not widen', JSON.stringify({ pre: r.pre, logSW: r.logSW, logCW: r.logCW, panelW: r.panelW }));

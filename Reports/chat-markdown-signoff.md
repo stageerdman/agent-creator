@@ -52,6 +52,14 @@ The roadmap's "rendered well" asks for "zero `**`, zero `` ` ``, zero `>` at a l
 - **Streaming on screen.** WebKit checks the reloaded history. Streaming is covered by the unit test "every streamed prefix… never shows a broken tag", through the same `say()`. That's enough for now. A real-stream WebKit pass would be stronger.
 - **Phase 2.** When Talk returns, it must import this same `renderMarkdown` and reuse the `.md` styles. A second parser or a per-screen variant gets returned.
 
+## Integration (Columbo, captain): F1 and F2 closed
+
+- **F2 done.** Check 7 now also asserts `!/^\s*>/m.test(coachText)`. Re-run: `node checks/left-side-check.cjs http://localhost:3505 --home .scratch/columbo-md`: **ALL PASS** (Chrome 1-6, WebKit 7).
+- **F1 done in the shell, one place.** `src-tauri/src/main.rs`: the main window gets `on_navigation` (a link to another origin is handed to macOS `open` and the window stays on the chat) and `on_new_window` (the `target="_blank"` path: hand off, then deny the new window). Only `http`, `https` and `mailto` leave the app; `file:`, `javascript:`, `about:` and the rest never do. No page-side change.
+- **How it was checked:** `npm run test:shell` compiles the shell against Tauri 2.12.7 and runs the new test `only_web_and_mail_links_leave_the_app`: 7/7 pass. **Not yet checked:** a real click in the built Mac app. I could not drive the native window from here, so the first Start should include one click on a link in a Sketcher reply.
+- `npm test`: 245 pass, 1 skipped (live AI), 0 fail.
+- **Scope note.** Talk isn't in the app at the moment, so the only place AI text shows is the Left Side Sketcher chat. Phase 2 (Talk) must reuse `renderMarkdown` and the `.md` styles.
+
 ## Sign-off
 
-*Pending F1 and F2. Eraser re-checks and signs here.*
+*F1 and F2 are in. Eraser re-checks (and clicks a link in the built app) and signs here.*

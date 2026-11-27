@@ -52,8 +52,16 @@ fn start_server(app_dir: PathBuf) -> Result<server::Server, String> {
 }
 
 fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
-    let url = url.parse().expect("main: server URL is always valid");
+    let url: tauri::Url = url.parse().expect("main: server URL is always valid");
+    let origin = url.origin();
     let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+        // A chat link (http, https, mailto) opens in the default browser or
+        // mail app; the window itself never leaves the local app.
+        .on_navigation(move |to| !(to.origin() != origin && open_outside(to)))
+        .on_new_window(|to, _features| {
+            open_outside(&to);
+            tauri::webview::NewWindowResponse::Deny
+        })
         .title("Agent Creator")
         .inner_size(1200.0, 860.0)
         // Under 860 px the page switches to its one-pane layout; 640 also fits half a 13" screen.
@@ -66,6 +74,37 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
     // Paint the home's Fireflies field first, so a launch never flashes white.
     window.set_background_color(Some(canvas(window.theme()?)))?;
     window.show()
+}
+
+/// Hands an http, https or mailto link to macOS (`open`), so it lands in the
+/// user's default browser or mail app. Returns whether it was handed off.
+fn open_outside(url: &tauri::Url) -> bool {
+    if !external(url) {
+        return false;
+    }
+    if let Err(e) = std::process::Command::new("/usr/bin/open").arg(url.as_str()).spawn() {
+        eprintln!("main: could not open {url}: {e}");
+    }
+    true
+}
+
+fn external(url: &tauri::Url) -> bool {
+    matches!(url.scheme(), "http" | "https" | "mailto")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::external;
+
+    #[test]
+    fn only_web_and_mail_links_leave_the_app() {
+        for ok in ["https://example.com/a", "http://example.com", "mailto:a@b.c"] {
+            assert!(external(&ok.parse().unwrap()), "{ok}");
+        }
+        for no in ["file:///etc/passwd", "javascript:alert(1)", "about:blank", "tauri://localhost"] {
+            assert!(!external(&no.parse().unwrap()), "{no}");
+        }
+    }
 }
 
 /// The home's Fireflies field (#0B1410). It is dark in both themes, so the
