@@ -6,9 +6,10 @@ import { join } from "node:path";
 import { createAgentStore, createAgents } from "../../creator/index.mjs";
 import { createApp } from "../app.mjs";
 import {
-  BELT_CAP, FIELD_CAP, RED, applyRemove, countLine, dotAt, dotLook, dropNote, dropPlan,
-  fieldLayout, postInBatches, sectionLine, skillName, spotOf, zoneAt, zoneLabel,
+  BELT_CAP, CLUSTER_H, DRIFT_MAX, EMPTY, FIELD_CAP, RED, ROW, SHINE_MAX, applyRemove, clusterSpot, dotLook, dropPlan,
+  fieldLayout, flightPath, flyAt, nextName, orderedSpot, postInBatches, sectionLine, skillName, spotOf, zoneAt, zoneLabel,
 } from "./creation-screen.js";
+import * as screen from "./creation-screen.js";
 import { FLY } from "./firefly-orbit.js";
 
 // The real server and store in a temp home, so the screen's requests are checked against the real endpoints.
@@ -56,9 +57,6 @@ test("a 10,000-file folder: every file is counted, only FIELD_CAP are drawn, fas
   assert.ok(performance.now() - t < 200, "laying out 10,000 files must not freeze the screen");
   assert.equal(lay.total, 10000);
   assert.equal(lay.dots.length, FIELD_CAP);
-  assert.equal(countLine(10000), "10,000 files · 3,000 shown");
-  assert.equal(countLine(1), "1 file");
-  assert.equal(countLine(0), "");
   for (const d of lay.dots) assert.ok(d.x >= 32 && d.x <= 968 && d.y >= 32 && d.y <= 768, "inside the field");
 });
 
@@ -69,8 +67,96 @@ test("a file always lands on the same spot, so new batches never shuffle the fie
   const before = fieldLayout(dna.slice(0, 2), { width: 500, height: 500 }).dots;
   const afterMore = fieldLayout(dna, { width: 500, height: 500 }).dots;
   assert.deepEqual(afterMore.slice(0, 2), before);
-  assert.equal(dotAt(afterMore, afterMore[2].x + 3, afterMore[2].y).id, dna[2].id);
-  assert.equal(dotAt(afterMore, -100, -100), null);
+});
+
+/* ---------- fix 1, 4: no counts, no status words, no emblem ---------- */
+
+test("no count line and no status helpers are left in the screen", () => {
+  for (const gone of ["countLine", "dotAt", "dropNote", "HIT"]) assert.equal(screen[gone], undefined, `${gone} is gone`);
+});
+
+test("a section says nothing when it has files, only the empty hint when it has none", () => {
+  assert.equal(sectionLine([]), EMPTY);
+  assert.equal(EMPTY, "nothing yet · drag files here");
+  assert.equal(sectionLine([{ state: "processed" }, { state: "unprocessed" }, { state: "removed" }]), "");
+  assert.ok(BELT_CAP > 0);
+});
+
+/* ---------- fix 2: every firefly drifts slowly and now and then shines, very dim ---------- */
+
+test("drift and shine: bounded, the same for the same file and time, still under reduced motion", () => {
+  for (const id of ["a.md", "b/c.md", "x"]) for (const t of [0, 1234, 60000, 1e6]) {
+    const m = flyAt(id, t);
+    assert.deepEqual(m, flyAt(id, t), "deterministic");
+    assert.ok(Math.abs(m.dx) <= DRIFT_MAX && Math.abs(m.dy) <= DRIFT_MAX, "a few px at most");
+    assert.ok(m.glow >= 0 && m.glow <= SHINE_MAX, "very dim");
+    assert.deepEqual(flyAt(id, t, true), { dx: 0, dy: 0, glow: 0 });
+  }
+  // Slow: in 100 ms a firefly moves a fraction of a px.
+  const a = flyAt("slow.md", 5000), b = flyAt("slow.md", 5100);
+  assert.ok(Math.hypot(a.dx - b.dx, a.dy - b.dy) < 0.3);
+});
+
+test("shine is rare: at any moment only a few of 3,000 fireflies glow, never all at once", () => {
+  const ids = Array.from({ length: 3000 }, (_, i) => `n/f${i}.md`);
+  let max = 0;
+  for (const t of [0, 7000, 33000, 120000, 500000]) {
+    const g = ids.map((id) => flyAt(id, t).glow);
+    const on = g.filter((x) => x > 0).length / ids.length;
+    assert.ok(on > 0 && on < 0.25, `shining share ${on.toFixed(2)} at t=${t}`);
+    max = Math.max(max, ...g);
+  }
+  assert.ok(max <= SHINE_MAX);
+});
+
+/* ---------- fix 5: a loose seeded cluster, not a row ---------- */
+
+test("cluster spots: seeded, inside the box, spread out, never a row", () => {
+  const n = 12, box = { w: 316, h: CLUSTER_H };
+  const spots = Array.from({ length: n }, (_, i) => clusterSpot(`k/f${i}.md`, i, n, "knowledge", box));
+  assert.deepEqual(spots, Array.from({ length: n }, (_, i) => clusterSpot(`k/f${i}.md`, i, n, "knowledge", box)), "same files, same cluster");
+  for (const p of spots) assert.ok(p.x >= 0 && p.x <= box.w && p.y >= 0 && p.y <= box.h, "inside the box");
+  assert.ok(new Set(spots.map((p) => p.x.toFixed(1))).size === n, "distinct x");
+  assert.ok(new Set(spots.map((p) => p.y.toFixed(1))).size > n / 2, "many heights: not a row");
+  const ys = spots.map((p) => p.y), spread = Math.max(...ys) - Math.min(...ys);
+  assert.ok(spread > CLUSTER_H * 0.3, "it has depth, not a line");
+  assert.notDeepEqual(clusterSpot("k/f0.md", 0, n, "system-prompt", box), spots[0], "each section its own cloud");
+});
+
+/* ---------- fix 6: a real flight to an ordered spot, and back ---------- */
+
+test("ordered spots go down one under another", () => {
+  const ys = [0, 1, 2, 3].map((i) => orderedSpot(i).y);
+  assert.deepEqual(ys, [ROW / 2, ROW * 1.5, ROW * 2.5, ROW * 3.5]);
+  assert.ok([0, 1, 2].every((i) => orderedSpot(i).x === orderedSpot(i + 1).x), "one column");
+});
+
+test("a flight starts and ends where it should and bows off the straight line", () => {
+  const from = { x: 200, y: 20 }, to = { x: 7, y: 70 };
+  const path = flightPath(from, to);
+  assert.equal(path.length, 11);
+  assert.deepEqual(path[0], from);
+  assert.ok(Math.abs(path.at(-1).x - to.x) < 1e-9 && Math.abs(path.at(-1).y - to.y) < 1e-9);
+  // distance of the middle point from the straight line
+  const m = path[5], dx = to.x - from.x, dy = to.y - from.y;
+  const off = Math.abs(dy * (m.x - from.x) - dx * (m.y - from.y)) / Math.hypot(dx, dy);
+  assert.ok(off > 5, "a real arc, not a slide");
+  assert.deepEqual(flightPath(from, to), path, "the same every time");
+});
+
+/* ---------- fix 7: rename in place ---------- */
+
+test("a rename keeps what was typed, tidied; nothing typed keeps the old name", () => {
+  assert.equal(nextName("Old", "  New   name "), "New name");
+  assert.equal(nextName("Old", ""), "Old");
+  assert.equal(nextName("Old", "   \n "), "Old");
+  assert.equal(nextName("Old", null), "Old");
+});
+
+test("against the server: a rename is saved and comes back", async () => {
+  const { id } = await call("POST", "/api/agents");
+  await call("PUT", `/api/agents/${id}/draft`, { name: "Juniper" });
+  assert.equal((await call("GET", `/api/agents/${id}`)).draft.name, "Juniper");
 });
 
 /* ---------- file states: dim, bright, red ---------- */
@@ -80,13 +166,6 @@ test("dim if unprocessed, bright if processed, red if removed but still baked in
   assert.deepEqual(dotLook("processed"), { color: FLY, alpha: 0.9, halo: true });
   assert.deepEqual(dotLook("removed"), { color: RED, alpha: 0.9, halo: true });
   assert.notEqual(RED, FLY);
-});
-
-test("the belt's line says what is used, waiting and out", () => {
-  assert.equal(sectionLine([]), "nothing yet · drag files here");
-  assert.equal(sectionLine([{ state: "processed" }, { state: "unprocessed" }, { state: "unprocessed" }, { state: "removed" }]),
-    "1 used · 2 waiting · 1 out at next rebuild");
-  assert.ok(BELT_CAP > 0);
 });
 
 /* ---------- remove, red and green ---------- */
@@ -161,9 +240,6 @@ test("a new skill is named after the dropped folder, else the first file", () =>
   assert.equal(skillName([{ path: "pricing/a.md" }, { path: "pricing/b/c.md" }]), "pricing");
   assert.equal(skillName([{ path: "Refunds.md" }, { path: "x/y.md" }]), "Refunds");
   assert.equal(skillName([]), "New skill");
-  assert.equal(dropNote("skills", 2), "New skill from 2 files");
-  assert.equal(dropNote("knowledge", 1), "1 file → Knowledge");
-  assert.equal(dropNote(null, 3), "3 files added");
 });
 
 test("against the server: each zone sends the files to its own section", async () => {
@@ -199,10 +275,16 @@ test("the page can load the screen's script", async () => {
   assert.equal(r.status, 200);
   assert.match(r.headers.get("content-type"), /javascript/);
   const page = await (await fetch(base + "/new")).text();
-  for (const id of ["flies", "count", "menu", "emblem", "name", "note", "ghost", "sheet", "sheet-title", "sheet-name", "sheet-text"]) {
+  for (const id of ["flies", "menu", "name", "note", "sheet", "sheet-title", "sheet-name", "sheet-text"]) {
     assert.match(page, new RegExp(`id="${id}"`), `new-agent.html has #${id}`);
   }
+  for (const id of ["count", "emblem", "ghost"]) assert.doesNotMatch(page, new RegExp(`id="${id}"`), `#${id} is gone`);
   for (const s of ["system-prompt", "knowledge", "skills"]) assert.match(page, new RegExp(`data-section="${s}"`));
+  assert.match(page, /id="name" contenteditable="plaintext-only"/, "the name is edited in place");
+  assert.equal((page.match(/class="swarm"/g) || []).length, 2, "System prompt and Knowledge each hold a swarm");
+  assert.doesNotMatch(page, /class="rows"|class="dots"/, "no list drop-down, no row of dots");
+  assert.doesNotMatch(page, /canvas#flies \{[^}]*pointer-events: auto/, "the field takes no pointer");
+  assert.match(page, /prefers-reduced-motion: reduce[\s\S]*animation: none/, "reduced motion stops drift and shine");
 });
 
 /* ---------- Start opens the newest build ---------- */

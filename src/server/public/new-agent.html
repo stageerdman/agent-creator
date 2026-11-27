@@ -32,12 +32,8 @@
   body.split #field, body.split #logo, body.split #pick { opacity: 0; pointer-events: none; }
 
   /* ---------- the creation screen: the field (left) ---------- */
+  /* Fireflies are not things to arrange: the field takes no pointer at all. */
   canvas#flies { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
-  body.split canvas#flies { pointer-events: auto; }
-  #count { position: fixed; left: 50%; top: calc(50% + 72px); transform: translateX(-50%); margin: 0;
-    font: 400 13px/1 var(--font); color: rgba(216,242,106,.6); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 300ms ease; pointer-events: none; }
-  body.counting #count { opacity: 1; }
-  body.split #count { opacity: 1; left: 32px; top: auto; bottom: 28px; transform: none; }
 
   /* ---------- the menu (right) ---------- */
   #menu { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; box-sizing: border-box; padding: 40px 32px 32px;
@@ -46,33 +42,50 @@
     opacity: 0; transform: translateX(24px); transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.7,.2,1); visibility: hidden; }
   body.split #menu { opacity: 1; transform: none; visibility: visible; }
   #menu header { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
-  #emblem { width: 56px; height: 56px; flex: none; }
-  #name { margin: 0; font: 600 20px/1.2 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The name: click it and type. Enter or a click elsewhere saves, Esc puts it back. */
+  #name { margin: -2px -6px; padding: 2px 6px; border-radius: 6px; min-width: 0; font: 600 20px/1.2 var(--font);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; outline: none; transition: background 160ms ease; }
+  #name:hover { background: rgba(216,242,106,.06); }
+  #name:focus { background: rgba(216,242,106,.06); box-shadow: 0 0 0 1px rgba(216,242,106,.38); text-overflow: clip; }
   #menu section { position: relative; padding: 16px; margin: 0 -16px 8px; border-radius: 14px; transition: background 160ms ease; }
   #menu .head { display: flex; align-items: center; gap: 8px; }
   #menu h2 { margin: 0; font: 600 15px/1.2 var(--font); }
   #menu .icon { width: 32px; height: 32px; margin: -6px 0 -6px -6px; padding: 6px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); cursor: pointer; }
   #menu .icon svg { width: 20px; height: 20px; display: block; }
   #menu .icon:hover, #menu .icon:focus-visible { background: rgba(216,242,106,.1); outline: none; }
-  #menu .belt { display: block; width: 100%; margin-top: 10px; padding: 8px 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; border-radius: 8px; }
+  /* A section's swarm: a loose cluster of fireflies; tapped, each flies to its spot beside its file name. */
+  #menu .swarm { position: relative; margin-top: 10px; height: 56px; transition: height 420ms cubic-bezier(.45,.05,.25,1); }
+  #menu .swarm[hidden] { display: none; }
+  #menu .belt { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
   #menu .belt:disabled { cursor: default; }
   #menu .belt:focus-visible { outline: 1px solid rgba(216,242,106,.38); outline-offset: 2px; }
-  #menu .dots { display: flex; flex-wrap: wrap; gap: 6px; min-height: 6px; }
-  #menu .line, #menu p.line { display: block; margin: 8px 0 0; font-size: 12px; color: rgba(232,239,224,.55); }
-  i.d { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--fly); flex: none; }
+  #menu .flies, #menu .names { position: absolute; inset: 0; pointer-events: none; }
+  #menu p.line { margin: 8px 0 0; font-size: 12px; color: rgba(232,239,224,.55); }
+  #menu p.line[hidden] { display: none; }
+  i.d { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--fly);
+    animation: drift var(--dp, 9s) ease-in-out var(--dd, 0s) infinite alternate; transition: opacity 240ms ease; }
+  /* The shine: a very dim glow now and then, never a flash. */
+  i.d::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; background: var(--fly); opacity: 0;
+    animation: shine var(--sp, 18s) linear var(--sd, 0s) infinite; }
   i.d.unprocessed { opacity: .32; }
   i.d.processed { opacity: .9; box-shadow: 0 0 6px rgba(216,242,106,.6); }
   i.d.removed { background: #FF6B5E; opacity: .9; box-shadow: 0 0 6px rgba(255,107,94,.5); }
-  #menu .rows { list-style: none; margin: 8px 0 0; padding: 0; }
-  #menu .rows li { display: flex; align-items: center; gap: 10px; min-height: 36px; border-bottom: 1px solid rgba(232,239,224,.06); }
-  #menu .rows .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #menu .rows li.removed .n, #menu .rows .out { color: #FF6B5E; }
-  #menu .rows .out { font-size: 12px; }
-  #menu .rows button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: rgba(232,239,224,.6); font: inherit; font-size: 12px; cursor: pointer; }
-  #menu .rows button:hover, #menu .rows button:focus-visible { color: #FF6B5E; background: rgba(255,107,94,.1); outline: none; }
-  #menu .stars { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
-  #menu .star { width: 32px; height: 32px; padding: 7px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); cursor: pointer; }
-  #menu .star svg { width: 18px; height: 18px; display: block; fill: currentColor; filter: drop-shadow(0 0 4px rgba(216,242,106,.5)); }
+  i.d.removed::after { background: #FF6B5E; }
+  i.d.tucked { opacity: 0; }
+  @keyframes drift { from { translate: calc(-1 * var(--dx, 2px)) calc(-1 * var(--dy, 2px)); } to { translate: var(--dx, 2px) var(--dy, 2px); } }
+  @keyframes shine { 0%, 100% { opacity: 0; } 5% { opacity: .35; } 10% { opacity: 0; } }
+  #menu .row { position: absolute; left: 0; right: 0; height: 28px; box-sizing: border-box; padding-left: 22px; display: flex; align-items: center; gap: 8px;
+    visibility: hidden; opacity: 0; transition: opacity 160ms ease, visibility 0s linear 160ms; }
+  #menu section.open .row { visibility: visible; opacity: 1; transition: opacity 240ms ease 240ms, visibility 0s; }
+  #menu .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  #menu .row.removed .fname { color: #FF6B5E; }
+  #menu .rm { pointer-events: auto; min-height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: rgba(232,239,224,.6); font: inherit; font-size: 12px; cursor: pointer; }
+  #menu .rm:hover, #menu .rm:focus-visible { color: #FF6B5E; background: rgba(255,107,94,.1); outline: none; }
+  /* Skills: a star and its name. */
+  #menu .stars { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 10px; }
+  #menu .star { display: flex; align-items: center; gap: 8px; min-height: 32px; max-width: 100%; padding: 0 10px 0 7px; margin-left: -7px; border: 0; border-radius: 8px; background: transparent; color: var(--fly); font: inherit; cursor: pointer; }
+  #menu .star svg { width: 18px; height: 18px; flex: none; display: block; fill: currentColor; filter: drop-shadow(0 0 4px rgba(216,242,106,.5)); }
+  #menu .sk-name { color: #E8EFE0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #menu .star:hover, #menu .star:focus-visible { background: rgba(216,242,106,.1); outline: none; }
 
   /* Drop zones: only while something is dragged. */
@@ -89,8 +102,6 @@
     opacity: 0; pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; }
   #note.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
   #note button { border: 0; background: transparent; color: var(--fly); font: 600 13px/1 var(--font); padding: 6px 4px; cursor: pointer; }
-  #ghost { position: fixed; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; display: none; box-shadow: 0 0 10px rgba(216,242,106,.7); }
-  #ghost.on { display: block; }
 
   /* The popup. */
   #sheet { width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 96px); box-sizing: border-box; padding: 24px; border: 0; border-radius: 16px;
@@ -104,7 +115,10 @@
   #sheet input:focus, #sheet textarea:focus { outline: none; border-color: rgba(216,242,106,.5); }
   #sheet .err { margin: 0; min-height: 1em; color: #FF6B5E; font-size: 12px; }
   #sheet .close { align-self: flex-end; min-height: 36px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
-  @media (prefers-reduced-motion: reduce) { #menu, #note, #count, #field, #logo, #pick { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    #menu, #note, #field, #logo, #pick, #name, #menu .swarm, #menu .row, #menu section.open .row, i.d { transition: none; }
+    i.d, i.d::after { animation: none; }
+  }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 </style>
 </head>
@@ -116,10 +130,9 @@
   <canvas id="logo" aria-hidden="true"></canvas>
   <p id="status" class="vh" role="status"></p>
   <input id="folder" type="file" webkitdirectory multiple hidden tabindex="-1">
-  <p id="count" aria-live="polite"></p>
 </main>
 <aside id="menu" aria-label="Agent" inert>
-  <header><canvas id="emblem" aria-hidden="true"></canvas><h1 id="name"></h1></header>
+  <header><h1 id="name" contenteditable="plaintext-only" spellcheck="false" title="Rename" aria-label="Agent name"></h1></header>
   <section data-section="system-prompt" aria-labelledby="h-sp">
     <div class="zone" aria-hidden="true">Adjust DNA</div>
     <div class="head">
@@ -128,8 +141,8 @@
       </button>
       <h2 id="h-sp">System prompt</h2>
     </div>
-    <button class="belt" type="button" aria-expanded="false" disabled><span class="dots" aria-hidden="true"></span><span class="line"></span></button>
-    <ul class="rows" hidden></ul>
+    <div class="swarm" hidden><button class="belt" type="button" aria-expanded="false" disabled></button><span class="flies" aria-hidden="true"></span><div class="names"></div></div>
+    <p class="line"></p>
   </section>
   <section data-section="knowledge" aria-labelledby="h-kn">
     <div class="zone" aria-hidden="true">Adjust Knowledge</div>
@@ -139,8 +152,8 @@
       </button>
       <h2 id="h-kn">Knowledge</h2>
     </div>
-    <button class="belt" type="button" aria-expanded="false" disabled><span class="dots" aria-hidden="true"></span><span class="line"></span></button>
-    <ul class="rows" hidden></ul>
+    <div class="swarm" hidden><button class="belt" type="button" aria-expanded="false" disabled></button><span class="flies" aria-hidden="true"></span><div class="names"></div></div>
+    <p class="line"></p>
   </section>
   <section data-section="skills" aria-labelledby="h-sk">
     <div class="zone" aria-hidden="true">Create new skill</div>
@@ -150,7 +163,6 @@
   </section>
 </aside>
 <p id="note" role="status"><span></span><button type="button" hidden>Undo</button></p>
-<div id="ghost" aria-hidden="true"></div>
 <dialog id="sheet" aria-labelledby="sheet-title">
   <form method="dialog">
     <h2 id="sheet-title"></h2>
