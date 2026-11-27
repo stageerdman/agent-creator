@@ -29,7 +29,12 @@ const lit = page => page.evaluate(() => {
   let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 60 && d[i] + d[i + 1] + d[i + 2] > 300) n++;
   return n;
 });
-const markPixels = page => page.evaluate(() => { const c = document.querySelector('#mark'); return Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 97 === 0)).join(','); });
+const litOver = async (page, ms = 4000, every = 100) => {
+  let sum = 0, n = 0;
+  for (const t0 = Date.now(); Date.now() - t0 < ms; n++) { sum += await lit(page); await sleep(every); }
+  return Math.round(sum / Math.max(1, n));
+};
+const markPixels =page => page.evaluate(() => { const c = document.querySelector('#mark'); return Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 97 === 0)).join(','); });
 const focused = page => page.evaluate(() => document.activeElement && document.activeElement.id);
 
 (async () => {
@@ -94,15 +99,16 @@ async function run(agents, isLost, setLost) {
   const paths = a.dna.map(f => f.id);
   await agents.assign(id, 'knowledge', a.dna.map(f => ({ path: f.id, name: f.name, size: f.sizeBytes })));
   const steps = [];
-  let before = (await linfo(page)).mark.placed;
+  // What the eye sees: lit pixels, averaged over 4 s (two or more beats), so one frame's blinks can't decide it.
+  let before = await litOver(page);
   for (const share of [.25, .5, 1]) {
     await agents.markProcessed(id, 'knowledge', paths.slice(0, Math.round(paths.length * share)));
     const want = Math.round(paths.length * share);
     await until(async () => (await page.evaluate(() => window.creation.info())).field && (await linfo(page)).flown >= want, 6000);
     await page.waitForTimeout(2200);   // the flights land
-    const info = await linfo(page), now = info.mark.placed;
-    steps.push({ share, placed: now, litPixels: await lit(page), applied: info.applied, flown: info.flown });
-    ok(now > before && info.flown >= want, `4. at ${share * 100}% used the likeness holds more dots`, JSON.stringify(steps[steps.length - 1]));
+    const now = await litOver(page), info = await linfo(page);
+    steps.push({ share, litPixels: now, placed: info.mark.placed, applied: info.applied, flown: info.flown });
+    ok(now > before && info.flown >= want, `4. at ${share * 100}% used the likeness is brighter on screen than before`, JSON.stringify(steps[steps.length - 1]) + ' before=' + before);
     before = now;
   }
   L = await linfo(page);
