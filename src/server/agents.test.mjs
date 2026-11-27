@@ -80,10 +80,23 @@ test("dropped files land in the DNA list, never the chat; the creator routes the
 
   const events = await chat(id, '{"files":{"/":"rag","bio.pdf":"instructions"}}');
   assert.match(prompts.at(-1), /<files>\n- notes\/deep\/a\.md → not routed yet\n- bio\.pdf → not routed yet\n<\/files>/);
-  assert.deepEqual(events.map((e) => e.event).slice(-2), ["files", "done"]);
-  assert.deepEqual(events.at(-2).data.changed, ["notes/deep/a.md", "bio.pdf"]);
+  assert.deepEqual(events.map((e) => e.event).slice(-4), ["files", "allocate", "allocate", "done"]);
+  assert.deepEqual(events.find((e) => e.event === "files").data.changed, ["notes/deep/a.md", "bio.pdf"]);
   const saved = await json("GET", `/api/agents/${id}`);
   assert.deepEqual(saved.files.map((f) => [f.path, f.feeds]), [["notes/deep/a.md", ["rag"]], ["bio.pdf", ["instructions"]]]);
+});
+
+test("routing files sends one allocate { file, section } per changed file, in order, after files", async () => {
+  scenario = "creator-patch";
+  const id = await newAgent();
+  await json("POST", `/api/agents/${id}/files`, { files: [{ path: "notes/a.md" }, { path: "bio.pdf" }] });
+  const events = await chat(id, '{"files":{"/":"rag"}}');
+  const names = events.map((e) => e.event);
+  assert.ok(names.indexOf("files") < names.indexOf("allocate"));
+  assert.deepEqual(events.filter((e) => e.event === "allocate").map((e) => e.data), [
+    { file: "notes/a.md", section: "knowledge" },
+    { file: "bio.pdf", section: "knowledge" },
+  ]);
 });
 
 // The Left Side's own client (streamChat) against this server: the panel talks to the real creator.

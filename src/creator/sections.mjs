@@ -21,6 +21,23 @@ export function feedFor(section, skills = []) {
   return skillFeed(skillId);
 }
 
+// The section a feed shows up in; the inverse of feedFor.
+export function sectionOf(feed) {
+  const fixed = Object.keys(FIXED).find((section) => FIXED[section] === feed);
+  return fixed ?? feed; // a skill feed is already its section name
+}
+
+// Where each changed file now goes, in `changed` order: one entry per
+// (file, section); a file that feeds nothing goes to section "none".
+// → [{ file, section }].
+export function allocations(files, changed) {
+  const byPath = new Map(files.map((file) => [file.path, file]));
+  return changed.flatMap((path) => {
+    const feeds = byPath.get(path)?.feeds ?? [];
+    return feeds.length ? feeds.map((feed) => ({ file: path, section: sectionOf(feed) })) : [{ file: path, section: "none" }];
+  });
+}
+
 // What a section shows: files meant for it, and files still baked into it
 // that no longer are (removed, or routed elsewhere): those are red.
 // → [{ path, name, size, state }].
