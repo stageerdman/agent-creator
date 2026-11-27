@@ -136,7 +136,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const win = doc.defaultView, $ = s => doc.querySelector(s), now = () => win.performance.now();
   const markEl = $('#mark'), sky = $('#sky'), ctx = sky.getContext('2d');
   const handle = $('#handle'), chev = handle.querySelector('.chev');
-  const panel = $('#sketcher'), closeBtn = $('#sketcher-close'), log = $('#sketcher-log');
+  const panel = $('#sketcher'), log = $('#sketcher-log');
   const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
@@ -150,6 +150,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     Object.assign(markEl.style, { left: g.cx - g.L / 2 + 'px', top: g.cy - g.L / 2 + 'px', width: g.L + 'px', height: g.L + 'px' });
     handle.style.top = clamp(g.cy - 24, 16, g.H - 64) + 'px';
     panel.style.width = (g.W < 640 ? g.W : Math.min(440, g.fw)) + 'px';
+    if (open) handle.style.transform = `translateX(${edgeX()}px)`;
     kick();
   }
 
@@ -223,20 +224,31 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function blink() { blinkAt = now(); blinks++; kick(); }
 
   /* ---- the panel ---- */
+  // One arrow opens and closes: the handle rides the panel's right edge (same ms, same easing, same
+  // height) and its chevron mirrors › → ‹. Narrow screens: the panel is full width, so it stops just inside.
+  const edgeX = () => Math.max(0, Math.min(panel.getBoundingClientRect().width, win.innerWidth - (parseFloat(win.getComputedStyle(handle).minWidth) || 44)));
+  function slide(ms, ease) {
+    const tr = `transform ${ms}ms ${ease}`;
+    panel.style.transition = tr; handle.style.transition = tr;
+    chev.style.transition = `opacity 120ms ease, ${tr}`;
+    later(() => { chev.style.transition = ''; }, ms);   // hover nudges stay quick
+  }
   function openPanel() {
     if (open || !id) return;
     open = true; changedWhileOpen = false; store['left.opened.' + id] = '1';
-    panel.style.transition = `transform ${T().open}ms cubic-bezier(.2,.8,.2,1)`;
+    slide(T().open, 'cubic-bezier(.2,.8,.2,1)');
     panel.hidden = false; panel.removeAttribute('inert'); void panel.offsetWidth;
-    panel.classList.add('open'); handle.setAttribute('aria-expanded', 'true');
+    panel.classList.add('open'); handle.style.transform = `translateX(${edgeX()}px)`;
+    handle.setAttribute('aria-expanded', 'true'); handle.setAttribute('aria-label', 'Close Sketcher');
     box.placeholder = `Tell Sketcher what ${name} is for`;
     box.focus();
   }
   function closePanel() {
     if (!open) return;
     open = false;
-    panel.style.transition = `transform ${T().close}ms cubic-bezier(.4,0,1,1)`;
-    panel.classList.remove('open'); panel.setAttribute('inert', ''); handle.setAttribute('aria-expanded', 'false');
+    slide(T().close, 'cubic-bezier(.4,0,1,1)');
+    panel.classList.remove('open'); panel.setAttribute('inert', ''); handle.style.transform = '';
+    handle.setAttribute('aria-expanded', 'false'); handle.setAttribute('aria-label', 'Open Sketcher');
     handle.focus();
     const end = () => {
       if (!open) panel.hidden = true;
@@ -245,8 +257,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     };
     if (T().close) later(end, T().close); else end();
   }
-  handle.addEventListener('click', openPanel);
-  closeBtn.addEventListener('click', closePanel);
+  handle.addEventListener('click', () => open ? closePanel() : openPanel());
   win.addEventListener('keydown', e => {   // Esc is the panel's first: it never reaches the page's "go home"
     if (e.key !== 'Escape' || !open) return;
     e.preventDefault(); e.stopImmediatePropagation(); closePanel();
