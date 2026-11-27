@@ -18,10 +18,10 @@ import { BadInput } from "./errors.mjs";
 // The two machines that each get their own feed of files. Skills add one
 // feed each, "skill:<id>" (see sections.mjs).
 export const FEEDS = ["rag", "instructions"];
-const isSkillFeed = (feed) => feed.startsWith("skill:");
+export const isSkillFeed = (feed) => feed.startsWith("skill:");
 
 // What the creator may say about a file or folder, and the feeds that means.
-const ROUTES = { rag: ["rag"], instructions: ["instructions"], both: FEEDS, none: [] };
+export const ROUTES ={ rag: ["rag"], instructions: ["instructions"], both: FEEDS, none: [] };
 
 // How a file looks: dim until a build used it, green once it did, red when
 // removed but still baked in. With `feed`, how it looks in that one section.
@@ -126,4 +126,4 @@ function folderKey(key) {
   return key.endsWith("/") ? normalPath(key) : null;
 }
 
-const sameFeeds = (a, b) => a.length === b.length && a.every((feed) => b.includes(feed));
+export const sameFeeds = (a, b) => a.length === b.length && a.every((feed) => b.includes(feed));
