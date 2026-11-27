@@ -35,3 +35,9 @@
 - [ ] Ethics, carried from P2 and bigger with P6 export: clones of real,
       living people that leave this app. Needs an orchestrator decision
       (journeys-columbo.md §9).
+
+- [ ] FIREFLIES-DNA checks (checks/run.cjs chrome): system Chrome headless
+      sometimes gets closed mid-run ("Target page, context or browser has
+      been closed"). The unchanged page at b142f58 does it too, so it's the
+      environment, not the page. Rerun; WebKit is steady. Needs
+      `npm install --no-save playwright-core` in a fresh checkout.
