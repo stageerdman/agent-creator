@@ -45,4 +45,9 @@ Talk puts the best chunks for the user's message first in the system prompt.
 
 ## Status
 
-- [x] Spike  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [ ] Phase 4  - [ ] Phase 5
+- [x] Spike  - [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4  - [x] Phase 5
+
+Shipped: the Mac app stage bundles fastembed + onnxruntime-node (checked:
+the staged copy imports); the model downloads on first use into
+`<home>/models`. If it can't run, talk answers without passages and drops
+report `embed-failed`.
