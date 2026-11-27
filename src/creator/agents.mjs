@@ -34,8 +34,9 @@ export function createAgents({ store, engine, now = () => new Date() }) {
       return { id: (unused ?? (await store.createAgent())).id };
     },
 
-    // Empty agents are left out of the switcher (R8).
-    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft)).map(summary),
+    // Empty agents are left out of the switcher (R8); one made only of
+    // dropped files is in it, so its files are never out of reach.
+    list: async () => (await store.listAgents()).filter((r) => !isEmpty(r.draft) || r.files?.length).map(summary),
 
     get: async (id) => view(await store.loadAgent(id)),
 
@@ -68,11 +69,12 @@ export function createAgents({ store, engine, now = () => new Date() }) {
     },
 
     // Dropped or picked files join the DNA file list, unrouted. Never the chat.
+    // `dna` lets the screen draw the new logo without a second request.
     async addFiles(id, entries) {
       const record = await store.loadAgent(id);
       const { files, added } = addFiles(record.files ?? [], entries, now().toISOString());
       if (added.length) await store.saveDraft(id, { files });
-      return { files, added };
+      return { files, added, dna: dnaOf(files, record.createdAt || record.updatedAt) };
     },
 
     keep: async (id) => (await store.markSaved(id)).draft,

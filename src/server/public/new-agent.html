@@ -16,6 +16,11 @@
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
 <main aria-label="New agent"></main>
+<script type="module">
+/* Picked or dropped files go into the new agent's DNA; the screen listens to the intake:* events (file-intake.js). */
+import { attachIntake } from '/file-intake.js';
+window.intake = attachIntake();
+</script>
 <script>
 "use strict";
 /* The call fades where agents are born (02-merlin-motion.md §2, Arrival on /new). */
