@@ -54,4 +54,13 @@ where it was: talk reads the copy, never the original.
 
 ## Status
 
-- [ ] Phase 1  - [ ] Phase 2  - [ ] Phase 3  - [ ] Phase 4  - [ ] Phase 5
+- [x] Phase 1  - [x] Phase 2  - [x] Phase 3  - [x] Phase 4  - [x] Phase 5
+
+Shipped 2026-11-28. As built, memory.mjs is `copySources` / `putSource` /
+`readCopy` / `forgetCopies`. Verified: npm test green, `npm run build:app`
+bundles `node_modules/unpdf`, the bundled server answers /api/health.
+
+Follow-ups (issues.txt): the page does not yet PUT dropped files' bytes
+(browser drops without a disk path have no `text` mark and no copy until it
+does); a copy made from disk is not refreshed when its original changes
+(a PUT upload always replaces it).
