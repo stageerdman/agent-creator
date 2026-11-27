@@ -60,12 +60,13 @@ beforeEach(() => { draws = 0; restoreHome(); });
 test("the call resolves after about its duration with the ring's epoch, and the ring canvas stays", async () => {
   const t0 = performance.now(), w0 = Date.now();
   const run = gatherToRing(homeWith(10), plus(), { reducedMotion: false });
+  const w1 = Date.now(); // setup (sprites, sampling) runs inside the call; on a busy machine it can take a while
   assert.equal(isGathering(), true);
   assert.equal(body.kids.length, 1, "one overlay canvas while it runs");
   const { epoch } = await run;
   const took = performance.now() - t0;
   assert.ok(took >= 950 && took < 1300, `took ${Math.round(took)} ms (D = 1000)`);
-  assert.ok(Math.abs(epoch - (w0 + 1000)) < 30, "epoch = the wall time the ring stands");
+  assert.ok(epoch >= w0 + 1000 && epoch <= w1 + 1000 + 5, `epoch = the wall time the ring stands (got +${epoch - w0} ms)`);
   assert.equal(isGathering(), false);
   assert.equal(body.kids.length, 1, "no blank frame: the canvas still draws the ring until the page goes");
   const before = draws;
