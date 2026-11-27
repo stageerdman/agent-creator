@@ -126,14 +126,19 @@
     font: 500 13px/1 var(--font); transform: translateX(-100%); -webkit-tap-highlight-color: transparent; outline: none; }
   #handle[hidden] { display: none; }
   #handle.in { transform: none; }
-  #handle .chev { font-size: 20px; line-height: 1; opacity: calc(.55 + .45 * var(--b, 0)); transition: opacity 120ms ease, transform 120ms ease; text-shadow: 0 0 8px rgba(216,242,106,.45); }
+  /* The arrow is drawn, not typed: a font glyph sits on its text baseline (its ink ~1.5px under the tab's
+     middle, and different per font), so › and ‹ never read as one arrow on one line. The SVG chevron is
+     symmetric about its own centre, centred in the 48px tab; open mirrors it about that centre: X only. */
+  #handle .chev { display: block; flex: none; width: 20px; height: 20px; overflow: visible; transform-origin: 50% 50%;
+    opacity: calc(.55 + .45 * var(--b, 0)); transition: opacity 120ms ease, transform 120ms ease; filter: drop-shadow(0 0 4px rgba(216,242,106,.45)); }
   #handle .label { max-width: 0; overflow: hidden; opacity: 0; white-space: nowrap; transition: max-width 120ms ease, opacity 120ms ease; }
-  #handle:hover .chev, #handle:focus-visible .chev { opacity: 1; transform: translateX(2px); }
-  #handle:hover .label, #handle:focus-visible .label { max-width: 80px; opacity: 1; }
+  /* Hover only: focus comes back here on every close, and the closed arrow must look as it did before opening. */
+  #handle:hover .chev { opacity: 1; transform: translateX(2px); }
+  #handle:hover .label { max-width: 80px; opacity: 1; }
   #handle:focus-visible { box-shadow: 0 0 0 1px rgba(216,242,106,.45); }
   /* Open: the same arrow rides the panel's edge, points back (‹) and nudges left on hover; no label. */
   #handle[aria-expanded="true"] .chev { transform: scaleX(-1); }
-  #handle[aria-expanded="true"]:hover .chev, #handle[aria-expanded="true"]:focus-visible .chev { transform: scaleX(-1) translateX(2px); }
+  #handle[aria-expanded="true"]:hover .chev { transform: scaleX(-1) translateX(2px); }
   #handle[aria-expanded="true"] .label { max-width: 0 !important; opacity: 0 !important; }
   #sketcher { position: fixed; left: 0; top: 0; bottom: 0; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
     padding: 20px 20px 20px 24px; border-radius: 0 16px 16px 0; color: #E8EFE0; font: 400 14px/1.45 var(--font);
@@ -188,7 +193,7 @@
 <canvas id="field" aria-hidden="true"></canvas>
 <canvas id="mark" aria-hidden="true"></canvas>
 <canvas id="sky" aria-hidden="true"></canvas>
-<button id="handle" type="button" aria-label="Open Sketcher" aria-expanded="false" aria-controls="sketcher" hidden><span class="chev" aria-hidden="true">›</span><span class="label" aria-hidden="true">Sketcher</span></button>
+<button id="handle" type="button" aria-label="Open Sketcher" aria-expanded="false" aria-controls="sketcher" hidden><svg class="chev" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M9.25 6.5 14.75 12 9.25 17.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="label" aria-hidden="true">Sketcher</span></button>
 <aside id="sketcher" aria-labelledby="sketcher-title" hidden inert>
   <div class="top"><h2 id="sketcher-title">Sketcher</h2></div>
   <div id="sketcher-log" aria-live="polite"></div>
