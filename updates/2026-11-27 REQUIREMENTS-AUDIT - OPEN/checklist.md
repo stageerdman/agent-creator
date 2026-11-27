@@ -209,3 +209,16 @@ Every row is now either confirmed or corrected, duplicates are marked, the one m
 **APPROVED** (the audit). The app gaps it lists (B7, F8, C9, G1–G8 and the rest) are owned work, not defects in the list.
 
 — Eraser
+
+---
+
+## Gaps by owner (integration roll-up, Columbo)
+
+Every partly or missing row, plus Eraser's watch-for notes, has exactly one owner:
+
+- **chat-formatting item:** F8 (formatted replies, safe, while streaming and after a reload).
+- **glass-window item:** B7 (transparent window with vibrancy on all three pages, no white flash). Afterwards it re-checks F6, F7 and H6 (watch-outs 2 and 3).
+- **Jony:** C9 (edit an existing agent), E4 (Knowledge bright only on a real embed), F10 (one Create button from a server flag; settle Keep vs. Create first), F14 (talk to the built agent over its DNA), G1, G2 (with G3's rule), G4. Also Eraser's watch-for notes: the handle `›` showing while the panel is open, and the "Press Enter to try again" wording (left-side.js:269) vs. the signed "Try again."
+- **Merlin:** F12 (show files moving when the chat allocates them), F13 (per-file glow on allocation), G7 (the magic list names only moments that exist on main).
+- **Columbo:** A11 (RAG plan), A12 (txt memory), C8 (retire rule 3 in the roadmap), D8 (one-line start), F15 (what "access to files" means), G5 (which of Know/Identity/Share the MVP needs), G8 (Features list stops marking the full UX as shipped), H8 (planned features get roadmap slots).
+- **Eraser:** H9 (an owner for every open line in issues.txt).
