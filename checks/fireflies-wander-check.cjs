@@ -40,6 +40,8 @@ const watch = (page, ms) => page.evaluate(ms => new Promise(done => {
   const page = await browser.newPage({ viewport: { width: 1200, height: 820 } });
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
+  page.on('crash', () => console.log('page crashed'));
+  page.on('framenavigated', f => { if (f === page.mainFrame()) console.log('navigated to ' + f.url()); });
   await page.goto(base + '/new'); await page.waitForTimeout(900);
 
   // 10,000 files dropped on the field
@@ -58,10 +60,12 @@ const watch = (page, ms) => page.evaluate(ms => new Promise(done => {
     await page.waitForTimeout(200);
   }
   ok(c.field.total === 10000 && c.field.drawn > 0 && c.field.moving, '10,000 files in, the field drawn and moving', `total ${c.field.total} drawn ${c.field.drawn}`);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(800);
 
   /* 1. They roam the left side, smoothly, drawn where the wander says */
-  const w = await watch(page, 20000);
+  // Real Chrome here is quit from outside about 25 s after launch, so watch 10 s and scale the bars (per 20 s: 20 px, 100 px).
+  const secs = 10, per = secs / 20;
+  const w = await watch(page, secs * 1000);
   const fw = 1200 - (await page.evaluate(() => innerWidth - document.querySelector('#menu').getBoundingClientRect().left));
   const n = w.out[0].length, dist = [], span = [];
   let inside = true;
@@ -76,8 +80,8 @@ const watch = (page, ms) => page.evaluate(ms => new Promise(done => {
     dist.push(d); span.push(Math.hypot(maxx - minx, maxy - miny));
   }
   dist.sort((a, b) => a - b); span.sort((a, b) => a - b);
-  ok(dist[0] > 20, 'every tracked fly flies over 20 px in 20 s (none stuck)', `least ${dist[0].toFixed(0)} px`);
-  ok(dist[n >> 1] > 100, 'the median fly roams over 100 px in 20 s', `median ${dist[n >> 1].toFixed(0)} px, span median ${span[n >> 1].toFixed(0)} px`);
+  ok(dist[0] > 20 * per, `every tracked fly flies over ${20 * per} px in ${secs} s (none stuck)`, `least ${dist[0].toFixed(0)} px`);
+  ok(dist[n >> 1] > 100 * per, `the median fly roams over ${100 * per} px in ${secs} s`, `median ${dist[n >> 1].toFixed(0)} px, span median ${span[n >> 1].toFixed(0)} px`);
   ok(inside, 'every fly stays inside the left field, clear of the menu', `field width ${fw}`);
   ok(w.lit / w.probed > 0.9, 'the canvas draws a light where each wandering fly is', `${w.lit}/${w.probed}`);
   const g = w.gaps.slice().sort((a, b) => a - b), p95 = g[Math.floor(g.length * .95)], long = g.filter(x => x > 50).length;
