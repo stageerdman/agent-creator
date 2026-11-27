@@ -8,8 +8,8 @@ import { askWithBlock } from "./askWithBlock.mjs";
 
 // Resolves to { say, patch | null, ready, sessionId }. `ready` is the
 // creator's structured flag (patch.ready), never read from the words.
-export async function creatorTurn({ message, draft, handEdited, handLines, files, sessionId }, { engine, onSay, signal, traceId }) {
-  const input = { message: buildTurnMessage({ message, draft, handEdited, handLines, files }), systemPrompt: buildCreatorPrompt(), resumeSessionId: sessionId ?? undefined };
+export async function creatorTurn({ message, draft, handEdited, handLines, files, capabilities, sessionId }, { engine, onSay, signal, traceId }) {
+  const input = { message: buildTurnMessage({ message, draft, handEdited, handLines, files, capabilities }), systemPrompt: buildCreatorPrompt(), resumeSessionId: sessionId ?? undefined };
   const reply = await askWithBlock(engine, input, "draft", { onSay, signal, traceId });
   return { ...reply, ready: saysReady(reply.patch) };
 }

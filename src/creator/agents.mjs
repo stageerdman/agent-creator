@@ -14,6 +14,7 @@ import { createKnowledgeBase } from "./knowledge/knowledgeBase.mjs";
 import { createEmbedder } from "./knowledge/embedder.mjs";
 import { createKnowledgeBuilder } from "./knowledge/knowledgeBuilder.mjs";
 import { createPersonaBuilder } from "./persona/personaBuilder.mjs";
+import { createCapabilityBuilder } from "./capability/capabilityBuilder.mjs";
 import { defaultHome } from "./agentStore.mjs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -63,12 +64,14 @@ export function createAgents({
     await knowledge.forget(id, paths);
   };
   const material = createMaterial({ store, memory, forget, now });
+  const capability = createCapabilityBuilder({ store, engine, memory, now });
   return {
     ...material,
     ...createTexts({ store, material, now }),
     ...createTalk({ store, engine, memory, knowledge }),
     ...createKnowledgeBuilder({ store, memory, knowledge, forget, now }),
     ...createPersonaBuilder({ store, engine, memory, forget }),
+    ...capability,
     putSource: memory.putSource,
     // Call after any change that may bring new Knowledge copies (chat, a
     // drop, putSource). → [{ type: "embedded" | "embed-failed", file, reason? }].
@@ -94,8 +97,9 @@ export function createAgents({
     // `intake` reports that ({ added, skipped, rules }), null when not asked.
     async chat(id, message, { onSay, onFiles, signal, traceId } = {}) {
       const before = await store.loadAgent(id);
+      const capabilities = await capability.getCapabilities(id);
       const turn = await creatorTurn(
-        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, files: before.files, sessionId: before.sessionId },
+        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, files: before.files, capabilities, sessionId: before.sessionId },
         { engine, onSay, signal, traceId },
       );
       const paths = askedPaths(turn.patch?.paths, home);

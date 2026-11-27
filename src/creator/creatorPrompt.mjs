@@ -6,6 +6,7 @@
 // Rules come from research-columbo.md and review-eraser.md (R2, R6, R10).
 
 import { fileSummary } from "./intake/fileSummary.mjs";
+import { capabilityContext } from "./capability/capabilityContext.mjs";
 
 const RULES = `You are the Sketcher. You help the user create an AI agent by chatting with them. Next to this chat the user sees the agent's draft (the Sketch) with three fields:
 - name: what the agent is called.
@@ -46,12 +47,14 @@ export function buildCreatorPrompt() {
 
 // The user message for one turn: the live context first, then what they said.
 export const USER_SAYS = "The user says:\n";
-export function buildTurnMessage({ message, draft, handEdited = [], handLines = {}, files = [] }) {
+// `capabilities`: { map | null, stale } (capability/capabilityBuilder.mjs).
+export function buildTurnMessage({ message, draft, handEdited = [], handLines = {}, files = [], capabilities }) {
   const context = [
     keepPointerRule(draft.status),
     currentDraft(draft, handEdited),
     userLines(handLines),
     fileSummary(files),
+    capabilityContext(capabilities),
   ].filter(Boolean).join("\n\n");
   return `<turn_context>\n${context}\n</turn_context>\n\n${USER_SAYS}${message}`;
 }
