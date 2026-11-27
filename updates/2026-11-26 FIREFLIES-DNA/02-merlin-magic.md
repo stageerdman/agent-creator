@@ -200,8 +200,8 @@ to read as one event: it starts, it travels, it fades.
 
 | Control | Default | Range | Note |
 |---|---|---|---|
-| Min dot size (`minR`, CSS px) | **1.5** | 0.75 – 4 | |
-| Max dot size (`maxR`, CSS px) | **4.5** | 2 – 9 | min > max is swapped |
+| Min dot size (`minR`, CSS px) | **1.5** (page: 2.5) | 2 – 9 | the page's two sliders push each other, so Smallest is never above Largest and both labels always show what is drawn |
+| Max dot size (`maxR`, CSS px) | **4.5** (page: 6) | 2 – 9 | same; in code, `minR > maxR` is still swapped as a fallback |
 | Blink speed | **1** | 0.25 – 4 | pass never below 2.5 s |
 | Randomness | **0.35** | 0 – 1 | floor jitter of 0.15 stays |
 | Chain strength | **0.5** | 0 – 1 | 0 = lone flash |
@@ -354,7 +354,7 @@ to read as one event: it starts, it travels, it fades.
   }
   // Fake topics are placed on purpose: the first 7 topics seen take fixed slots on
   // the hue arc (first 4 about 50 deg apart, 5-7 about 25 deg), then golden-ratio
-  // steps. (Real vectors would land wherever the projection puts them;
+  // steps. Five at >= 35 deg would push 7 below 20 deg: the cool arc is only 150 deg. (Real vectors would land wherever the projection puts them;
   // embeddingToColor stays honest.)
   var topicSlots = {}, topicCount = 0;
   var FIRST_SLOTS = [0, 0.67, 0.33, 1, 0.5, 0.17, 0.83];
