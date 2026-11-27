@@ -2,9 +2,12 @@
  *
  * Left, the field: one firefly per file of the new agent, added as each upload batch lands
  * (dim = not used yet, bright = used, red = removed but still baked in until a full rebuild).
- * Right, the menu: the agent's DNA and name, then System prompt, Knowledge and Skills.
- * While anything is dragged (files from Finder, or a firefly from the field) the three sections
- * are drop zones: Adjust DNA, Adjust Knowledge, Create new skill.
+ * Every firefly drifts a little and now and then shines, very dim; none can be dragged.
+ * Right, the menu: the agent's name (click to rename), then System prompt, Knowledge and Skills.
+ * System prompt and Knowledge hold a loose seeded cluster of fireflies; a tap flies each one to its
+ * own ordered spot beside its file name, a second tap flies them back.
+ * While files are dragged in from Finder the three sections are drop zones: Adjust DNA,
+ * Adjust Knowledge, Create new skill. No counts and no status words anywhere: the fireflies say it.
  *
  *   import { mountCreation } from '/creation-screen.js';
  *   const screen = mountCreation({ reduced });   // the markup lives in new-agent.html
@@ -17,15 +20,17 @@
 
 import { BATCH, chunks } from './file-intake.js';
 import { FLY, hash, rng, entriesOfDrop } from './firefly-orbit.js';
-import { createDna } from './fireflies-dna.js';
 import { nameOf } from './agent-list.js';
 
 export const MENU_W = 380;        // the menu's width, css px; the field is the rest of the window
-export const FIELD_CAP = 3000;    // fireflies drawn at most; the count line always tells the real number
-export const BELT_CAP = 48;       // dots on a belt at most; the list shows every file
+export const FIELD_CAP = 3000;    // fireflies drawn at most
+export const BELT_CAP = 48;       // fireflies in a closed cluster at most; opened, every file shows
 export const RED = '#FF6B5E';
-export const HIT = 8;             // px around a firefly that still picks it up
 export const FADE_IN = 300;       // ms a new firefly takes to appear
+export const CLUSTER_H = 56;      // px, a closed cluster's height
+export const ROW = 28;            // px between ordered spots when a cluster is open
+export const FLIGHT = 640;        // ms one firefly's flight takes
+export const STAGGER = 30;        // ms between one firefly's start and the next (capped)
 export const DRAG_END = 150;      // ms after the last dragover that a Finder drag counts as gone
 export const SAVE_AFTER = 800;    // ms of quiet typing before a popup saves
 export const NOTE_FOR = 6000;     // ms a confirmation line (with Undo) stays
@@ -63,30 +68,75 @@ export function dotLook(state) {
   return { color: FLY, alpha: .32, halo: false };
 }
 
-/* The nearest drawn firefly within `hit` px of (x, y), or null. */
-export function dotAt(dots, x, y, hit = HIT) {
-  let best = null, bestD = hit * hit;
-  for (const d of dots) { const dd = (d.x - x) ** 2 + (d.y - y) ** 2; if (dd <= bestD) { best = d; bestD = dd; } }
-  return best;
+/* ---------- pure: alive, but calm (fix 2) ---------- */
+
+export const DRIFT_MAX = 3;       // px a firefly wanders from its spot, at most
+export const SHINE_MAX = .22;     // alpha a shine adds, at most: never a flash
+export const SHINE_MS = 2400;     // ms one shine takes, rise and fall
+
+/* A firefly's own slow rhythm, seeded by its id: the same file always moves the same way. */
+export function flyParams(id) {
+  const r = rng(hash('fly:' + id));
+  return {
+    ax: 1.2 + r() * 1.8, ay: 1.2 + r() * 1.8,                  // px
+    px: 14000 + r() * 12000, py: 14000 + r() * 12000,          // ms per sway, each way
+    phx: r() * 6.2832, phy: r() * 6.2832,
+    shineEvery: 12000 + r() * 12000, shineAt: r(),             // ms between shines, where in the cycle
+  };
 }
 
-const fmt = n => n.toLocaleString('en-US');
-export function countLine(total, cap = FIELD_CAP) {
-  if (!total) return '';
-  return `${fmt(total)} ${total === 1 ? 'file' : 'files'}` + (total > cap ? ` · ${fmt(cap)} shown` : '');
+/* Where a firefly is pushed and how much it shines at time t (ms). Reduced motion: still, no shine. */
+export function flyAt(id, t, reduced = false) {
+  if (reduced) return { dx: 0, dy: 0, glow: 0 };
+  const p = flyParams(id);
+  const dx = p.ax * Math.sin(6.2832 * t / p.px + p.phx), dy = p.ay * Math.sin(6.2832 * t / p.py + p.phy);
+  const u = ((t / p.shineEvery + p.shineAt) % 1 + 1) % 1 * p.shineEvery;
+  const glow = u < SHINE_MS ? SHINE_MAX * Math.sin(Math.PI * u / SHINE_MS) ** 2 : 0;
+  return { dx, dy, glow };
+}
+
+/* ---------- pure: the clusters (fix 5) and the flight (fix 6) ---------- */
+
+/* A file's spot in its section's closed cluster, in px inside a box w x h: a loose seeded cloud
+   (a sunflower spiral, stretched to the box and shaken per file), never a row or a grid. */
+export function clusterSpot(path, i, n, seed = '', { w = 316, h = CLUSTER_H } = {}) {
+  const r = rng(hash('cluster:' + seed + ':' + path)), turn = rng(hash('turn:' + seed))() * 6.2832;
+  const rad = Math.sqrt((i + .5) / Math.max(1, n)), a = i * 2.39996 + turn;
+  const jx = (r() - .5) * .22, jy = (r() - .5) * .3;
+  const spread = Math.min(1, .35 + n / 30);                    // a few files stay close together
+  const x = .5 + (Math.cos(a) * rad * .46 * spread + jx * .4);
+  const y = .5 + (Math.sin(a) * rad * .4 + jy * .5);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  return { x: clamp(x, .03, .97) * w, y: clamp(y, .1, .9) * h };
+}
+
+/* A file's ordered spot when its cluster is open: one under another, its name beside it. */
+export const orderedSpot = i => ({ x: 7, y: i * ROW + ROW / 2 });
+
+/* The flight from one spot to another: points on a gentle arc (a quadratic curve bowed sideways),
+   so a firefly travels a real path rather than sliding straight. */
+export function flightPath(from, to, steps = 10) {
+  const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2, dx = to.x - from.x, dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1, bow = Math.min(40, len * .3);
+  const cx = mx - dy / len * bow, cy = my + dx / len * bow;
+  return Array.from({ length: steps + 1 }, (_, k) => {
+    const t = k / steps, u = 1 - t;
+    return { x: u * u * from.x + 2 * u * t * cx + t * t * to.x, y: u * u * from.y + 2 * u * t * cy + t * t * to.y };
+  });
 }
 
 /* ---------- pure: the menu ---------- */
 
-/* One wording for an empty section, belts and Skills alike (fireflies and Finder files are both files). */
+/* One wording for an empty section, belts and Skills alike. It is a hint, not a status. */
 export const EMPTY = 'nothing yet · drag files here';
 
-/* What a section's belt says under its title. files: [{ state }]. */
-export function sectionLine(files) {
-  if (!files.length) return EMPTY;
-  const n = s => files.filter(f => f.state === s).length;
-  const parts = [[n('processed'), 'used'], [n('unprocessed'), 'waiting'], [n('removed'), 'out at next rebuild']];
-  return parts.filter(([k]) => k > 0).map(([k, w]) => `${fmt(k)} ${w}`).join(' · ');
+/* What a section says under its title: only the empty hint. With files, the fireflies say it. */
+export const sectionLine = files => (files.length ? '' : EMPTY);
+
+/* The name after a rename: what was typed, tidied; nothing typed keeps the old name. */
+export function nextName(old, typed) {
+  const t = String(typed ?? '').replace(/\s+/g, ' ').trim();
+  return t || old;
 }
 
 /* A section's list after DELETE /files answered { path, state }. Never used anywhere ("gone"): it leaves
@@ -130,13 +180,6 @@ export function dropPlan(section, entries, { known = false } = {}) {
   return steps;
 }
 
-/* The line after a drop. */
-export function dropNote(section, count) {
-  const what = `${fmt(count)} ${count === 1 ? 'file' : 'files'}`;
-  if (section === 'skills') return `New skill from ${what}`;
-  return section ? `${what} → ${TITLES[section]}` : `${what} added`;
-}
-
 /* ---------- the screen (DOM) ---------- */
 
 async function call(method, url, body) {
@@ -150,46 +193,44 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
   const $ = s => doc.querySelector(s);
   const body = doc.body, win = doc.defaultView;
   const field = createField($('#flies'), () => reduced);
-  const count = $('#count'), menu = $('#menu');
+  const menu = $('#menu'), nameEl = $('#name');
   const sections = { 'system-prompt': [], knowledge: [] };
-  let agent = null, skills = [], emblem = null, opened = false;
+  let agent = null, skills = [], opened = false;
   const base = () => `/api/agents/${encodeURIComponent(agent.id)}/`;
 
   /* ---- the upload: fireflies arrive batch by batch ---- */
-  let countTimer = 0;
-  function grow(dna) {
-    field.set(dna || []);
-    count.textContent = countLine(field.total());
-    if (!countTimer && !opened) countTimer = win.setTimeout(() => body.classList.add('counting'), 600);
-  }
+  function grow(dna) { field.set(dna || []); }
 
   /* ---- the split ---- */
   function open(a, { still = false } = {}) {
     agent = a; opened = true;
-    win.clearTimeout(countTimer);
     field.set(a.dna || [], { still });
-    count.textContent = countLine(field.total());
-    $('#name').textContent = nameOf(a);
-    emblem = createDna($('#emblem'), { name: nameOf(a), files: a.dna || [] });
-    let last = win.performance.now(), emblemIdle = false;
-    const frame = t => { const dt = Math.min(.1, (t - last) / 1000); last = t; if (emblem.draw(t, dt, reduced) || !reduced) win.requestAnimationFrame(frame); else emblemIdle = true; };
-    win.requestAnimationFrame(frame);
-    wake = () => { if (emblemIdle) { emblemIdle = false; win.requestAnimationFrame(frame); } };
+    nameEl.textContent = nameOf(a);
     body.classList.add('split');
     menu.removeAttribute('inert');
     reloadMenu();
   }
-  let wake = () => {};
 
   async function reloadAgent() {
     const a = await call('GET', `/api/agents/${encodeURIComponent(agent.id)}`);
     agent = a; setDna(a.dna || []);
   }
-  function setDna(dna) {
-    agent.dna = dna; field.set(dna);
-    count.textContent = countLine(field.total());
-    if (emblem) { emblem.setFiles(dna); wake(); }
-  }
+  function setDna(dna) { agent.dna = dna; field.set(dna); }
+
+  /* ---- the name: click it and type; Enter or a click elsewhere saves, Esc puts it back ---- */
+  let nameWas = '', cancelName = false;
+  nameEl.addEventListener('focus', () => { nameWas = nameEl.textContent; cancelName = false; });
+  nameEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancelName = true; nameEl.textContent = nameWas; nameEl.blur(); }
+  });
+  nameEl.addEventListener('blur', async () => {
+    const old = nameWas, want = cancelName ? old : nextName(old, nameEl.textContent);
+    nameEl.textContent = want; nameEl.scrollLeft = 0;
+    if (!agent || want === old) return;
+    try { agent.draft = await call('PUT', base() + 'draft', { name: want }); nameEl.textContent = nameOf(agent); }
+    catch (e) { nameEl.textContent = old; note(`Couldn't rename. ${e.message}`); }
+  });
   async function reloadMenu() {
     await Promise.all([
       ...Object.keys(sections).map(async s => { sections[s] = (await call('GET', base() + `sections/${s}/files`)).files; renderSection(s); }),
@@ -197,47 +238,62 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     ]).catch(e => note(`Couldn't load the menu. ${e.message}`));
   }
 
-  /* ---- a section: its belt and its list ---- */
+  /* ---- a section: its cluster of fireflies; open, each one beside its file name ---- */
+  const parts = s => { const sec = menu.querySelector(`[data-section="${s}"]`); return { sec, swarm: sec.querySelector('.swarm'), belt: sec.querySelector('.belt'), flies: sec.querySelector('.flies'), names: sec.querySelector('.names'), line: sec.querySelector('.line') }; };
+  const isOpen = s => parts(s).belt.getAttribute('aria-expanded') === 'true';
+  /* Where each of a section's fireflies sits, open or closed. Past BELT_CAP a closed cluster tucks them in its middle. */
+  function spots(s, open) {
+    const files = sections[s], { swarm } = parts(s), w = swarm.clientWidth || MENU_W - 64, n = Math.min(files.length, BELT_CAP);
+    return files.map((f, i) => open ? orderedSpot(i) : i < BELT_CAP ? clusterSpot(f.path, i, n, s, { w, h: CLUSTER_H }) : { x: w / 2, y: CLUSTER_H / 2 });
+  }
+  const place = (d, p) => { d.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`; };
+  function setHeight(s, open) { parts(s).swarm.style.height = (open ? Math.max(CLUSTER_H, sections[s].length * ROW) : CLUSTER_H) + 'px'; }
+
   function renderSection(s) {
-    const sec = menu.querySelector(`[data-section="${s}"]`), files = sections[s];
-    const belt = sec.querySelector('.belt'), dots = belt.querySelector('.dots'), line = sectionLine(files);
-    dots.replaceChildren(...files.slice(0, BELT_CAP).map(f => dot(f.state)));
-    belt.querySelector('.line').textContent = line;
-    belt.setAttribute('aria-label', `${TITLES[s]} files: ${line}`);
-    belt.disabled = !files.length;
-    if (!files.length && belt.getAttribute('aria-expanded') === 'true') toggle(s, false);
-    if (belt.getAttribute('aria-expanded') === 'true') renderRows(s);
+    const { sec, swarm, belt, flies, names, line } = parts(s), files = sections[s];
+    if (!files.length && isOpen(s)) { belt.setAttribute('aria-expanded', 'false'); sec.classList.remove('open'); }
+    const open = isOpen(s), at = spots(s, open);
+    flies.replaceChildren(...files.map((f, i) => { const d = dot(f); d.classList.toggle('tucked', !open && i >= BELT_CAP); place(d, at[i]); return d; }));
+    names.replaceChildren(...files.map((f, i) => row(f, i)));
+    line.textContent = sectionLine(files); line.hidden = !!files.length;
+    swarm.hidden = !files.length; belt.disabled = !files.length;
+    belt.setAttribute('aria-label', `${TITLES[s]} files`);
+    setHeight(s, open);
   }
-  function dot(state) { const i = doc.createElement('i'); i.className = 'd ' + state; return i; }
-  function renderRows(s) {
-    const ul = menu.querySelector(`[data-section="${s}"] .rows`);
-    ul.replaceChildren(...sections[s].map(f => {
-      const li = doc.createElement('li'); li.className = f.state;
-      const name = doc.createElement('span'); name.className = 'n'; name.textContent = f.name; name.title = f.path;
-      li.append(dot(f.state), name);
-      if (f.state === 'removed') {
-        const out = doc.createElement('span'); out.className = 'out'; out.textContent = 'out at next rebuild'; li.append(out);
-      } else {
-        const b = doc.createElement('button'); b.type = 'button'; b.textContent = 'Remove'; b.setAttribute('aria-label', `Remove ${f.name}`);
-        b.addEventListener('click', () => remove(f)); li.append(b);
-      }
-      return li;
-    }));
+  /* A firefly: its own slow drift and rare shine come from its seed, as css timings (fix 2). */
+  function dot(f) {
+    const i = doc.createElement('i'), p = flyParams(f.path);
+    i.className = 'd ' + f.state;
+    i.style.cssText = `--dx:${p.ax.toFixed(1)}px;--dy:${p.ay.toFixed(1)}px;--dp:${Math.round(p.px / 2)}ms;--dd:${Math.round(-p.phx / 6.2832 * p.px)}ms;--sp:${Math.round(p.shineEvery)}ms;--sd:${Math.round(-p.shineAt * p.shineEvery)}ms`;
+    return i;
   }
-  /* Opening: the belt's fireflies fly down into the rows (FLIP), one under another. */
+  function row(f, i) {
+    const r = doc.createElement('div'); r.className = 'row ' + f.state; r.style.top = i * ROW + 'px';
+    const name = doc.createElement('span'); name.className = 'fname'; name.textContent = f.name; name.title = f.path;
+    r.append(name);
+    if (f.state !== 'removed') {
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'rm'; b.textContent = 'Remove'; b.setAttribute('aria-label', `Remove ${f.name}`);
+      b.addEventListener('click', () => remove(f)); r.append(b);
+    }
+    return r;
+  }
+  /* A tap: every firefly flies along its own arc to its ordered spot (or back into the cluster),
+     eased and a little staggered. Reduced motion: they snap there, no flight. */
   function toggle(s, want) {
-    const sec = menu.querySelector(`[data-section="${s}"]`), belt = sec.querySelector('.belt'), ul = sec.querySelector('.rows');
-    const on = want ?? belt.getAttribute('aria-expanded') !== 'true';
-    if (!on) { belt.setAttribute('aria-expanded', 'false'); ul.hidden = true; sec.classList.remove('open'); return; }
-    const from = [...belt.querySelectorAll('.d')].map(d => d.getBoundingClientRect());
-    renderRows(s); ul.hidden = false; belt.setAttribute('aria-expanded', 'true'); sec.classList.add('open');
-    if (reduced) return;
-    [...ul.querySelectorAll('.d')].slice(0, from.length).forEach((d, i) => {
-      const to = d.getBoundingClientRect(), f = from[i];
-      d.animate?.([{ transform: `translate(${f.left - to.left}px, ${f.top - to.top}px)` }, { transform: 'none' }],
-        { duration: 360, delay: Math.min(i, 24) * 12, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' });
+    const { sec, belt, flies } = parts(s);
+    const on = want ?? !isOpen(s);
+    if (on === isOpen(s)) return;
+    const from = spots(s, !on), to = spots(s, on);
+    belt.setAttribute('aria-expanded', String(on)); sec.classList.toggle('open', on); setHeight(s, on);
+    [...flies.children].forEach((d, i) => {
+      place(d, to[i]);
+      d.classList.toggle('tucked', !on && i >= BELT_CAP);
+      if (reduced || !d.animate) return;
+      d.getAnimations?.().forEach(a => a.id === 'flight' && a.cancel());
+      const a = d.animate(flightPath(from[i], to[i]).map(p => ({ transform: `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)` })),
+        { duration: FLIGHT, delay: Math.min(i, 20) * STAGGER, easing: 'cubic-bezier(.45,.05,.25,1)', fill: 'backwards' });
+      a.id = 'flight';
     });
-    ul.querySelectorAll('.n, .out, button').forEach(el => el.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 240, delay: 160, fill: 'backwards' }));
   }
 
   /* ---- remove (from the agent, never from the Mac) ---- */
@@ -263,8 +319,9 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     line.textContent = skills.length ? '' : EMPTY;
     line.hidden = !!skills.length;
     box.replaceChildren(...skills.map(k => {
-      const b = doc.createElement('button'); b.type = 'button'; b.className = 'star'; b.title = k.name; b.setAttribute('aria-label', `Open skill ${k.name}`);
+      const b = doc.createElement('button'); b.type = 'button'; b.className = 'star';
       b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0 9.5 6.5 16 8 9.5 9.5 8 16 6.5 9.5 0 8 6.5 6.5Z"/></svg>';
+      const name = doc.createElement('span'); name.className = 'sk-name'; name.textContent = k.name; b.append(name);
       b.addEventListener('click', () => sheet.open('skill', k.id));
       return b;
     }));
@@ -318,7 +375,6 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     busyDrop = true;
     try {
       for (const step of dropPlan(section, entries, { known })) await call(step.method, base() + step.url, step.body);
-      note(dropNote(section, entries.length));
       await reloadAgent(); await reloadMenu();
     } catch (e) { note(`Couldn't add the files. ${e.message}`); }
     finally { busyDrop = false; }
@@ -344,45 +400,22 @@ export function mountCreation({ doc = document, reduced = false } = {}) {
     drop(section, await entriesOfDrop(e.dataTransfer), false);
   });
 
-  // A firefly from the field: pick it up, carry it, let go on a zone.
-  const canvas = $('#flies'), ghost = $('#ghost');
-  let carried = null;
-  canvas.addEventListener('pointermove', e => { if (opened && !carried) canvas.style.cursor = field.at(e.clientX, e.clientY) ? 'grab' : ''; });
-  canvas.addEventListener('pointerdown', e => {
-    if (!opened || e.button !== 0) return;
-    const d = field.at(e.clientX, e.clientY); if (!d) return;
-    carried = d; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = 'grabbing';
-    const look = dotLook(d.state);
-    Object.assign(ghost.style, { background: look.color, opacity: look.alpha, transform: `translate(${e.clientX}px, ${e.clientY}px)` });
-    ghost.classList.add('on'); field.lift(d.id); hover(e.clientX, e.clientY);
-  });
-  canvas.addEventListener('pointermove', e => {
-    if (!carried) return;
-    ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`; hover(e.clientX, e.clientY);
-  });
-  const letGo = e => {
-    if (!carried) return;
-    const d = carried; carried = null; canvas.style.cursor = '';
-    const section = e.type === 'pointerup' ? zoneAt(zoneRects(), e.clientX, e.clientY) : null;
-    ghost.classList.remove('on'); field.lift(null); endDrag();
-    if (section) drop(section, [{ path: d.id, size: d.size }], true);
-  };
-  canvas.addEventListener('pointerup', letGo);
-  canvas.addEventListener('pointercancel', letGo);
+  // Fireflies on the field are not things to arrange: the canvas takes no pointer at all (fix 3).
 
-  win.addEventListener('resize', () => field.redraw());
+  win.addEventListener('resize', () => { field.redraw(); if (agent) Object.keys(sections).forEach(renderSection); });
 
   return {
     grow, open, isOpen: () => opened,
-    setReduced(v) { reduced = !!v; wake(); },
+    setReduced(v) { reduced = !!v; field.redraw(); },
     info: () => ({ split: opened, field: field.info(), sections: Object.fromEntries(Object.entries(sections).map(([s, f]) => [s, f.map(x => ({ path: x.path, state: x.state }))])), skills: skills.map(k => k.name) }),
   };
 }
 
-/* The field's canvas: drawn only when something changes (and for FADE_IN ms after new fireflies). */
+/* The field's canvas: every frame, each firefly drifts and now and then shines (flyAt).
+   Reduced motion: drawn only when something changes, still. */
 function createField(canvas, isReduced) {
   const ctx = canvas.getContext('2d'), win = canvas.ownerDocument.defaultView;
-  let dna = [], dots = [], total = 0, raf = 0, lifted = null;
+  let dna = [], dots = [], raf = 0;
   const born = new Map();
   function set(next, { still = false } = {}) {
     const t = still ? -1e9 : win.performance.now();
@@ -394,26 +427,25 @@ function createField(canvas, isReduced) {
     raf = 0;
     const W = win.innerWidth, H = win.innerHeight, dpr = Math.min(2, win.devicePixelRatio || 1);
     if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
-    const lay = fieldLayout(dna, { width: Math.max(160, W - MENU_W), height: H }); dots = lay.dots; total = lay.total;
+    const lay = fieldLayout(dna, { width: Math.max(160, W - MENU_W), height: H }); dots = lay.dots;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const still = isReduced();
     let fading = false;
     for (const d of dots) {
-      const look = dotLook(d.state), age = t - (born.get(d.id) ?? -1e9);
+      const look = dotLook(d.state), age = t - (born.get(d.id) ?? -1e9), m = flyAt(d.id, t, still);
       let a = look.alpha;
-      if (age < FADE_IN && !isReduced()) { a *= Math.max(0, age) / FADE_IN; fading = true; }
-      if (d.id === lifted) a *= .2;
+      if (age < FADE_IN && !still) { a *= Math.max(0, age) / FADE_IN; fading = true; }
+      const x = d.x + m.dx, y = d.y + m.dy, halo = (look.halo ? a * .16 : 0) + m.glow * .4;
       ctx.fillStyle = look.color;
-      if (look.halo) { ctx.globalAlpha = a * .16; ctx.beginPath(); ctx.arc(d.x, d.y, 5, 0, 6.2832); ctx.fill(); }
-      ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(d.x, d.y, 1.8, 0, 6.2832); ctx.fill();
+      if (halo > .005) { ctx.globalAlpha = halo; ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill(); }
+      ctx.globalAlpha = Math.min(1, a + m.glow); ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 6.2832); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    if (fading) redraw();
+    if (fading || (!still && dots.length)) redraw();
   }
   return {
     set, redraw, total: () => dna.length,
-    at: (x, y) => dotAt(dots, x, y),
-    lift(id) { lifted = id; redraw(); },
-    info: () => ({ total: dna.length, drawn: dots.length, dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })) }),
+    info: () => ({ total: dna.length, drawn: dots.length, moving: !isReduced(), dots: dots.slice(0, 50).map(d => ({ id: d.id, state: d.state, x: Math.round(d.x), y: Math.round(d.y) })) }),
   };
 }
 
