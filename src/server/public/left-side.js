@@ -243,7 +243,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     if (a.id !== id) return start(a, still);
     if (kept(store, a)) { wasKept = true; store['left.kept.' + id] = '1'; quietCards(); }   // once kept, Create never comes back
     const nm = nameOf(a);
-    if (nm !== name) { name = nm; setMark(applied, true); }
+    if (nm !== name) { name = nm; setMark(applied, true); if (open) box.placeholder = `Tell Sketcher what ${name} is for`; }
     const t = now(), g = geo();
     const drawn = new Map(fieldLayout(next, { width: g.fw, height: g.H }).dots.map(d => [d.id, d]));
     const newly = next.filter(f => f.state === 'processed' && known.get(f.id) !== 'processed');
