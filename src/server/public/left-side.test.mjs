@@ -70,7 +70,8 @@ test('CF5. one send path, one flying dot (removed on landing), the held lines sh
   assert.match(rule('.send-fly'), /position: fixed/);
   assert.match(SRC, /dot\.setAttribute\('aria-hidden', 'true'\)/);
   assert.match(rule('#sketcher-log > .landing'), /opacity: 0/);
-  assert.match(HTML, /@keyframes you-bloom \{ from \{ background: rgba\(216,242,106,\.30\); \} \}/);
+  assert.match(HTML, /@keyframes you-bloom \{ from \{ box-shadow: inset 0 0 0 100vmax rgba\(216,242,106,\.30\); \} \}/);
+  assert.match(rule('#sketcher-log > .you'), /inset 0 0 0 100vmax rgba\(216,242,106,\.14\)/);   // .30 fades to .14
   assert.match(rule('#sketcher-log > .you.bloom'), /200ms ease-out/);
 });
 
@@ -96,8 +97,9 @@ test('CF7. the send dot lands in the new message (its centre), not in the field 
   assert.equal(flightPlan({ from: { x: 300, y: 530 }, to }), null);
 });
 
-test('CF8. no black box: the messages sit on the glass with no fill of their own', () => {
-  assert.doesNotMatch(rule('#sketcher-log'), /background/);
+test('CF8. no black box: the log has no fill; only each message carries its own dark glass', () => {
+  assert.doesNotMatch(rule('#sketcher-log'), /background:/);
+  assert.match(rule('#sketcher-log > div'), /background: var\(--ink\)/);
 });
 
 test('CF6. the thinking dot lives on the wait line and is gone with the first words or an error', () => {

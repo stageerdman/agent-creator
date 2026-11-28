@@ -157,19 +157,22 @@
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
   #sketcher h2 { margin: 0; font: 600 17px/1.2 var(--font); }
-  /* The messages sit straight on the glass: no fill of their own (a dark box read as a hole in the panel).
-     The panel's 24px blur already smears any lit dot behind it to a faint haze, so the text stays readable. */
-  #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  /* The log itself has no fill: a dark box behind the whole chat read as a hole in the glass.
+     Each message carries its own dark glass instead (--ink), shaped like the message, so its words keep
+     AA contrast even over a fully lit likeness, and the panel between messages stays clear. */
+  #sketcher-log { --ink: rgba(6,9,6,.72); flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
     margin: 0 -8px; padding: 8px; }
-  #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #sketcher-log > .you { align-self: flex-end; background: rgba(216,242,106,.14); }
-  #sketcher-log > .sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
+  #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+    align-self: flex-start; background: var(--ink); }
+  /* the tint is an inset wash over the ink, so the bloom below can fade it */
+  #sketcher-log > .you { align-self: flex-end; box-shadow: inset 0 0 0 100vmax rgba(216,242,106,.14); }
+  #sketcher-log > .sketcher { box-shadow: inset 0 0 0 100vmax rgba(232,239,224,.06); }
   #sketcher-log > .wait { color: rgba(232,239,224,.72); }
   /* The chat's fireflies (Reports/chat-firefly-motion.md). Only light moves; the words never do.
      Send: the 'you' and wait lines are held while one dot flies, then the 'you' tint blooms .30 → .14. */
   #sketcher-log > .landing { opacity: 0; }
   #sketcher-log > .you.bloom { animation: you-bloom 200ms ease-out; }
-  @keyframes you-bloom { from { background: rgba(216,242,106,.30); } }
+  @keyframes you-bloom { from { box-shadow: inset 0 0 0 100vmax rgba(216,242,106,.30); } }
   .send-fly { position: fixed; left: -3px; top: -3px; z-index: 6; width: 6px; height: 6px; border-radius: 50%; background: var(--fly);
     box-shadow: 0 0 8px rgba(216,242,106,.6); pointer-events: none; }
   /* Wait: Sketcher's firefly glows slowly beside "Sketching…"; each real event is one answering flash. */
