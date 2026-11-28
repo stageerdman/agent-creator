@@ -5,7 +5,7 @@ import {
   gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showCreate, isKept, timings, blinkLevel,
   isReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
   menuSectionOf, glowLevel, sortLeave, streamChat, GLOW_MS, TOOK_MS, SORT_GAP, STILL_BLINK,
-  flightPlan, sendArcAt, answerHold, BLOOM_MS, ANSWER_MS, RISE_MS, SEND_BOW, MIN_FLIGHT,
+  flightPlan, sendArcAt, answerHold, BLOOM_MS, ANSWER_MS, RISE_MS, SEND_BOW, MIN_FLIGHT, landingPoint, inside,
 } from './left-side.js';
 import { readFileSync } from 'node:fs';
 const HTML = readFileSync(new URL('./new-agent.html', import.meta.url), 'utf8');
@@ -44,13 +44,18 @@ test('CF3. the answering flash: a short rise then eased back, a plain 320 ms ste
   assert.ok(RISE_MS + 240 <= 400, 'back in the loop within 400 ms');
 });
 
-test('CF4. the glow belongs to #sketcher-form: rest, lit on focus (180 ms), two breaths, still with Reduce Motion', () => {
-  assert.match(rule('#sketcher-form'), /box-shadow: 0 0 14px rgba\(216,242,106,\.06\)/);
-  assert.match(rule('#sketcher-form'), /transition: box-shadow 280ms ease-in/);
-  assert.match(rule('#sketcher-form:focus-within'), /0 0 18px rgba\(216,242,106,\.16\).*180ms ease-out/);
-  assert.match(rule('#sketcher-form.breath:focus-within'), /4\.8s ease-in-out 600ms 2;/);
-  assert.match(rule('#sketcher.still #sketcher-form'), /transition: none; animation: none/);
+test('CF4. the glow belongs to the box itself: rest, lit on focus (180 ms), two breaths, still with Reduce Motion', () => {
+  assert.match(rule('#sketcher-box'), /box-shadow: 0 0 14px rgba\(216,242,106,\.06\)/);
+  assert.match(rule('#sketcher-box'), /transition: box-shadow 280ms ease-in/);
+  assert.match(rule('#sketcher-box:focus'), /0 0 18px rgba\(216,242,106,\.16\).*180ms ease-out/);
+  assert.match(rule('#sketcher-form.breath #sketcher-box:focus'), /4\.8s ease-in-out 600ms 2;/);
+  assert.match(rule('#sketcher.still #sketcher-box'), /transition: none; animation: none/);
   assert.doesNotMatch(rule('#sketcher-box'), /animation/);   // the box's text and caret never change
+  // No shine behind Create: the form (box + button) has no glow of its own, and neither has the button.
+  assert.doesNotMatch(rule('#sketcher-form'), /box-shadow|animation|background/);
+  assert.doesNotMatch(HTML, /#sketcher-form[^{]*\{[^}]*box-shadow/);
+  assert.doesNotMatch(rule('#sketcher-create'), /box-shadow|filter/);
+  assert.doesNotMatch(HTML, /#sketcher-create[^{]*::(before|after)/);
   // Typing stops the breath; the box is never disabled, so Enter and typing are never blocked.
   assert.match(SRC, /box\.addEventListener\('input', \(\) => form\.classList\.remove\('breath'\)\)/);
   assert.doesNotMatch(SRC, /box\.disabled|box\.readOnly/);
@@ -67,6 +72,32 @@ test('CF5. one send path, one flying dot (removed on landing), the held lines sh
   assert.match(rule('#sketcher-log > .landing'), /opacity: 0/);
   assert.match(HTML, /@keyframes you-bloom \{ from \{ background: rgba\(216,242,106,\.30\); \} \}/);
   assert.match(rule('#sketcher-log > .you.bloom'), /200ms ease-out/);
+});
+
+test('CF7. the send dot lands in the new message (its centre), not in the field or the mark', () => {
+  const bubble = { left: 220, top: 500, width: 160, height: 36, right: 380, bottom: 536 };
+  assert.deepEqual(landingPoint(bubble), { x: 300, y: 518 });
+  assert.equal(landingPoint(null), null);
+  assert.equal(landingPoint({ left: 0, top: 0, width: 0, height: 0 }), null);   // not laid out: nothing flies
+  const log = { left: 24, top: 60, right: 432, bottom: 600 };
+  assert.ok(inside(landingPoint(bubble), log));
+  assert.ok(!inside({ x: 300, y: 700 }, log)); assert.ok(!inside(null, log));
+  const from = { x: 408, y: 640 }, to = landingPoint(bubble), plan = flightPlan({ from, to });
+  assert.ok(plan);
+  assert.deepEqual(sendArcAt(from, to, 1, plan.bow), to);   // the arc ends on the bubble
+  // In the page: `to` is the 'you' bubble's rect (measured after it is added); nothing reads #sky or #mark.
+  const fly = SRC.slice(SRC.indexOf('function fly('), SRC.indexOf('function answer('));
+  assert.match(fly, /to = landingPoint\(mine\.getBoundingClientRect\(\)\)/);
+  assert.match(fly, /inside\(to, L\)/);
+  assert.doesNotMatch(fly, /markEl|sky|geo\(\)|g\.cx/);
+  assert.ok(SRC.indexOf("const mine = line('you', message)") < SRC.indexOf('    fly(mine, reply);'));
+  // Under Reduce Motion or a short hop, nothing flies (the line just appears).
+  assert.equal(flightPlan({ from, to, reduced: true }), null);
+  assert.equal(flightPlan({ from: { x: 300, y: 530 }, to }), null);
+});
+
+test('CF8. no black box: the messages sit on the glass with no fill of their own', () => {
+  assert.doesNotMatch(rule('#sketcher-log'), /background/);
 });
 
 test('CF6. the thinking dot lives on the wait line and is gone with the first words or an error', () => {
