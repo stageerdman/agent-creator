@@ -40,6 +40,8 @@ export function createApp(engine, { store = createAgentStore(), embedder } = {})
     // A home row opens here: the agent's own page on the Fireflies background.
     "GET /agents/:id": staticFile("agent-page.html", "text/html; charset=utf-8"),
     // The home's mock sets (0, 1, 10, 50), in the real /api/agents shape: `/?demo=50`.
+    // The one screen background every page links first (Reports/launch-and-glass.md).
+    "GET /app-background.css": staticFile("app-background.css", "text/css; charset=utf-8"),
     "GET /mock/home/:count": async (_req, res, { params }) => sendJson(res, 200, homeAgents(params.count).map(summary)),
     ...Object.fromEntries(PAGE_MODULES
       .map((name) => [`GET /${name}.js`, staticFile(`${name}.js`, "text/javascript; charset=utf-8")])),

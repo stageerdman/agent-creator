@@ -1,0 +1,6 @@
+/* The one screen background (Reports/launch-and-glass.md). Every page links this first in <head>, so its
+   first frame already has it, and nothing changes it later: no class, no script, no glass. One flat colour,
+   so the Mac window can paint the very same one natively before the page arrives
+   (src-tauri/src/main.rs, background_color 11,20,16 = #0B1410). Change it here and there together. */
+:root { --field: #0B1410; }
+html { background: var(--field); }

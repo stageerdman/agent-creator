@@ -4,18 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New agent · Agent Creator</title>
+<link rel="stylesheet" href="/app-background.css">
 <style>
-  /* The Fireflies background (same on html and body: no white flash). */
+  /* The background is the shared one (app-background.css): solid, like every screen. The one glass in
+     the app is the Sketcher chat, so it reads as the window and the field as the scene. */
   :root {
-    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A;
+    --fly: #D8F26A;
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
     --hit: max(112px, 20vmin);   /* 2 x hitR = 2 x max(56, .10 U) */
   }
-  /* Solid, in the browser and in the Mac app alike (html.glass changes nothing here): the one glass on
-     this screen is the Sketcher panel, so it reads as the window and the field as the scene. */
-  html { background: var(--field); }
   html, body { margin: 0; height: 100%; }
-  body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
+  body { overflow: hidden; }
   canvas#field { position: fixed; inset: 0; display: block; pointer-events: none; }
   /* The middle the fireflies circle: the one control. Transparent; it holds the faint word. */
   #pick {
@@ -140,17 +139,22 @@
   #handle[aria-expanded="true"] .chev { transform: scaleX(-1); }
   #handle[aria-expanded="true"]:hover .chev { transform: scaleX(-1) translateX(2px); }
   #handle[aria-expanded="true"] .label { max-width: 0 !important; opacity: 0 !important; }
-  /* The floating chat: the one glass on the screen. A 12px gap on the left, top and bottom, round corners all
-     round and a soft shadow make it a window over the likeness. Closed, it sits its own width plus the gap
-     off-screen, so its right edge is at 0 and the arrow rides that edge on every frame. */
+  /* The floating chat: the one glass in the app (Reports/launch-and-glass.md). A 12px gap on the left, top and
+     bottom, round corners all round and a soft shadow make it a window over the likeness. Closed, it sits its
+     own width plus the gap off-screen, so its right edge is at 0 and the arrow rides that edge on every frame.
+     Real glass: a low fill, a strong blur (a lit dot behind becomes a soft glow, never a sharp spot), the colour
+     behind lifting it a little, and a thin light edge, brighter at the top, so it never melts into the page. */
   #sketcher { position: fixed; left: 12px; top: 12px; bottom: 12px; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
-    padding: 20px 20px 20px 24px; border: 1px solid rgba(232,239,224,.08); border-radius: 16px; color: #E8EFE0; font: 400 14px/1.45 var(--font);
-    background: rgba(12,14,10,.92); transform: translateX(calc(-100% - 12px)); box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+    padding: 20px 20px 20px 24px; border: 1px solid rgba(232,239,224,.12); border-radius: 16px; color: #E8EFE0; font: 400 14px/1.45 var(--font);
+    background: rgba(12,14,10,.92); transform: translateX(calc(-100% - 12px));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 12px 40px rgba(0,0,0,.45); }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    #sketcher { background: rgba(12,14,10,.36); backdrop-filter: blur(24px) saturate(1.3); -webkit-backdrop-filter: blur(24px) saturate(1.3); }
+    #sketcher { background: rgba(12,14,10,.16); backdrop-filter: blur(32px) saturate(1.6); -webkit-backdrop-filter: blur(32px) saturate(1.6); }
   }
   /* People who asked the system for less transparency get the panel near-solid. */
   @media (prefers-reduced-transparency: reduce) { #sketcher { background: rgba(12,14,10,.94); } }
+  /* The title sits on the clear glass itself, so a soft dark shadow keeps it readable over a lit likeness. */
+  #sketcher h2 { text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 12px rgba(0,0,0,.45); }
   /* Narrow screens: a smaller gap; the arrow rests just inside the panel's right edge, so words keep clear of it. */
   @media (max-width: 639px) { #sketcher { left: 8px; top: 8px; bottom: 8px; padding-right: 56px; transform: translateX(calc(-100% - 8px)); } }
   #sketcher[hidden] { display: none; }

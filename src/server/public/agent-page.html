@@ -4,19 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent · Agent Creator</title>
+<link rel="stylesheet" href="/app-background.css">
 <style>
   /* The agent's page (design/agent-page.md): who it is, what it's made of, and Talk.
-     On the Fireflies background (same on html and body: no white flash). */
+     The background is the shared one (app-background.css). */
   :root {
-    --field: #0B1410; --shadow: #060B08; --fly: #D8F26A; --text: #E6EEE8; --quiet: #8C9A90; --line: rgba(232,239,224,.12);
+    --fly: #D8F26A; --text: #E6EEE8; --quiet: #8C9A90; --line: rgba(232,239,224,.12);
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   }
-  html { background: var(--field); }
-  /* In the Mac app the window is glass: the field tints the blurred desktop, dark enough for text. */
-  html.glass { background: transparent; --field: rgba(11, 20, 16, .62); --shadow: rgba(6, 11, 8, .8); }
   html, body { margin: 0; min-height: 100%; }
   body {
-    background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed;
     color: var(--text); font: 15px/1.5 var(--font); -webkit-font-smoothing: antialiased;
   }
   :focus-visible { outline: 2px solid var(--fly); outline-offset: 3px; border-radius: 6px; }
@@ -56,8 +53,8 @@
   .where blockquote p { margin: 0; color: var(--text); }
   .where cite { display: block; margin-top: 2px; font-style: normal; }
   #talk-form { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(560px, calc(100vw - 48px)); }
-  #talk-box { box-sizing: border-box; width: 100%; resize: none; font: 15px/1.4 var(--font); color: var(--text); background: rgba(11,20,16,.86);
-    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  #talk-box { box-sizing: border-box; width: 100%; resize: none; font: 15px/1.4 var(--font); color: var(--text); background: var(--field);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
   #talk-box::placeholder { color: var(--quiet); }
   #talk-err { margin: 6px 2px 0; font-size: 12px; color: #F2A08C; }
   .md > * + *, .md li > * + *, .md blockquote > * + * { margin-top: 6px; }

@@ -70,30 +70,35 @@ test("GET /agents/:id serves a page, not raw JSON", async () => {
   assert.match(response.headers.get("content-type"), /text\/html/);
   const html = await response.text();
   assert.match(html, /Agent · Agent Creator/);
-  assert.match(html, /html \{ background: var\(--field\); \}/);
 });
 
-// The Mac shell marks each page html.glass. A page without the rule paints
-// solid over the glass window; one that is see-through without it shows white in a browser.
-test("every page is solid in a browser and see-through on the Mac app's glass", async () => {
-  for (const path of ["/", "/agents/some-agent"]) {
+const SCREENS = ["/", "/agents/some-agent", "/new"];
+
+// LAUNCH-GLASS: one background, defined once, linked first by every screen. No page sets its own
+// html/body background or a glass override, so the first frame is the final one. The Mac window
+// paints the same colour natively (src-tauri/src/main.rs, background_color 11,20,16).
+test("every screen uses the one shared background token, and nothing else sets it", async () => {
+  const css = await (await fetch(`${base}/app-background.css`)).text();
+  assert.match(css, /:root \{ --field: #0B1410; \}/);
+  assert.match(css, /html \{ background: var\(--field\); \}/);
+  for (const path of SCREENS) {
     const html = await (await fetch(`${base}${path}`)).text();
-    assert.match(html, /html \{ background: var\(--field\); \}/, path);
-    assert.match(html, /html\.glass \{ background: transparent; --field: rgba\([^)]*\); --shadow: rgba\([^)]*\); \}/, path);
+    const head = html.slice(0, html.indexOf("<style>"));
+    assert.match(head, /<link rel="stylesheet" href="\/app-background\.css">/, `${path} links it before its own styles`);
+    assert.doesNotMatch(html, /^\s*(html|body|html, body)\s*\{[^}]*background/m, `${path} sets no html/body background`);
+    assert.doesNotMatch(html, /--field:|--shadow:|html\.glass|classList\.(add|toggle)\(['"]glass/, `${path} has no own field or glass switch`);
   }
 });
 
-// FLOATING-GLASS phase 1: on /new the only glass is the floating Sketcher chat. The window stays solid
-// under html.glass too, and the old near-solid .88 panel rule is gone.
-test("/new is solid even on the Mac app's glass; only the Sketcher panel is glass", async () => {
-  const html = await (await fetch(`${base}/new`)).text();
-  assert.match(html, /html \{ background: var\(--field\); \}/);
-  assert.doesNotMatch(html, /^\s*html\.glass[^{\n]*\{/m, 'no html.glass rule on /new');
-  const blurs = html.split('\n').filter(l => /backdrop-filter:/.test(l) && !/^\s*@supports/.test(l));
-  assert.ok(blurs.length > 0 && blurs.every(l => /^\s*#sketcher \{/.test(l)), 'backdrop-filter only on #sketcher');
-  assert.match(html, /#sketcher \{ background: rgba\(12,14,10,\.(\d+)\); backdrop-filter: blur\(\d+px\)/);
-  const alpha = Number('.' + html.match(/#sketcher \{ background: rgba\(12,14,10,\.(\d+)\); backdrop-filter/)[1]);
-  assert.ok(alpha < 0.6, `panel alpha ${alpha} is well under .88`);
+// The one glass in the app is the floating Sketcher chat: low fill, strong blur.
+test("only the Sketcher chat uses backdrop-filter, and it is clearly see-through", async () => {
+  const pages = await Promise.all(SCREENS.map(async (p) => (await fetch(`${base}${p}`)).text()));
+  const blurs = pages.join("\n").split("\n").filter(l => /backdrop-filter:/.test(l) && !/^\s*@supports/.test(l));
+  assert.ok(blurs.length > 0 && blurs.every(l => /^\s*#sketcher \{/.test(l)), "backdrop-filter only on #sketcher");
+  const m = pages[2].match(/#sketcher \{ background: rgba\(12,14,10,\.(\d+)\); backdrop-filter: blur\((\d+)px\)/);
+  assert.ok(m, "the chat's glass rule");
+  assert.ok(Number(`.${m[1]}`) <= 0.2, `chat fill ${m[1]} is low`);
+  assert.ok(Number(m[2]) >= 24, `blur ${m[2]}px is strong enough to soften a lit dot`);
 });
 
 test("GET serves the screens' scripts", async () => {
