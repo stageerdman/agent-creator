@@ -34,29 +34,35 @@ export const usedLine = used => {
   return names.length ? 'Used · ' + names.join(', ') : '';
 };
 
+/* P8. Under every answer: the passages it stood on, each with its file. None → the agent's own view. */
+export const whereFrom = (sources, name) => {
+  const passages = (sources || []).filter(s => s && s.passage).map(s => ({ file: String(s.file || ''), passage: String(s.passage) }));
+  return passages.length ? { label: 'Where from', passages } : { label: `${name}'s own view · no reference`, passages };
+};
+
 /* C9. The one way back into the build screen. */
 export const editHref = id => '/new?agent=' + encodeURIComponent(id);
 
 /* G4. Talk only to a created agent. */
 export const canTalk = a => !!(a && a.draft && a.draft.status === 'saved');
 
-/* G4/F14. One turn: POST /api/agents/:id/talk, read delta / done / error. → { say, used }. Throws. */
+/* G4/F14/P8. One turn: POST /api/agents/:id/talk, read delta / done / error. → { say, used, sources }. Throws. */
 export async function streamTalk({ fetch, id, message, onText = () => {} }) {
   const r = await fetch(`/api/agents/${encodeURIComponent(id)}/talk`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
   if (!r.ok || !r.body) throw new Error(`talk: status ${r.status}`);
   const rd = r.body.getReader(), dec = new TextDecoder();
-  let buf = '', text = '', used = [];
+  let buf = '', text = '', used = [], sources = [];
   for (;;) {
     const { value, done } = await rd.read(); if (done) break;
     const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
     for (const { event, data } of out.events) {
       if (event === 'delta' && data && data.text) onText(text += data.text);
-      else if (event === 'done' && data) { if (data.say && data.say !== text) onText(text = data.say); used = Array.isArray(data.used) ? data.used : []; }
+      else if (event === 'done' && data) { if (data.say && data.say !== text) onText(text = data.say); used = Array.isArray(data.used) ? data.used : []; sources = Array.isArray(data.sources) ? data.sources : []; }
       else if (event === 'error') throw new Error(`talk: ${(data && data.error) || 'error'}`);
     }
   }
   if (!text) throw new Error('talk: empty answer');
-  return { say: text, used };
+  return { say: text, used, sources };
 }
 
 /* ------------------------------------------------------------------ the page ---- */
@@ -112,13 +118,23 @@ export async function mountAgentPage({ doc = document, fetch = window.fetch.bind
   if (!canTalk(a) || demo) { talk.hidden = true; $('#not-yet').hidden = demo || canTalk(a); return; }
   talk.hidden = false; $('#not-yet').hidden = true;
   box.placeholder = `Talk to ${nameOf(a)}`;
-  const bubble = (who, text, used) => {
+  // Under an answer: what it used, then Where from. A line kept before P8 has no sources: no claim either way.
+  const footer = (d, used, sources) => {
+    const u = usedLine(used); if (u) d.append(el('p', 'used', u));
+    if (!Array.isArray(sources)) return;
+    const wf = whereFrom(sources, nameOf(a));
+    if (!wf.passages.length) { d.append(el('p', 'used own', wf.label)); return; }
+    const det = el('details', 'where'); det.append(el('summary', '', wf.label));
+    for (const { file, passage } of wf.passages) { const q = el('blockquote'); q.append(el('p', '', passage), el('cite', '', file)); det.append(q); }
+    d.append(det);
+  };
+  const bubble = (who, text, used, sources) => {
     const d = el('div', who);
-    if (who === 'agent') { const b = el('div', 'md'); b.append(renderMarkdown(doc, text)); d.append(b); const u = usedLine(used); if (u) d.append(el('p', 'used', u)); }
+    if (who === 'agent') { const b = el('div', 'md'); b.append(renderMarkdown(doc, text)); d.append(b); footer(d, used, sources); }
     else d.textContent = text;
     log.append(d); return d;
   };
-  for (const t of a.talk || []) if (t && t.text) bubble(t.who === 'agent' ? 'agent' : 'you', t.text, t.used);
+  for (const t of a.talk || []) if (t && t.text) bubble(t.who === 'agent' ? 'agent' : 'you', t.text, t.used, t.sources);
   let busy = false;
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
   form.addEventListener('submit', async e => {
@@ -128,9 +144,9 @@ export async function mountAgentPage({ doc = document, fetch = window.fetch.bind
     const mine = bubble('you', message), reply = el('div', 'agent wait'), body = el('div', 'md', '…');
     reply.append(body); log.append(reply); reply.scrollIntoView({ block: 'nearest' });
     try {
-      const { say, used } = await streamTalk({ fetch, id, message, onText: t => { body.replaceChildren(renderMarkdown(doc, t)); reply.classList.remove('wait'); } });
+      const { say, used, sources } = await streamTalk({ fetch, id, message, onText: t => { body.replaceChildren(renderMarkdown(doc, t)); reply.classList.remove('wait'); } });
       body.replaceChildren(renderMarkdown(doc, say)); reply.classList.remove('wait');
-      const u = usedLine(used); if (u) reply.append(el('p', 'used', u));
+      footer(reply, used, sources);
     } catch {
       // The words go back in the box, so Enter tries again.
       mine.remove(); reply.remove(); if (!box.value) box.value = message;

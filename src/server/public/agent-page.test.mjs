@@ -1,7 +1,7 @@
 // The agent page's pure rules: design/agent-page.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { profileLevels, dnaSections, usedLine, editHref, canTalk, streamTalk } from './agent-page.js';
+import { profileLevels, dnaSections, usedLine, whereFrom, editHref, canTalk, streamTalk } from './agent-page.js';
 
 test('G1. three words: skills with files are Good at; Knowledge and empty skills are Medium', () => {
   const lv = profileLevels({
@@ -44,15 +44,26 @@ test('C9. edit goes back to the build screen; G4. only a created agent talks', (
 
 const sse = s => async () => new Response(s, { status: 200 });
 
-test('G4. streamTalk reads deltas, then done with used', async () => {
+test('G4/P8. streamTalk reads deltas, then done with used and sources', async () => {
   const seen = [];
   const out = await streamTalk({
-    fetch: sse('event: delta\ndata: {"text":"Hi "}\n\nevent: delta\ndata: {"text":"**there**"}\n\nevent: done\ndata: {"say":"Hi **there**","used":[{"kind":"file","name":"a.pdf"}]}\n\n'),
+    fetch: sse('event: delta\ndata: {"text":"Hi "}\n\nevent: delta\ndata: {"text":"**there**"}\n\nevent: done\ndata: {"say":"Hi **there**","used":[{"kind":"file","name":"a.pdf"}],"sources":[{"file":"a.pdf","passage":"p"}]}\n\n'),
     id: 'x', message: 'hello', onText: t => seen.push(t),
   });
   assert.equal(out.say, 'Hi **there**');
   assert.deepEqual(out.used, [{ kind: 'file', name: 'a.pdf' }]);
+  assert.deepEqual(out.sources, [{ file: 'a.pdf', passage: 'p' }]);
   assert.deepEqual(seen, ['Hi ', 'Hi **there**']);
+  const bare = await streamTalk({ fetch: sse('event: done\ndata: {"say":"x"}\n\n'), id: 'x', message: 'm' });
+  assert.deepEqual(bare.sources, [], 'no sources sent = own view');
+});
+
+test('P8. Where from lists each passage with its file; none is the agent\'s own view', () => {
+  assert.deepEqual(whereFrom([{ file: 'a.md', passage: 'one' }, { file: 'b.md', passage: '' }, null], 'Coach'), {
+    label: 'Where from', passages: [{ file: 'a.md', passage: 'one' }],
+  });
+  assert.deepEqual(whereFrom([], 'Coach'), { label: "Coach's own view · no reference", passages: [] });
+  assert.deepEqual(whereFrom(undefined, 'Coach').passages, []);
 });
 
 test('G4. streamTalk throws on error, bad status and an empty answer', async () => {

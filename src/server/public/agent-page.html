@@ -49,6 +49,12 @@
   #talk-log .you { color: var(--quiet); white-space: pre-wrap; }
   #talk-log .wait .md { color: var(--quiet); }
   .used { margin: 4px 0 0; font-size: 12px; color: var(--quiet); }
+  /* Where from: the passages an answer stood on, closed until asked for. */
+  .where { margin-top: 4px; font-size: 12px; color: var(--quiet); }
+  .where summary { cursor: pointer; }
+  .where blockquote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--line); white-space: pre-wrap; }
+  .where blockquote p { margin: 0; color: var(--text); }
+  .where cite { display: block; margin-top: 2px; font-style: normal; }
   #talk-form { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(560px, calc(100vw - 48px)); }
   #talk-box { box-sizing: border-box; width: 100%; resize: none; font: 15px/1.4 var(--font); color: var(--text); background: rgba(11,20,16,.86);
     -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
