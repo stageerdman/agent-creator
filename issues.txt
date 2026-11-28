@@ -3,6 +3,13 @@
 # Every open line names one owner (H9, requirements audit 2026-11-27,
 # re-checked by Eraser 2026-11-28). Closed lines keep their history.
 
+- [ ] FLOATING-GLASS (Columbo, 2026-11-28): roadmap in
+      updates/2026-11-28 FLOATING-GLASS - OPEN/00-roadmap.md. Next:
+      Merlin writes 02-merlin-magic.md (glass look, firefly +, chat box /
+      send / thinking); Jony designs and builds Phase 1 (glass only on the
+      floating Sketcher panel, /new solid again), then the user checks the
+      glass before Phases 3–4; Eraser signs off. Owner: Merlin (next step).
+
 - [ ] Knowledge-base / RAG: embedding, chunking, store and search. Scoped
       on 2026-11-28 in updates/2026-11-27 REQUIREMENTS-AUDIT - OPEN/
       research-roadmap-columbo.md (A11/A12): server sends
