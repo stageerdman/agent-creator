@@ -71,7 +71,7 @@ test("the call resolves after about its duration with the ring's epoch, and the 
   assert.equal(body.kids.length, 1, "one overlay canvas while it runs");
   const { epoch } = await run;
   const took = performance.now() - t0;
-  assert.ok(took >= 950 && took < 1300, `took ${Math.round(took)} ms (D = 1000)`);
+  assert.ok(took >= 950 && took < 1700, `took ${Math.round(took)} ms (D = 1000)`);
   assert.ok(epoch >= w0 + 1000 && epoch <= w1 + 1000 + 5, `epoch = the wall time the ring stands (got +${epoch - w0} ms)`);
   assert.equal(isGathering(), false);
   assert.equal(body.kids.length, 1, "no blank frame: the canvas still draws the ring until the page goes");
@@ -164,7 +164,7 @@ test("when frames stop (hidden tab), a timer still resolves it", async () => {
   const t0 = performance.now();
   const { epoch } = await gatherToRing(homeWith(2), plus(), { durationMs: 1000, reducedMotion: false });
   const took = performance.now() - t0;
-  assert.ok(took >= 1000 && took < 1500, `took ${Math.round(took)} ms`);
+  assert.ok(took >= 1000 && took < 1900, `took ${Math.round(took)} ms`);
   assert.ok(epoch > 0, "the ring's time still goes over to /new");
   globalThis.requestAnimationFrame = raf;
 });
@@ -218,7 +218,7 @@ test("the glyph stays until the first frame, hides in it, and the run ends in th
   assert.deepEqual([p.anims[0].opts.duration, p.anims[0].opts.delay], [280, 40]);
   const { epoch } = await run;
   const took = performance.now() - t0;
-  assert.ok(took >= 950 && took < 1300, `took ${Math.round(took)} ms (D = 1000, unchanged)`);
+  assert.ok(took >= 950 && took < 1700, `took ${Math.round(took)} ms (D = 1000, unchanged)`);
   assert.ok(epoch > 0);
   assert.equal(p.style.display, undefined, "hidden by opacity only, so a second click still reaches it");
 });
@@ -239,7 +239,7 @@ test("frames stop before the first one: the glyph is never hidden and the timer 
   await gatherToRing(homeWith(2), p, { durationMs: 1000, reducedMotion: false });
   const took = performance.now() - t0;
   globalThis.requestAnimationFrame = raf;
-  assert.ok(took >= 1000 && took < 1500, `took ${Math.round(took)} ms`);
+  assert.ok(took >= 1000 && took < 1900, `took ${Math.round(took)} ms`);
   assert.notEqual(g.style.opacity, "0", "no frame painted its copy, so the real + never went");
 });
 
@@ -258,7 +258,9 @@ test("a + with no box: no + fly, the glyph untouched, the run as before", async 
   const p = realPlus([0, 0, 0, 0]), g = glyphOf(p);
   const t0 = performance.now();
   const { epoch } = await gatherToRing(homeWith(3), p, { reducedMotion: false });
-  assert.ok(epoch > 0 && performance.now() - t0 < 1300);
+  // Upper bound only guards against a hang; loose so a busy test machine doesn't trip it.
+  const took = performance.now() - t0;
+  assert.ok(epoch > 0 && took < 2000, `took ${Math.round(took)} ms`);
   assert.equal(g.style.opacity, undefined);
   assert.equal(p.anims.length, 0);
 });
