@@ -24,7 +24,8 @@ test('T2. the card comes only from the server ready flag, after the answer, neve
   assert.equal(showCreate(true, true), false);
   // In the page: offerCreate is called only after the stream ended, and only behind showCreate.
   assert.equal(SRC.match(/offerCreate\(/g).length, 2, 'defined once, called once');
-  assert.match(SRC, /await streamChat\([^\n]*\);\n\s+if \(showCreate\(ready, wasKept\)\) offerCreate\(t\.reply\);/);
+  // ...and after the fresh agent is pulled, so the card names the agent as this turn left it.
+  assert.match(SRC, /await streamChat\([^\n]*\);\n\s+if \(showCreate\(ready, wasKept\)\) \{ await pull\(\); offerCreate\(t\.reply\); \}/);
   // Only the newest card is live; kept → every card goes quiet (also on a DNA refresh that says kept).
   assert.match(fnBody('offerCreate'), /^function offerCreate\(after\) \{\n\s+quietCards\(\);/);
   assert.match(fnBody('offerCreate'), /after\.after\(card\)/, 'right under the AI message that asks');
