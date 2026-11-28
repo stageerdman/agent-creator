@@ -38,7 +38,8 @@ stood on, and there is no "own view" signal. That is what P8 adds.
 
 ## Status
 
-- [ ] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
-- [ ] Phase 4
+- [x] Phase 1
+- [x] Phase 2
+- [x] Phase 3
+- [x] Phase 4 (388 tests: 386 pass, 0 fail, 2 skipped; app rebuilt and
+  installed; bare server answers `/` and `/agents/:id`)
