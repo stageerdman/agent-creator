@@ -7,14 +7,21 @@
  *
  * Meaning (Reports/one-flow-magic-moment.md §4): the call spreads outward from the plus, each part
  * of the page it reaches turns into fireflies, and they swirl into the 30 slots of the ring that
- * /new shows. 30 of them become the ring's flies; the rest merge into the nearest one. Nothing goes
- * into the plus, and the plus does not glow.
+ * /new shows. 30 of them become the ring's flies; the rest merge into the nearest one. The plus
+ * itself folds into the first firefly and flies to the ring as one of the others.
+ *
+ * The plus (PLUS-FIREFLY 02): on the first frame the canvas paints the + where it was and, in the
+ * same callback, the real glyph (#plus svg) goes to opacity 0. Its arms draw into one dot (0–.14 D),
+ * it holds a breath (to .20 D), then flies the normal path into the ring slot nearest it (.70 D).
+ * The tile fades with the page. Hidden by opacity only, so a second click still reaches #plus.
+ * No box, no glyph or an error in the + part: no + fly, the glyph stays, the run goes on.
  *
  * Rules this module keeps:
  * - It never blocks navigation. Any error resolves at once ({ epoch: null }), and a timer resolves
  *   it even if animation frames stop (hidden tab).
  * - One run at a time. A call while one is running returns the same promise.
- * - Reduced motion: a plain fade of 160 ms, no fireflies; /new shows the ring at rest.
+ * - Reduced motion: a plain fade of 160 ms (the page and the + together), no fireflies; /new shows
+ *   the ring at rest.
  * - Its own full-screen canvas, kept after the run and still drawing the ring until the page goes,
  *   so no frame shows neither. The faded UI and the ring are undone when the page comes back from
  *   the back/forward cache.
@@ -165,6 +172,37 @@ function centreOf(el, vw, vh) {
   return [vw / 2, vh - 48];
 }
 
+/* ---------- the + itself ---------- */
+
+const FLY_RGB = [216, 242, 106];   // --fly, #D8F26A
+function parseColor(s) {
+  s = String(s || '').trim();
+  let m = /^#([0-9a-f]{3})$/i.exec(s);
+  if (m) return m[1].split('').map(c => parseInt(c + c, 16));
+  m = /^#([0-9a-f]{6})$/i.exec(s);
+  if (m) return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16));
+  m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(s);
+  if (m) return [m[1], m[2], m[3]].map(Number);
+  return null;
+}
+
+/* The + glyph to fold, or null (no box, centre off screen, no svg): then the run is today's. */
+function plusGlyph(win, plusEl, vw, vh) {
+  try {
+    const r = plusEl.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    if (x < 0 || y < 0 || x > vw || y > vh) return null;
+    const svg = plusEl.querySelector && plusEl.querySelector('svg');
+    if (!svg) return null;
+    const g = svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
+    const cs = win.getComputedStyle ? win.getComputedStyle(plusEl) : null;
+    const root = win.getComputedStyle ? win.getComputedStyle(win.document.documentElement) : null;
+    const to = parseColor(root && root.getPropertyValue && root.getPropertyValue('--fly')) || FLY_RGB;
+    return { svg, x, y, scale: g && g.width ? g.width / 18 : 1, from: parseColor(cs && cs.color) || to, to };
+  } catch { return null; }
+}
+
 function fadeOut(el, ms, delay) {
   if (!el) return null;
   if (typeof el.animate === 'function') {
@@ -217,8 +255,9 @@ export function gatherToRing(rootEl, plusEl, options = {}) {
       if (kept) { kept.stop(); kept = null; }
 
       if (reduced) {
-        // No flight: the home fades, /new shows the ring at rest.
+        // No flight: the home and the + fade together, /new shows the ring at rest.
         fadeOut(rootEl, REDUCED_FADE_MS, 0);
+        try { fadeOut(plusEl, REDUCED_FADE_MS, 0); } catch { /* the + is not worth a stop */ }
         safety = setTimeout(() => finish(true), REDUCED_FADE_MS);
         return;
       }
@@ -237,11 +276,22 @@ export function gatherToRing(rootEl, plusEl, options = {}) {
       const ctx = canvas.getContext('2d');
       (doc.body || doc.documentElement).appendChild(canvas);
 
-      const flies = planFlights(pts, ring, { px, py, vw, vh, D });
-      for (const f of flies) f.img = f.id % 3 === 2 ? WARM : FLY;
+      const glyph = plusGlyph(win, plusEl, vw, vh);
+      const flies = planFlights(pts, ring, { px, py, vw, vh, D, plus: !!glyph });
+      for (const f of flies) f.img = f.plus || f.id % 3 !== 2 ? FLY : WARM;
+      const plusFly = glyph ? flies.find(f => f.plus) : null;
+      if (plusFly) Object.assign(plusFly, { from: glyph.from, to: glyph.to, scale: glyph.scale });
 
-      // The real UI goes as the call reaches it: quick, gentle ease-in.
+      // The real UI goes as the call reaches it: quick, gentle ease-in. The + tile goes with it.
       fadeOut(rootEl, D * .28, D * .04);
+      if (plusFly) fadeOut(plusEl, D * .28, D * .04);
+      let glyphHidden = false;
+      const hideGlyph = () => {           // the same callback that first paints its canvas copy
+        glyphHidden = true;
+        const s = glyph.svg.style, was = s.opacity;
+        s.opacity = '0';
+        leftFaded.push({ cancel() { s.opacity = was; } });
+      };
 
       const t0 = win.performance ? win.performance.now() : Date.now();
       epoch = Date.now() + D;
@@ -263,6 +313,7 @@ export function gatherToRing(rootEl, plusEl, options = {}) {
           if (t >= D) drawRing(t - D);                               // the ring stands; /new goes on from here
           else for (const f of flies) drawFly(ctx, f, t, D, vw, vh, DNA);
           ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+          if (plusFly && !glyphHidden && !plusFly.dead) hideGlyph();
           if (t >= D) finish(true);
           raf = win.requestAnimationFrame(draw);
         } catch { if (done) drop(); else finish(false); }
@@ -284,8 +335,10 @@ export function gatherToRing(rootEl, plusEl, options = {}) {
 
 /* Who flies where (pure, so it can be tested). Each of the 30 ring slots takes the nearest spawn
  * point: that firefly becomes the orbit fly. Every other one flies to the nearest slot and merges
- * into it. Targets are the slot's place at the arrival time (tt = arrive - D), so they land moving. */
-export function planFlights(pts, ring, { px, py, vw, vh, D, rand = Math.random }) {
+ * into it. Targets are the slot's place at the arrival time (tt = arrive - D), so they land moving.
+ * With `plus`, the + itself is one more fly at (px, py): it owns the slot nearest it, folds and
+ * holds until .20 D, and lands at .70 D, the middle of the others' window. */
+export function planFlights(pts, ring, { px, py, vw, vh, D, plus = false, rand = Math.random }) {
   let far = 1; for (const [x, y] of pts) far = Math.max(far, Math.hypot(x - px, y - py));
   const flies = pts.map(([x, y], id) => {
     const k = Math.hypot(px - x, py - y) / far, j = rand();
@@ -296,15 +349,22 @@ export function planFlights(pts, ring, { px, py, vw, vh, D, rand = Math.random }
   // the 30: greedy, each slot the nearest free point (seen from where it will be at about .7 D)
   const mid = ring.map(f => ringPos(f, -.3 * D, vw, vh));
   const free = new Set(flies.map(f => f.id));
+  let mine = -1;                                                         // the + fly's slot
+  if (plus) {
+    let bd = Infinity;
+    mid.forEach((m, s) => { const d = Math.hypot(px - m.x, py - m.y); if (d < bd) { bd = d; mine = s; } });
+    flies.push({ id: flies.length, x0: px, y0: py, spawn: 0, leave: D * .2, arrive: D * .7, wob: rand() * 6.283, size: 19, slot: mine, own: true, plus: true });
+  }
   ring.forEach((_, s) => {
+    if (s === mine) return;
     let best = -1, bd = Infinity;
     for (const id of free) { const f = flies[id], d = Math.hypot(f.x0 - mid[s].x, f.y0 - mid[s].y); if (d < bd) { bd = d; best = id; } }
     if (best >= 0) { free.delete(best); flies[best].slot = s; flies[best].own = true; }
   });
-  // a slot no point reached (a near-empty home) is lit from the plus itself
+  // a slot no point reached (a near-empty home) is lit from where the plus was, following it out
   ring.forEach((_, s) => {
     if (flies.some(f => f.own && f.slot === s)) return;
-    flies.push({ id: flies.length, x0: px, y0: py, spawn: 0, leave: D * .07, arrive: D * .7, wob: rand() * 6.283, size: 16, slot: s, own: true });
+    flies.push({ id: flies.length, x0: px, y0: py, spawn: D * .2, leave: D * .27, arrive: D * .7, wob: rand() * 6.283, size: 16, slot: s, own: true });
   });
   for (const f of flies) {
     if (!f.own) {
@@ -322,8 +382,8 @@ export function planFlights(pts, ring, { px, py, vw, vh, D, rand = Math.random }
 
 /* One firefly of the call at time t (ms since the press). */
 function drawFly(ctx, f, t, D, vw, vh, DNA) {
-  if (t < f.spawn) return;
-  if (!f.own && t >= f.arrive) return;                                // merged into its slot
+  if (t < f.spawn || f.dead) return;
+  if (!f.own && t >= f.arrive) return;                               // merged into its slot
   const r = clampR(f.rf.r0);
   if (f.own && t >= f.arrive) {                                        // riding the ring, already the orbit fly
     const p = ringPos(f.rf, t - D, vw, vh);
@@ -350,4 +410,22 @@ function drawFly(ctx, f, t, D, vw, vh, DNA) {
   const c = u <= .5 ? 0 : easeInOut((u - .5) / .5);
   if (c < 1) { ctx.globalAlpha = clamp(alpha * (1 - c), 0, 1); const s = size * (1 - c) + 2 * r * c; ctx.drawImage(f.img, x - s / 2, y - s / 2, s, s); }
   if (c > 0) { ctx.globalAlpha = f.rf.a0 * c; ctx.drawImage(DNA, x - r, y - r, 2 * r, 2 * r); }
+  if (f.plus && f.from && t < D * .14) foldPlus(ctx, f, x, y, t, D);
+}
+
+/* The + folding into its own dot, over the sprite: arms 6 px → 0, colour → --fly by .06 D,
+ * glyph alpha 1 → 0 over .08–.14 D. Flat colour (source-over), then back to added light. */
+function foldPlus(ctx, f, x, y, t, D) {
+  try {
+    const k = f.scale || 1, arm = 6 * k * (1 - easeInOut(clamp(t / (D * .14), 0, 1)));
+    const m = clamp(t / (D * .06), 0, 1), rgb = f.from.map((v, i) => Math.round(v + (f.to[i] - v) * m));
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = t < D * .08 ? 1 : clamp(1 - (t - D * .08) / (D * .06), 0, 1);
+    ctx.strokeStyle = `rgb(${rgb.join(',')})`; ctx.lineWidth = 1.6 * k; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, y - arm); ctx.lineTo(x, y + arm);
+    ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y);
+    ctx.stroke();
+  } catch { f.dead = true; }                                           // drop the + fly, keep the glyph; never stop the run
+  ctx.globalCompositeOperation = 'lighter';
 }

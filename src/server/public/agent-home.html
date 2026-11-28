@@ -213,7 +213,7 @@ plus.addEventListener('click', async e => {
 });
 // ⌘N (Ctrl+N elsewhere): New agent, the usual Mac shortcut.
 addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); plus.click(); }
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); if (!e.repeat) plus.click(); }   // a held key is one press
 });
 
 /* ---------- Start ---------- */
