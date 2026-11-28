@@ -324,7 +324,7 @@ async function glassCheckOnce(kind, w, h, id) {
   else console.log(`INFO 11. ${tag}: headless WebKit does not paint the blur (soft over ${soft}px); its computed backdrop-filter is checked above`);
   // Contrast: full lime under the whole panel; hide the words, read the brightest pixel behind each message.
   await page.evaluate(() => { document.querySelector('#lime-sheet').style.width = '100vw';
-    const st = document.createElement('style'); st.id = 'no-ink'; st.textContent = '#sketcher-log, #sketcher-log * { color: transparent !important; text-shadow: none !important; } #sketcher-log { scrollbar-width: none; }'; document.head.appendChild(st); });
+    const st = document.createElement('style'); st.id = 'no-ink'; st.textContent = '#sketcher-log, #sketcher-log * { color: transparent !important; text-shadow: none !important; } #sketcher-log { scrollbar-width: none; } #sketcher-log > .wait::before { visibility: hidden !important; }';  /* the thinking dot is light, not the ground behind the words */ document.head.appendChild(st); });
   const msgs = await page.evaluate(() => {
     const st = document.querySelector('#no-ink'); st.disabled = true;
     const log = document.querySelector('#sketcher-log').getBoundingClientRect();
@@ -341,7 +341,9 @@ async function glassCheckOnce(kind, w, h, id) {
   const colors = new Map(msgs.map(m => [m.cls, m.color])); colors.set('wait', wait.color);
   let worst = { ratio: 99 };
   for (const m of vis.filter(m => m.r - m.x > 4 && m.b - m.y > 4)) {
-    const img = await shot({ x: Math.ceil(m.x), y: Math.ceil(m.y), width: Math.floor(m.r - m.x) - 1, height: Math.floor(m.b - m.y) - 1 });
+    // Each message carries its own dark glass with 12px round corners; the lit glass shows in those corners,
+    // where no word sits (the words start 8px in). So read 4px inside the edge: past the corners, short of the words.
+    const img = await shot({ x: Math.ceil(m.x) + 4, y: Math.ceil(m.y) + 4, width: Math.floor(m.r - m.x) - 9, height: Math.floor(m.b - m.y) - 9 });
     let best = null; for (let k = 0; k < img.d.length; k += 4) if (!best || L(img.d, k) > L(best, 0)) best = img.d.slice(k, k + 3);
     const bg = { r: best[0], g: best[1], b: best[2] }, fg = rgba(colors.get(m.cls) || 'rgb(0, 0, 0)');
     const ratio = contrast(over(fg, bg), bg);
