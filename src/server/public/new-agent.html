@@ -157,10 +157,10 @@
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
   #sketcher h2 { margin: 0; font: 600 17px/1.2 var(--font); }
-  /* Reading over the bright likeness: a darker tint behind the messages only (the frame and title stay glass),
-     so text keeps AA contrast over a fully lit dot. */
+  /* The messages sit straight on the glass: no fill of their own (a dark box read as a hole in the panel).
+     The panel's 24px blur already smears any lit dot behind it to a faint haze, so the text stays readable. */
   #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
-    margin: 0 -8px; padding: 8px; border-radius: 12px; background: rgba(6,9,6,.72); }
+    margin: 0 -8px; padding: 8px; }
   #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   #sketcher-log > .you { align-self: flex-end; background: rgba(216,242,106,.14); }
   #sketcher-log > .sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
@@ -198,16 +198,17 @@
   #sketcher-log .md pre code { background: none; padding: 0; border-radius: 0; overflow-wrap: normal; }
   #sketcher-log .md blockquote { margin-left: 0; margin-right: 0; padding-left: 10px; border-left: 2px solid rgba(232,239,224,.25); }
   #sketcher-log .md a { color: var(--fly); text-decoration: underline; text-underline-offset: 2px; }
-  /* The box is a firefly waiting for you: a soft halo at rest, lit on focus, two breaths on arrival. */
-  #sketcher-form { display: flex; flex-direction: column; gap: 8px; border-radius: 12px;
-    box-shadow: 0 0 14px rgba(216,242,106,.06); transition: box-shadow 280ms ease-in; }
-  #sketcher-form:focus-within { box-shadow: 0 0 18px rgba(216,242,106,.16); transition: box-shadow 180ms ease-out; }
-  #sketcher-form.breath:focus-within { animation: box-breath 4.8s ease-in-out 600ms 2; }
-  @keyframes box-breath { 50% { box-shadow: 0 0 18px rgba(216,242,106,.11); } }
-  #sketcher.still #sketcher-form { transition: none; animation: none; }
+  /* The box is a firefly waiting for you: a soft halo at rest, lit on focus, two breaths on arrival.
+     The halo is the box's own, never the form's, so it hugs the box and nothing else (no shine left
+     where a button sat or moved from). */
+  #sketcher-form { display: flex; flex-direction: column; gap: 8px; }
   #sketcher-box { box-sizing: border-box; width: 100%; min-height: 72px; resize: none; border: 1px solid rgba(232,239,224,.14); border-radius: 12px;
-    background: rgba(11,20,16,.7); color: inherit; font: inherit; padding: 10px 12px; }
-  #sketcher-box:focus { outline: none; border-color: rgba(216,242,106,.5); }
+    background: rgba(11,20,16,.7); color: inherit; font: inherit; padding: 10px 12px;
+    box-shadow: 0 0 14px rgba(216,242,106,.06); transition: box-shadow 280ms ease-in, border-color 180ms ease-out; }
+  #sketcher-box:focus { outline: none; border-color: rgba(216,242,106,.5); box-shadow: 0 0 18px rgba(216,242,106,.16); transition: box-shadow 180ms ease-out, border-color 180ms ease-out; }
+  #sketcher-form.breath #sketcher-box:focus { animation: box-breath 4.8s ease-in-out 600ms 2; }
+  @keyframes box-breath { 50% { box-shadow: 0 0 18px rgba(216,242,106,.11); } }
+  #sketcher.still #sketcher-box { transition: none; animation: none; }
   #sketcher-create { align-self: flex-end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--fly); color: #0B1410; font: 600 14px/1 var(--font); cursor: pointer; }
   #sketcher-create[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) {

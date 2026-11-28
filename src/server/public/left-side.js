@@ -142,6 +142,11 @@ export const sendArcAt = (from, to, u, bow = SEND_BOW) => {
   const c = { x: (from.x + to.x) / 2 - 2 * bow, y: (from.y + to.y) / 2 }, v = 1 - u;
   return { x: v * v * from.x + 2 * v * u * c.x + u * u * to.x, y: v * v * from.y + 2 * v * u * c.y + u * u * to.y };
 };
+/* Where the send dot lands: the centre of the new 'you' bubble's rect (viewport px, the same space as
+   `from`). Not the field, not the mark: the message itself. null when there is no bubble to land in. */
+export const landingPoint = r => r && r.width > 0 && r.height > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+/* The landing counts as seen only inside the log's visible rect. */
+export const inside = (p, R) => !!p && !!R && p.x >= R.left && p.x <= R.right && p.y >= R.top && p.y <= R.bottom;
 /* How long the wait dot stays at full after the latest event before it eases back (Reduce Motion: a plain step). */
 export const answerHold = reduced => reduced ? ANSWER_MS : RISE_MS;
 
@@ -335,9 +340,10 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function drop() { if (!flight) return; win.clearTimeout(flight.timer); flight.dot.remove(); flight = null; }   // an error: nothing lands
   function fly(mine, reply) {
     land(false);   // only ever one dot
-    const b = box.getBoundingClientRect(), r = mine.getBoundingClientRect(), L = log.getBoundingClientRect();
-    const from = { x: b.right - 24, y: b.top }, to = { x: r.right - 16, y: r.top + 18 };
-    const visible = open && !doc.hidden && to.x >= L.left && to.x <= L.right && to.y >= L.top && to.y <= L.bottom;
+    // Measured after the bubble is in the log (and the log scrolled to it): the dot flies into the message.
+    const b = box.getBoundingClientRect(), L = log.getBoundingClientRect();
+    const from = { x: b.right - 24, y: b.top }, to = landingPoint(mine.getBoundingClientRect());
+    const visible = open && !doc.hidden && inside(to, L);
     const plan = flightPlan({ from, to, reduced, visible });
     if (!plan) return;
     const dot = doc.createElement('div'); dot.className = 'send-fly'; dot.setAttribute('aria-hidden', 'true');
