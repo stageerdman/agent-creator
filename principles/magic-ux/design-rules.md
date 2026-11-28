@@ -23,6 +23,10 @@
   user can see or read. Test hooks like `litOrder()`/`getDots()` alone
   passed 120 checks while the user saw every dot light at once. (Fireflies
   DNA, 2026-11-26)
+- Glass is for what floats, never for the ground. Only a window that
+  floats over the scene (the Sketcher chat) is see-through; the page and
+  field stay solid, even in the Mac app. Text on glass keeps AA contrast
+  over the brightest thing behind it. (FLOATING-GLASS, 2026-11-28)
 - Order of work: research (Columbo) → magic (Merlin) → design (Jony) →
   cut review (Eraser). The captain applies the review's required changes
   into the design, so the build team reads one file.
