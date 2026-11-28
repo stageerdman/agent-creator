@@ -236,7 +236,10 @@ async function run(agents, isLost, setLost) {
   const turn = async text => { const n = await page.$$eval('#sketcher-log > div', d => d.length); await page.fill('#sketcher-box', text); await page.keyboard.press('Enter');
     return until(async () => page.evaluate(n => { const d = document.querySelectorAll('#sketcher-log > div'); return d.length >= n + 2 && !d[d.length - 1].classList.contains('wait'); }, n), 8000); };
   ok(await turn('{"name":"Tax Helper"}') >= 0 && !(await createShown()), '9. a turn without the ready flag: no Create');
-  ok(await turn('{"name":"Tax Helper","ready":true}') >= 0 && await until(createShown, 4000) >= 0, '9. the creator flags ready: Create shows');
+  ok(await turn('{"name":"Tax Buddy","ready":true}') >= 0 && await until(createShown, 4000) >= 0, '9. the creator flags ready: Create shows');
+  // The ready turn also renamed the agent: the card must name it as this turn left it, not as before.
+  const cardText = await page.evaluate(() => document.querySelector('#sketcher-log .card').textContent);
+  ok(cardText.includes('Ready to create Tax Buddy?'), '9. the card names the agent as the ready turn left it', JSON.stringify(cardText));
   await page.click('#sketcher-log .card button');
   const pressed = await page.evaluate(() => { const b = document.querySelector('#sketcher-log .card button'); return b ? { disabled: b.disabled, text: b.textContent } : 'gone'; });
   ok(pressed === 'gone' || (pressed.disabled && pressed.text === 'Creating…'), '9. the pressed card button reads Creating… and can\'t be pressed twice', JSON.stringify(pressed));
