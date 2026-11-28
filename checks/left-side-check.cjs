@@ -50,6 +50,10 @@ const focused = page => page.evaluate(() => document.activeElement && document.a
     for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await arrowLine(kind, w, h, process.env.ARROW_ONLY);
     console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
   }
+  if (process.env.GLASS_ONLY) {   // GLASS_ONLY=<agent id with a chat>: just step 11
+    for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await glassCheck(kind, w, h, process.env.GLASS_ONLY);
+    console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
+  }
   for (let attempt = 1; ; attempt++) {
     fails = 0; let lost = false;
     try { await run(agents, () => lost, v => { lost = v; }); return; }
@@ -182,7 +186,7 @@ async function run(agents, isLost, setLost) {
   ok(hr.x >= 0 && hr.y >= 0 && hr.x + hr.w <= 390 && hr.y + hr.h <= 700 && hr.w >= 24 && hr.h >= 44, '6. small screen: the handle is on screen and big enough to tap', JSON.stringify(hr));
   await sp.click('#handle'); await sp.waitForTimeout(600);
   const pw2 = await sp.evaluate(() => document.querySelector('#sketcher').getBoundingClientRect().width);
-  ok((await linfo(sp)).panel.open && Math.round(pw2) === 390, '6. small screen: a tap opens the panel across the whole width', String(pw2));
+  ok((await linfo(sp)).panel.open && Math.round(pw2) === 390 - 2 * 8, '6. small screen: a tap opens the panel across the whole width less an 8px gap each side', String(pw2));
   const hr2 = await sp.evaluate(() => { const r = document.querySelector('#handle').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width }; });
   ok(Math.round(hr2.y) === Math.round(hr.y) && hr2.x + hr2.w <= 390, '6. small screen: the open arrow stays on screen at the same height', JSON.stringify(hr2));
   const lr = await sp.evaluate(() => Math.round(document.querySelector('#sketcher-log').getBoundingClientRect().right));
@@ -244,9 +248,107 @@ async function run(agents, isLost, setLost) {
   await browser.close();
   await webkitChat(agents, id);
   for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await arrowLine(kind, w, h, id);
+  for (const kind of ['chromium', 'webkit']) for (const [w, h] of [[1200, 820], [390, 700]]) await glassCheck(kind, w, h, id);
   console.log(fails ? `${fails} FAILED` : 'ALL PASS');
   process.exit(fails ? 1 : 0);
   }
+}
+
+/* ---------- 11. Glass only on the floating chat: the field stays solid, the panel floats, blurs and stays readable ---------- */
+// Needs the chat seeded by step 7 (there must be messages to read). A bright lime sheet is slid in under the
+// panel (z 3; the panel is z 4) to stand for a fully lit likeness: the panel must show it through, blurred,
+// and every message's own text must keep WCAG AA (4.5:1) against the brightest pixel behind it.
+async function glassCheck(kind, w, h, id) {
+  for (let k = 1; ; k++) {
+    const before = fails;
+    try { return await glassCheckOnce(kind, w, h, id); }
+    catch (e) { if (!/has been closed/.test(String(e && e.message)) || k >= 4) throw e; fails = before; console.log('.. browser quit from outside: this glass run starts again'); }
+  }
+}
+const rgba = s => { const m = String(s).match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: v[0], g: v[1], b: v[2], a: v.length > 3 ? v[3] : 1 }; };
+const lum = ({ r, g, b }) => { const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const over = (fg, bg) => ({ r: fg.r * fg.a + bg.r * (1 - fg.a), g: fg.g * fg.a + bg.g * (1 - fg.a), b: fg.b * fg.a + bg.b * (1 - fg.a) });
+const glassDir = path.join(__dirname, '..', '.tmp-test', 'floating-glass');
+async function glassCheckOnce(kind, w, h, id) {
+  const tag = `${kind === 'chromium' ? 'chrome' : 'webkit'} ${w < 640 ? 'narrow' : 'desktop'}`;
+  console.log(`== glass: ${tag} ${w}x${h}`);
+  const browser = await pw[kind].launch(kind === 'chromium' ? { channel: 'chrome' } : {});
+  const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
+  await page.goto(`${base}/new?agent=${id}`);
+  await until(async () => (await linfo(page)).handle.shown, 8000);
+  // The Mac app adds html.glass: on /new it must change nothing, html and body stay solid.
+  const solid = await page.evaluate(() => {
+    document.documentElement.classList.add('glass');
+    const cs = el => getComputedStyle(el), bodyBg = cs(document.body).backgroundImage;
+    return { html: cs(document.documentElement).backgroundColor, body: cs(document.body).backgroundColor, bodyImage: bodyBg.slice(0, 40),
+      filters: [...document.querySelectorAll('body *')].filter(el => el.id !== 'sketcher' && ((cs(el).backdropFilter || 'none') !== 'none' || (cs(el).webkitBackdropFilter || 'none') !== 'none')).map(el => el.id || el.tagName) };
+  });
+  const hb = rgba(solid.html);
+  ok(hb && hb.a === 1, `11. ${tag}: with html.glass the page behind the field stays solid`, JSON.stringify(solid));
+  ok(/gradient/.test(solid.bodyImage) && !/rgba\([^)]*,\s*0?\.\d+\)/.test(solid.bodyImage), `11. ${tag}: the field keeps its solid gradient`, solid.bodyImage);
+  ok(solid.filters.length === 0, `11. ${tag}: nothing but the floating chat blurs what is behind it`, JSON.stringify(solid.filters));
+  await page.click('#handle'); await page.mouse.move(w - 5, h - 5); await page.waitForTimeout(800);
+  const g = await page.evaluate(() => {
+    const p = document.querySelector('#sketcher'), s = getComputedStyle(p), r = p.getBoundingClientRect();
+    return { blur: s.backdropFilter || s.webkitBackdropFilter || 'none', bg: s.backgroundColor, shadow: s.boxShadow,
+      left: r.left, top: r.top, bottom: innerHeight - r.bottom, radii: ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'].map(k => parseFloat(s[`border${k}Radius`])) };
+  });
+  const pb = rgba(g.bg);
+  ok(/blur\(/.test(g.blur), `11. ${tag}: the floating chat blurs what is behind it`, g.blur);
+  ok(pb && pb.a < 0.6, `11. ${tag}: its background is see-through (alpha under .6)`, g.bg);
+  ok(g.left >= 7.5 && g.top >= 7.5 && g.bottom >= 7.5, `11. ${tag}: it floats a gap from the left, top and bottom`, JSON.stringify({ left: g.left, top: g.top, bottom: g.bottom }));
+  ok(g.radii.every(v => v >= 12), `11. ${tag}: all four corners are round`, JSON.stringify(g.radii));
+  ok(g.shadow && g.shadow !== 'none', `11. ${tag}: it casts a soft shadow`, g.shadow);
+  // Pixels: a row through the panel's top padding (no text there), half of it over a hard-edged lime sheet.
+  const P = await page.evaluate(() => { const r = document.querySelector('#sketcher').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+  const row = { x: Math.round(P.x + 20), y: Math.round(P.y + 6), width: Math.round(P.w - 40), height: 1 };
+  const shot = async clip => { const png = await page.screenshot({ clip }); return page.evaluate(async b64 => {
+    const i = new Image(); i.src = 'data:image/png;base64,' + b64; await i.decode(); const c = document.createElement('canvas'); c.width = i.width; c.height = i.height;
+    const x = c.getContext('2d'); x.drawImage(i, 0, 0); return { w: c.width, h: c.height, d: Array.from(x.getImageData(0, 0, c.width, c.height).data) }; }, png.toString('base64')); };
+  const L = (d, k) => d[k] + d[k + 1] + d[k + 2];
+  const plain = await shot(row);
+  await page.evaluate(({ edge }) => { const s = document.createElement('div'); s.id = 'lime-sheet';
+    Object.assign(s.style, { position: 'fixed', left: '0', top: '0', bottom: '0', width: edge + 'px', background: '#D8F26A', zIndex: 3, pointerEvents: 'none' }); document.body.appendChild(s); }, { edge: Math.round(P.x + P.w / 2) });
+  await page.waitForTimeout(300);
+  const lit = await shot(row);
+  fs.mkdirSync(glassDir, { recursive: true });   // for a human look: the panel over the half-lime sheet
+  await page.screenshot({ path: path.join(glassDir, `${tag.replace(' ', '-')}-half-lime.png`), clip: { x: P.x, y: P.y, width: P.w, height: Math.min(P.h, 400) } });
+  const n = plain.w, at = i => L(lit.d, i * 4), mean = (img, a, b) => { let s = 0; for (let i = a; i < b; i++) s += L(img.d, i * 4); return s / (b - a); };
+  const through = mean(lit, 0, Math.floor(n / 4)) - mean(plain, 0, Math.floor(n / 4));
+  ok(through > 60, `11. ${tag}: a bright light behind it shows through the panel`, JSON.stringify({ brighter: Math.round(through) }));
+  const hi = at(0), lo = at(n - 1), soft = [...Array(n).keys()].filter(i => { const v = at(i); return v < hi - (hi - lo) * 0.1 && v > lo + (hi - lo) * 0.1; }).length;
+  // Playwright's headless WebKit draws backdrop-filter's see-through but not its blur (no GPU compositing);
+  // Safari and the Mac app's WKWebView do blur. So the pixel blur is checked in Chrome; WebKit by its style above.
+  if (kind === 'chromium') ok(hi - lo > 60 && soft >= 10, `11. ${tag}: and blurred: the sheet's hard edge turns soft over ${soft}px`, JSON.stringify({ hi, lo, soft }));
+  else console.log(`INFO 11. ${tag}: headless WebKit does not paint the blur (soft over ${soft}px); its computed backdrop-filter is checked above`);
+  // Contrast: full lime under the whole panel; hide the words, read the brightest pixel behind each message.
+  await page.evaluate(() => { document.querySelector('#lime-sheet').style.width = '100vw';
+    const st = document.createElement('style'); st.id = 'no-ink'; st.textContent = '#sketcher-log, #sketcher-log * { color: transparent !important; text-shadow: none !important; } #sketcher-log { scrollbar-width: none; }'; document.head.appendChild(st); });
+  const msgs = await page.evaluate(() => {
+    const st = document.querySelector('#no-ink'); st.disabled = true;
+    const log = document.querySelector('#sketcher-log').getBoundingClientRect();
+    const out = [...document.querySelectorAll('#sketcher-log > div')].map(d => { const r = d.getBoundingClientRect(); return { cls: d.className, color: getComputedStyle(d).color,
+      x: Math.max(r.left, log.left), y: Math.max(r.top, log.top), r: Math.min(r.right, log.right - 12), b: Math.min(r.bottom, log.bottom) }; })
+      .filter(m => m.r - m.x > 4 && m.b - m.y > 4);
+    st.disabled = false; return out;
+  });
+  // The thinking line (.wait) must be readable too: add one at the bottom, as a turn in flight would.
+  const wait = await page.evaluate(() => { const log = document.querySelector('#sketcher-log'), d = document.createElement('div'); d.className = 'wait'; d.textContent = 'Thinking…'; log.appendChild(d); log.scrollTop = log.scrollHeight;
+    document.querySelector('#no-ink').disabled = true; const c = getComputedStyle(d).color; document.querySelector('#no-ink').disabled = false; const r = d.getBoundingClientRect(); return { cls: 'wait', color: c, x: r.left, y: r.top, r: r.right, b: r.bottom }; });
+  await page.waitForTimeout(200);
+  const vis = await page.evaluate(() => { const log = document.querySelector('#sketcher-log').getBoundingClientRect(); return [...document.querySelectorAll('#sketcher-log > div')].map(d => { const r = d.getBoundingClientRect(); return { cls: d.className, x: Math.max(r.left, log.left), y: Math.max(r.top, log.top), r: Math.min(r.right, log.right - 12), b: Math.min(r.bottom, log.bottom) }; }); });
+  const colors = new Map(msgs.map(m => [m.cls, m.color])); colors.set('wait', wait.color);
+  let worst = { ratio: 99 };
+  for (const m of vis.filter(m => m.r - m.x > 4 && m.b - m.y > 4)) {
+    const img = await shot({ x: Math.ceil(m.x), y: Math.ceil(m.y), width: Math.floor(m.r - m.x) - 1, height: Math.floor(m.b - m.y) - 1 });
+    let best = null; for (let k = 0; k < img.d.length; k += 4) if (!best || L(img.d, k) > L(best, 0)) best = img.d.slice(k, k + 3);
+    const bg = { r: best[0], g: best[1], b: best[2] }, fg = rgba(colors.get(m.cls) || 'rgb(0, 0, 0)');
+    const ratio = contrast(over(fg, bg), bg);
+    if (ratio < worst.ratio) worst = { ratio: +ratio.toFixed(2), cls: m.cls, bg, fg: colors.get(m.cls) };
+  }
+  ok(vis.length > 1 && worst.ratio >= 4.5, `11. ${tag}: over a fully lit likeness every message keeps AA contrast (4.5:1), the thinking line too`, JSON.stringify({ messages: vis.length, worst }));
+  await browser.close();
 }
 
 /* ---------- 7. WebKit (the Mac app's engine): Sketcher's markdown shows formatted, never as raw ** ---------- */
@@ -347,18 +449,20 @@ async function arrowLineOnce(kind, w, h, id) {
     const hd = document.querySelector('#handle'), p = document.querySelector('#sketcher'), frames = [];
     hd.click();
     const s = getComputedStyle(hd), ps = getComputedStyle(p), pick = st => { const i = st.transitionProperty.split(', ').findIndex(n => n === 'transform' || n === 'all'); return i < 0 ? null : st.transitionDuration.split(', ')[i] + ' ' + st.transitionTimingFunction.split(/,\s*(?![^()]*\))/)[i]; };
-    const tr = { handle: pick(s), panel: pick(ps) };
+    const tr = { handle: pick(s), panel: pick(ps) }, gap = parseFloat(ps.left) || 0;
     const t0 = performance.now();
-    const tick = () => { const r = hd.getBoundingClientRect(), q = p.getBoundingClientRect(); frames.push({ left: r.left, top: r.top, right: q.right, w: q.width }); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done({ tr, frames }); };
+    const tick = () => { const r = hd.getBoundingClientRect(), q = p.getBoundingClientRect(); frames.push({ left: r.left, top: r.top, right: q.right, w: q.width, gap }); if (performance.now() - t0 < 800) requestAnimationFrame(tick); else done({ tr, frames }); };
     requestAnimationFrame(tick);
   }));
   // Same duration and easing from the same start: the arrow's X is the panel's right edge scaled to its own
-  // travel (the full panel width on desktop; under 640px it stops one tab width short of the screen edge).
+  // travel (the panel floats a gap from the edge: closed its right edge is at 0, open at gap + width; the arrow
+  // goes from 0 to that edge, and under 640px it stops one tab width short of the screen edge).
   const ride = (sl, label) => {
     const minW = closed.handle.width, live = sl.frames.filter(f => f.w > 0);
     // 4px: at the fastest point of the close ease-in the edge moves ~4px per ms, so the two rect reads of one frame may be 1 ms apart.
-    const bad = live.filter(f => Math.abs(f.left - Math.max(0, f.right) * Math.min(f.w, w - minW) / f.w) > 4);
-    const edge = live.length ? Math.min(live[0].w, w - minW) : null;
+    const openRight = f => f.gap + f.w, edgeOf = f => Math.min(openRight(f), w - minW);
+    const bad = live.filter(f => Math.abs(f.left - Math.max(0, f.right) * edgeOf(f) / openRight(f)) > 4);
+    const edge = live.length ? edgeOf(live[0]) : null;
     const tops = sl.frames.map(f => f.top), moved = sl.frames.filter(f => f.left > 0.5 && f.left < Math.max(...sl.frames.map(g => g.left)) - 0.5).length;
     ok(!!sl.tr.handle && sl.tr.handle === sl.tr.panel, `10. ${tag}: ${label}: the arrow and the panel slide with the same duration and easing`, JSON.stringify(sl.tr));
     ok(live.length > 0 && bad.length === 0 && moved > 0, `10. ${tag}: ${label}: on every frame the arrow rides the panel's edge`, JSON.stringify({ frames: sl.frames.length, inBetween: moved, off: bad.slice(0, 2), edge }));
@@ -375,7 +479,7 @@ async function arrowLineOnce(kind, w, h, id) {
   }
   ok([closed, open, again].every(s => Math.abs(s.ink.cy - (s.handle.bottom - s.handle.top) / 2) <= 0.75), `10. ${tag}: the arrow's ink sits on the tab's middle line`, JSON.stringify([closed, open, again].map(s => s.ink.cy)));
   ok(Math.abs(open.ink.cx - closed.ink.cx) <= 0.75, `10. ${tag}: the flip turns the arrow in place (no sideways shift inside the tab)`, JSON.stringify({ closed: closed.ink.cx, open: open.ink.cx }));
-  const edge = Math.min(open.panelW, w - closed.handle.width);
+  const edge = Math.min(open.panelRight, w - closed.handle.width);
   ok(open.handle.left + open.handle.width <= w + 0.5, `10. ${tag}: open, the whole arrow is on screen`, JSON.stringify({ right: open.handle.left + open.handle.width, screen: w }));
   ok(closed.handle.left === 0 && again.handle.left === 0 && Math.abs(open.handle.left - edge) <= 1, `10. ${tag}: only X changes: left 0 closed, the panel's edge open`, JSON.stringify({ closed: closed.handle.left, open: open.handle.left, edge, again: again.handle.left }));
   ok(closed.expanded === 'false' && open.expanded === 'true' && again.expanded === 'false', `10. ${tag}: aria-expanded false / true / false`);
