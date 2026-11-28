@@ -230,12 +230,16 @@ async function run(agents, isLost, setLost) {
 
   /* ---------- 9. F10: Create shows only on the server's ready flag (real chat route, fake CLI), then creates ---------- */
   // Needs the server from checks/mock-engine-server.mjs: the fake creator's <draft> block is what we type.
-  const createShown = () => page.evaluate(() => !document.querySelector('#sketcher-create').hidden);
+  // Create lives only in the chat, as a card under the ready message; only the newest card keeps its button.
+  const createShown = () => page.evaluate(() => !!document.querySelector('#sketcher-log .card button'));
+  ok(!(await page.evaluate(() => document.querySelector('#sketcher-create'))), '9. there is no standalone Create button');
   const turn = async text => { const n = await page.$$eval('#sketcher-log > div', d => d.length); await page.fill('#sketcher-box', text); await page.keyboard.press('Enter');
     return until(async () => page.evaluate(n => { const d = document.querySelectorAll('#sketcher-log > div'); return d.length >= n + 2 && !d[d.length - 1].classList.contains('wait'); }, n), 8000); };
   ok(await turn('{"name":"Tax Helper"}') >= 0 && !(await createShown()), '9. a turn without the ready flag: no Create');
   ok(await turn('{"name":"Tax Helper","ready":true}') >= 0 && await until(createShown, 4000) >= 0, '9. the creator flags ready: Create shows');
-  await page.click('#sketcher-create');
+  await page.click('#sketcher-log .card button');
+  const pressed = await page.evaluate(() => { const b = document.querySelector('#sketcher-log .card button'); return b ? { disabled: b.disabled, text: b.textContent } : 'gone'; });
+  ok(pressed === 'gone' || (pressed.disabled && pressed.text === 'Creating…'), '9. the pressed card button reads Creating… and can\'t be pressed twice', JSON.stringify(pressed));
   const lastLine = () => page.evaluate(() => [...document.querySelectorAll('#sketcher-log > div')].pop().textContent);
   const made = await until(async () => !(await createShown()) && (await lastLine()) === 'Created. You can keep changing it.', 6000);
   const status = (await (await fetch(`${base}/api/agents/${id2}`)).json()).draft.status;

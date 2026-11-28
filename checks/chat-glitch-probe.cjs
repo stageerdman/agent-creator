@@ -61,14 +61,17 @@ async function run(kind, reduced) {
 
   // 2. Create: no glow on the form or the button, and nothing glowing where it was
   await page.fill('#sketcher-box', '{"name":"Probe","ready":true}'); await page.keyboard.press('Enter');
-  await page.waitForFunction(() => !document.querySelector('#sketcher-create').hidden, null, { timeout: 8000 }).catch(() => {});
+  // Create is the in-chat card's button (the only Create there is), shown once the server says ready.
+  const CREATE = '#sketcher-log .card button';
+  await page.waitForFunction(s => !!document.querySelector(s), CREATE, { timeout: 8000 }).catch(() => {});
   await wait(600);
-  const glow = await page.evaluate(() => {
+  const glow = await page.evaluate(CREATE => {
     const cs = s => { const e = document.querySelector(s); return e ? getComputedStyle(e).boxShadow : 'missing'; };
     const pseudo = s => { const e = document.querySelector(s); return e ? ['::before', '::after'].map(p => getComputedStyle(e, p).content).filter(c => c !== 'none' && c !== 'normal') : []; };
-    return { form: cs('#sketcher-form'), create: cs('#sketcher-create'), createShown: !document.querySelector('#sketcher-create').hidden,
-      pseudos: [...pseudo('#sketcher-form'), ...pseudo('#sketcher-create')] };
-  });
+    return { form: cs('#sketcher-form'), create: cs(CREATE), createShown: !!document.querySelector(CREATE),
+      pseudos: [...pseudo('#sketcher-form'), ...pseudo(CREATE)] };
+  }, CREATE);
+  ok(glow.createShown, `2. ${tag}: the Create card shows after ready`);
   ok(glow.form === 'none', `2. ${tag}: the form has no glow of its own`, glow.form);
   ok(!/rgba\(2(16|55), 2(42|55)/.test(glow.create), `2. ${tag}: Create casts no light`, glow.create);
   ok(glow.pseudos.length === 0, `2. ${tag}: no glow pseudo-elements on form or Create`, JSON.stringify(glow.pseudos));
