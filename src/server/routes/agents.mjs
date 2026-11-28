@@ -40,7 +40,7 @@ export function agentRoutes(agents) {
       });
     },
 
-    // Talk to the kept agent itself. SSE: delta* → done { say, used: [{ kind, name }] } | error.
+    // Talk to the kept agent itself. SSE: delta* → done { say, used: [{ kind, name }], sources: [{ file, passage }] } | error.
     "POST /api/agents/:id/talk": async (req, res, { params, traceId }) => {
       const message = requireMessage(await readJson(req));
       await agents.canTalk(params.id); // 404 / 400 (not created yet) before the stream opens
