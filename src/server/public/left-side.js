@@ -100,6 +100,22 @@ export const kept = (store, a) => isKept(a) || (!!a && store['left.kept.' + a.id
 /* Show Create: only when the server says ready and the agent is not and never was created. */
 export const showCreate = (ready, kept) => !kept && !!ready;
 
+/* The Create card's one line, under the AI's message that asks: short, never blank, never a repeat of it. */
+export const cardLine = name => `Ready to create ${(name || '').trim() || 'this agent'}?`;
+
+/* Esc with the panel open: stop while a turn runs or waits, else close (as before). Panel shut: not ours. */
+export const escAction = ({ open = false, running = false } = {}) => !open ? null : running ? 'stop' : 'close';
+
+/* Words that were never sent go back in the box, after whatever is there, one per line. */
+export const giveBack = (value, messages) => [String(value || '').replace(/\s+$/, ''), ...messages].filter(Boolean).join('\n');
+
+/* Esc: POST /api/agents/:id/stop → how many turns it stopped (0 when Sketcher was idle). */
+export async function stopTurns({ fetch, id }) {
+  const r = await fetch(`/api/agents/${encodeURIComponent(id)}/stop`, { method: 'POST' });
+  if (!r.ok) throw new Error(`stop: status ${r.status}`);
+  return ((await r.json()) || {}).stopped || 0;
+}
+
 /* Server-sent events, as text arrives: → [{ event, data }] and the unfinished rest. */
 export function parseEvents(buf) {
   const out = [], parts = buf.split('\n\n'), rest = parts.pop();
@@ -153,9 +169,11 @@ export const answerHold = reduced => reduced ? ANSWER_MS : RISE_MS;
 /* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
    onText(all text so far) as it streams; onChange(event) when the draft or the files changed;
    onAllocate({ file, section }) once per file Sketcher sorted (after files);
-   onReady() once when the server says the draft can be created (event ready, or done.ready).
-   → Sketcher's whole answer. Throws on any failure (no answer counts as one). */
-export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {}, onAllocate = () => {}, onReady = () => {} }) {
+   onReady() once when the server says the draft can be created (event ready, or done.ready);
+   onQueued() when the message waits in line behind a turn still thinking.
+   → Sketcher's whole answer. Throws on any failure (no answer counts as one); a stopped turn
+   throws with kind 'cancelled'. */
+export async function streamChat({ fetch, id, message, onText = () => {}, onChange = () => {}, onAllocate = () => {}, onReady = () => {}, onQueued = () => {} }) {
   const r = await fetch(`/api/agents/${encodeURIComponent(id)}/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message }) });
   if (!r.ok || !r.body) throw new Error(`chat: status ${r.status}`);
   const rd = r.body.getReader(), dec = new TextDecoder();
@@ -165,11 +183,12 @@ export async function streamChat({ fetch, id, message, onText = () => {}, onChan
     const out = parseEvents(buf + dec.decode(value, { stream: true })); buf = out.rest;
     for (const { event, data } of out.events) {
       if (!ready && isReady(event, data)) { ready = true; onReady(); }
-      if (event === 'delta' && data && data.text) onText(text += data.text);
+      if (event === 'queued') onQueued();
+      else if (event === 'delta' && data && data.text) onText(text += data.text);
       else if (event === 'files' || event === 'draft') onChange(event);
       else if (event === 'allocate' && data && data.file) onAllocate({ file: data.file, section: data.section || 'none' });
       else if (event === 'done' && data && data.say) { if (data.say !== text) onText(text = data.say); }   // the final text is the truth
-      else if (event === 'error') throw new Error(`chat: ${(data && data.error) || 'error'}`);
+      else if (event === 'error') throw Object.assign(new Error(`chat: ${(data && (data.error || data.kind)) || 'error'}`), { kind: data && data.kind });
     }
   }
   if (!text) throw new Error('chat: empty answer');
@@ -182,11 +201,12 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   const markEl = $('#mark'), sky = $('#sky'), ctx = sky.getContext('2d');
   const handle = $('#handle'), chev = handle.querySelector('.chev');
   const panel = $('#sketcher'), log = $('#sketcher-log');
-  const form = $('#sketcher-form'), box = $('#sketcher-box'), create = $('#sketcher-create');
+  const form = $('#sketcher-form'), box = $('#sketcher-box');
   let id = null, name = '', mark = null, prev = { shown: 0, live: 0 }, applied = [], files = [];
   let known = new Map(), flown = new Set(), flyers = [], timers = [], raf = 0, lastT = 0;
   let glows = new Map(), sorters = [], lastLeave = -1e9, sorted = { count: 0, last: [] }, tookSeen = 0;   // the sorting
-  let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
+  let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, pollT = 0;
+  let turns = [];   // the turns running or waiting, in send order (the box is never locked)
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
   const gap = () => parseFloat(win.getComputedStyle ? win.getComputedStyle(panel).left : 0) || 0;   // the floating panel's gap from the window edge (its CSS left)
@@ -221,7 +241,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function onDna(a, { still = false } = {}) {
     const next = a.dna || [];
     if (a.id !== id) return start(a, still);
-    if (kept(store, a)) { wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; }   // once kept, Keep never comes back
+    if (kept(store, a)) { wasKept = true; store['left.kept.' + id] = '1'; quietCards(); }   // once kept, Create never comes back
     const nm = nameOf(a);
     if (nm !== name) { name = nm; setMark(applied, true); }
     const t = now(), g = geo();
@@ -244,7 +264,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function start(a, still) {
     timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = []; sorters = []; glows = new Map();
     id = a.id; name = nameOf(a); files = a.dna || [];
-    heldWhole = false; wasKept = kept(store, a); create.hidden = true; drop();
+    heldWhole = false; wasKept = kept(store, a); turns = []; drop();
     if (wasKept) store['left.kept.' + id] = '1';
     log.replaceChildren(); for (const m of a.chat || []) { const you = m.who === 'you'; line(you ? 'you' : 'sketcher', m.text, !you); }   // the talk so far, after a reload too: same renderer as live
     known = new Map(files.map(f => [f.id, f.state]));
@@ -311,18 +331,21 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   }
   handle.addEventListener('click', () => open ? closePanel() : openPanel());
   win.addEventListener('keydown', e => {   // Esc is the panel's first: it never reaches the page's "go home"
-    if (e.key !== 'Escape' || !open) return;
-    e.preventDefault(); e.stopImmediatePropagation(); closePanel();
+    if (e.key !== 'Escape') return;
+    const act = escAction({ open, running: turns.length > 0 }); if (!act) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (act === 'stop') stop(); else closePanel();
   }, true);
 
   /* ---- talking to Sketcher ---- */
   // A line is a div (a reply may hold lists and quotes). Only Sketcher's own words (md) are rendered
   // as markdown; the user's lines and the app's lines (waiting, errors, "Yours…") stay plain text.
   const say = (el, text) => el.replaceChildren(renderMarkdown(doc, text));
-  const line = (who, text, md = false) => {
+  const line = (who, text, md = false, after = null) => {   // after: right below that line, else at the end
     const el = doc.createElement('div'); el.className = who + (md ? ' md' : '');
     if (md) say(el, text); else el.textContent = text;
-    log.append(el); log.scrollTop = log.scrollHeight; return el;
+    if (after && after.isConnected) after.after(el); else log.append(el);
+    log.scrollTop = log.scrollHeight; return el;
   };
   // The box glows (CSS :focus-within); each arrival breathes twice, typing stills it. Reduce Motion: 'still'.
   panel.classList.toggle('still', reduced);
@@ -334,7 +357,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function land(bloom = true) {
     if (!flight) return;
     const f = flight; flight = null; win.clearTimeout(f.timer); f.dot.remove();
-    f.mine.classList.remove('landing'); f.reply.classList.remove('landing');
+    f.mine.classList.remove('landing'); if (f.reply) f.reply.classList.remove('landing');
     if (bloom) f.mine.classList.add('bloom');
   }
   function drop() { if (!flight) return; win.clearTimeout(flight.timer); flight.dot.remove(); flight = null; }   // an error: nothing lands
@@ -347,7 +370,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     const plan = flightPlan({ from, to, reduced, visible });
     if (!plan) return;
     const dot = doc.createElement('div'); dot.className = 'send-fly'; dot.setAttribute('aria-hidden', 'true');
-    mine.classList.add('landing'); reply.classList.add('landing');
+    mine.classList.add('landing'); if (reply) reply.classList.add('landing');   // a waiting line has no reply yet
     dot.style.transform = `translate(${from.x}px, ${from.y}px)`;
     doc.body.append(dot);
     if (dot.animate) {
@@ -365,41 +388,93 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     reply._answer = win.setTimeout(() => { reply.classList.remove('answer'); if (!reduced) reply.classList.add('settle'); }, answerHold(reduced));
   }
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  // A turn: the 'you' line, then Sketcher's line once the turn starts. Sent while another turn thinks,
+  // the 'you' line waits (dim, 'queued') and starts when the turn ahead ends or its first words come.
+  function begin(t) {
+    if (t.reply || t.stopping) return;
+    t.mine.classList.remove('queued');
+    t.reply = line('sketcher wait', 'Sketching…', false, t.mine);
+  }
+  function finish(t) { turns = turns.filter(x => x !== t); if (turns[0]) begin(turns[0]); }
+  const toEnd = () => { box.focus(); box.setSelectionRange(box.value.length, box.value.length); };
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    const message = box.value.trim(); if (!message || busy || !id) return;
-    busy = true; box.value = ''; const mine = line('you', message);
-    const reply = line('sketcher wait', 'Sketching…');
+    const message = box.value.trim(); if (!message || !id) return;
+    box.value = ''; const mine = line('you', message);
+    const t = { message, mine, reply: null, text: '' }; turns.push(t);
+    if (turns.length === 1) begin(t); else mine.classList.add('queued');
+    const reply = t.reply;
     fly(mine, reply);
     const onText = text => {
-      if (flight && flight.reply === reply) land(true);   // a very fast reply: land at once
-      win.clearTimeout(reply._answer); reply.classList.remove('wait', 'answer', 'settle');
-      say(reply, text); reply.classList.add('md'); log.scrollTop = log.scrollHeight;
+      if (!t.reply) { t.stopping = false; begin(t); }   // its words came: it is running after all
+      t.text = text;
+      if (flight && flight.mine === mine) land(true);   // a very fast reply: land at once
+      win.clearTimeout(t.reply._answer); t.reply.classList.remove('wait', 'answer', 'settle');
+      say(t.reply, text); t.reply.classList.add('md'); log.scrollTop = log.scrollHeight;
     };
     try {
-      const onChange = ev => { answer(reply); pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
-      const onAllocate = a => { answer(reply); sortFile(a); };
+      const onChange = ev => { if (t.reply) answer(t.reply); pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
+      const onAllocate = a => { if (t.reply) answer(t.reply); sortFile(a); };
+      const onQueued = () => { if (!t.reply) mine.classList.add('queued'); };
       let ready = false;
-      await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate, onReady: () => { ready = true; } });
-      if (showCreate(ready, wasKept)) create.hidden = false;
-    } catch {
-      // The message goes back in the box, so Enter tries again (no retyping, no retry button).
-      if (flight && flight.reply === reply) drop();
-      win.clearTimeout(reply._answer);
-      mine.remove(); if (!box.value) box.value = message;
-      reply.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; reply.className = 'sketcher err';
-      box.focus(); box.setSelectionRange(box.value.length, box.value.length);
+      await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate, onQueued, onReady: () => { ready = true; } });
+      if (showCreate(ready, wasKept)) offerCreate(t.reply);
+    } catch (err) {
+      if (flight && flight.mine === mine) drop();
+      if (t.reply) win.clearTimeout(t.reply._answer);
+      if (err && err.kind === 'cancelled') stopped(t);
+      else {
+        // The message goes back in the box, so Enter tries again (no retyping, no retry button).
+        const msg = t.reply || line('sketcher', '', false, mine);
+        msg.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; msg.className = 'sketcher err';
+        mine.remove(); box.value = giveBack(box.value, [message]); toEnd();
+      }
     }
-    busy = false; log.scrollTop = log.scrollHeight;
+    finish(t); log.scrollTop = log.scrollHeight;
   });
-  create.addEventListener('click', async () => {
-    create.disabled = true;
+
+  // Esc while Sketcher thinks: stop every turn, running or waiting. Each ends with error {kind:'cancelled'}.
+  async function stop() {
+    const all = turns.slice(); all.forEach(t => { t.stopping = true; });   // none of them starts now
+    box.focus();
+    try { await stopTurns({ fetch: win.fetch.bind(win), id }); } catch { all.forEach(t => { t.stopping = false; }); }
+  }
+  // A stopped turn, said calmly: the dot goes, any words so far stay, one quiet 'Stopped' note.
+  // A line that never started is marked 'Not sent' and its words go back in the box. Nothing is saved.
+  function stopped(t) {
+    if (t.reply) {
+      if (!t.text) t.reply.remove(); else t.reply.classList.remove('wait', 'answer', 'settle');
+      line('note', 'Stopped', false, t.text ? t.reply : t.mine);
+    } else {
+      t.mine.classList.remove('queued'); t.mine.classList.add('unsent');
+      const tag = doc.createElement('span'); tag.className = 'tag'; tag.textContent = 'Not sent'; t.mine.append(tag);
+      box.value = giveBack(box.value, [t.message]); toEnd();
+    }
+  }
+
+  // The Create card: under the message whose turn said ready. Only the newest is live; once kept, none.
+  function quietCards() {
+    for (const b of log.querySelectorAll('.card button')) { b.closest('.card').classList.add('quiet'); b.remove(); }
+  }
+  function offerCreate(after) {
+    quietCards();
+    const card = doc.createElement('div'); card.className = 'card';
+    const p = doc.createElement('p'); p.textContent = cardLine(name);
+    const b = doc.createElement('button'); b.type = 'button'; b.textContent = 'Create';
+    b.addEventListener('click', () => keep(b));
+    card.append(p, b);
+    if (after && after.isConnected) after.after(card); else log.append(card);
+    log.scrollTop = log.scrollHeight;
+  }
+  async function keep(b) {
+    if (b.disabled) return;   // one click, one request
+    b.disabled = true; b.textContent = 'Creating…';
     try {
       const r = await win.fetch(`/api/agents/${encodeURIComponent(id)}/save`, { method: 'POST' });
-      if (!r.ok) throw new Error(); wasKept = true; store['left.kept.' + id] = '1'; create.hidden = true; line('sketcher', 'Created. You can keep changing it.');
-    } catch { line('sketcher err', 'Couldn’t create it. Try again.'); }
-    create.disabled = false;
-  });
+      if (!r.ok) throw new Error();
+      wasKept = true; store['left.kept.' + id] = '1'; quietCards(); line('sketcher', 'Created. You can keep changing it.');
+    } catch { b.disabled = false; b.textContent = 'Create'; line('sketcher err', 'Couldn’t create it. Try again.'); }
+  }
 
   /* ---- the sorting: on its own allocate, a file's firefly glows, then a light leaves it and flies to
      its section, which takes it with a soft light. The file's firefly stays (it is not built in yet).
@@ -505,7 +580,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     isOpen: () => open,
     info: () => ({
       sorted: { count: sorted.count, last: sorted.last.slice() }, sorting: sorters.length, glowing: glows.size, took: tookSeen,
-      agent: id, grow, kept: wasKept, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
+      agent: id, grow, kept: wasKept, turns: turns.length, cards: log.querySelectorAll('.card button').length, shown: prev.shown, live: prev.live, applied: applied.length, flyers: flyers.length, flown: flown.size,
       handle: { shown: !handle.hidden && handle.classList.contains('in'), blinks, blinkAt },
       panel: { open, hidden: panel.hidden }, mark: mark ? mark.info() : null,
       rect: (() => { const r = markEl.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })(),

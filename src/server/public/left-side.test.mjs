@@ -54,8 +54,8 @@ test('CF4. the glow belongs to the box itself: rest, lit on focus (180 ms), two 
   // No shine behind Create: the form (box + button) has no glow of its own, and neither has the button.
   assert.doesNotMatch(rule('#sketcher-form'), /box-shadow|animation|background/);
   assert.doesNotMatch(HTML, /#sketcher-form[^{]*\{[^}]*box-shadow/);
-  assert.doesNotMatch(rule('#sketcher-create'), /box-shadow|filter/);
-  assert.doesNotMatch(HTML, /#sketcher-create[^{]*::(before|after)/);
+  assert.doesNotMatch(rule('#sketcher-log > .card button'), /box-shadow|filter/);
+  assert.doesNotMatch(HTML, /\.card button[^{]*::(before|after)/);
   // Typing stops the breath; the box is never disabled, so Enter and typing are never blocked.
   assert.match(SRC, /box\.addEventListener\('input', \(\) => form\.classList\.remove\('breath'\)\)/);
   assert.doesNotMatch(SRC, /box\.disabled|box\.readOnly/);
@@ -92,6 +92,7 @@ test('CF7. the send dot lands in the new message (its centre), not in the field 
   assert.match(fly, /inside\(to, L\)/);
   assert.doesNotMatch(fly, /markEl|sky|geo\(\)|g\.cx/);
   assert.ok(SRC.indexOf("const mine = line('you', message)") < SRC.indexOf('    fly(mine, reply);'));
+  assert.ok(SRC.indexOf('    if (turns.length === 1) begin(t);') < SRC.indexOf('    fly(mine, reply);'));
   // Under Reduce Motion or a short hop, nothing flies (the line just appears).
   assert.equal(flightPlan({ from, to, reduced: true }), null);
   assert.equal(flightPlan({ from: { x: 300, y: 530 }, to }), null);
@@ -107,8 +108,8 @@ test('CF6. the thinking dot lives on the wait line and is gone with the first wo
   assert.match(HTML, /50% \{ opacity: \.8; box-shadow: 0 0 6px/);
   assert.match(rule('#sketcher.still #sketcher-log > .wait::before'), /animation: none; opacity: \.7/);
   assert.match(SRC, /reply\.classList\.remove\('wait', 'answer', 'settle'\)/);   // onText
-  assert.match(SRC, /reply\.className = 'sketcher err'/);                         // error: no dot, no glow
-  assert.match(SRC, /const reply = line\('sketcher wait', 'Sketching…'\)/);       // the words are real text
+  assert.match(SRC, /msg\.className = 'sketcher err'/);                           // error: no dot, no glow
+  assert.match(SRC, /t\.reply = line\('sketcher wait', 'Sketching…'/);           // the words are real text
   assert.doesNotMatch(HTML, /\.err[^{]*::before/);
 });
 
