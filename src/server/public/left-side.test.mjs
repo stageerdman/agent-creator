@@ -5,7 +5,79 @@ import {
   gatheredFiles, flightGap, planRefresh, wholeDue, blinkAllowed, lookBack, closeFlash, showCreate, isKept, timings, blinkLevel,
   isReady, parseEvents, markSize, SIT_MS, HINT_AFTER, markGrow, dotsOf, kept,
   menuSectionOf, glowLevel, sortLeave, streamChat, GLOW_MS, TOOK_MS, SORT_GAP, STILL_BLINK,
+  flightPlan, sendArcAt, answerHold, BLOOM_MS, ANSWER_MS, RISE_MS, SEND_BOW, MIN_FLIGHT,
 } from './left-side.js';
+import { readFileSync } from 'node:fs';
+const HTML = readFileSync(new URL('./new-agent.html', import.meta.url), 'utf8');
+const SRC = readFileSync(new URL('./left-side.js', import.meta.url), 'utf8');
+const rule = sel => { const i = HTML.indexOf(sel + ' {'); assert.ok(i >= 0, `no rule for ${sel}`); return HTML.slice(i, HTML.indexOf('}', i)); };
+
+/* ---- chat fireflies: Reports/chat-firefly-motion.md §2–4 ---- */
+test('CF1. the send flight: none with Reduce Motion, off screen or too short; else 220–380 ms, still by 600', () => {
+  const from = { x: 400, y: 700 }, to = { x: 410, y: 400 };
+  assert.equal(flightPlan({ from, to, reduced: true }), null);
+  assert.equal(flightPlan({ from, to, visible: false }), null);
+  assert.equal(flightPlan({ from, to: { x: 410, y: 690 } }), null);   // 14 px
+  assert.equal(flightPlan({ from, to: null }), null);
+  for (const d of [MIN_FLIGHT, 60, 200, 300, 2000]) {
+    const p = flightPlan({ from: { x: 0, y: d }, to: { x: 0, y: 0 } });
+    assert.ok(p.dur >= 220 && p.dur <= 380, `d=${d}: ${p.dur}`);
+    assert.equal(p.landAt, p.dur); assert.equal(p.settleAt, p.dur + BLOOM_MS); assert.ok(p.settleAt <= 600);
+    assert.equal(p.bow, SEND_BOW);
+  }
+  assert.equal(flightPlan({ from: { x: 0, y: 200 }, to: { x: 0, y: 0 } }).dur, 320);   // 160 + .8 × 200
+  assert.equal(flightPlan({ from: { x: 0, y: 10 }, to: { x: 0, y: 1000 } }).dur, 380);
+});
+
+test('CF2. the arc starts at the box, lands on the line and bows 10 px to the left at its middle', () => {
+  const from = { x: 300, y: 600 }, to = { x: 300, y: 200 };
+  assert.deepEqual(sendArcAt(from, to, 0), from);
+  assert.deepEqual(sendArcAt(from, to, 1), to);
+  const mid = sendArcAt(from, to, .5);
+  assert.equal(mid.x, 300 - SEND_BOW); assert.equal(mid.y, 400);
+  for (let i = 1; i < 12; i++) assert.ok(sendArcAt(from, to, i / 12).x < 300, 'always left of the straight line');
+});
+
+test('CF3. the answering flash: a short rise then eased back, a plain 320 ms step with Reduce Motion', () => {
+  assert.equal(answerHold(false), RISE_MS);
+  assert.equal(answerHold(true), ANSWER_MS);
+  assert.ok(RISE_MS + 240 <= 400, 'back in the loop within 400 ms');
+});
+
+test('CF4. the glow belongs to #sketcher-form: rest, lit on focus (180 ms), two breaths, still with Reduce Motion', () => {
+  assert.match(rule('#sketcher-form'), /box-shadow: 0 0 14px rgba\(216,242,106,\.06\)/);
+  assert.match(rule('#sketcher-form'), /transition: box-shadow 280ms ease-in/);
+  assert.match(rule('#sketcher-form:focus-within'), /0 0 18px rgba\(216,242,106,\.16\).*180ms ease-out/);
+  assert.match(rule('#sketcher-form.breath:focus-within'), /4\.8s ease-in-out 600ms 2;/);
+  assert.match(rule('#sketcher.still #sketcher-form'), /transition: none; animation: none/);
+  assert.doesNotMatch(rule('#sketcher-box'), /animation/);   // the box's text and caret never change
+  // Typing stops the breath; the box is never disabled, so Enter and typing are never blocked.
+  assert.match(SRC, /box\.addEventListener\('input', \(\) => form\.classList\.remove\('breath'\)\)/);
+  assert.doesNotMatch(SRC, /box\.disabled|box\.readOnly/);
+});
+
+test('CF5. one send path, one flying dot (removed on landing), the held lines shown in the landing frame', () => {
+  assert.equal(SRC.match(/form\.addEventListener\('submit'/g).length, 1);
+  assert.equal(SRC.match(/'send-fly'/g).length, 1);
+  assert.match(SRC, /function land\(bloom = true\) \{[^}]*f\.dot\.remove\(\);[^}]*classList\.remove\('landing'\)/);
+  assert.match(SRC, /land\(false\);\s+\/\/ only ever one dot/);
+  assert.match(rule('.send-fly'), /pointer-events: none/);
+  assert.match(rule('.send-fly'), /position: fixed/);
+  assert.match(SRC, /dot\.setAttribute\('aria-hidden', 'true'\)/);
+  assert.match(rule('#sketcher-log > .landing'), /opacity: 0/);
+  assert.match(HTML, /@keyframes you-bloom \{ from \{ background: rgba\(216,242,106,\.30\); \} \}/);
+  assert.match(rule('#sketcher-log > .you.bloom'), /200ms ease-out/);
+});
+
+test('CF6. the thinking dot lives on the wait line and is gone with the first words or an error', () => {
+  assert.match(rule('#sketcher-log > .wait::before'), /animation: wait-glow 2\.6s ease-in-out infinite/);
+  assert.match(HTML, /50% \{ opacity: \.8; box-shadow: 0 0 6px/);
+  assert.match(rule('#sketcher.still #sketcher-log > .wait::before'), /animation: none; opacity: \.7/);
+  assert.match(SRC, /reply\.classList\.remove\('wait', 'answer', 'settle'\)/);   // onText
+  assert.match(SRC, /reply\.className = 'sketcher err'/);                         // error: no dot, no glow
+  assert.match(SRC, /const reply = line\('sketcher wait', 'Sketching…'\)/);       // the words are real text
+  assert.doesNotMatch(HTML, /\.err[^{]*::before/);
+});
 
 test('M4. the likeness grows as it fills: half size at nothing, full when whole, rising at every step', () => {
   assert.equal(markGrow(0, 0), 1);

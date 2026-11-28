@@ -121,6 +121,30 @@ export const glowLevel = (dt, reduced) => dt < 0 ? 0 : reduced ? (dt < STILL_BLI
 /* When each of a burst leaves: never before t + WAKE_MS (the glow first), SORT_GAP after the one before. */
 export const sortLeave = (t, last) => Math.max(t + WAKE_MS, last + SORT_GAP);
 
+/* ---- the chat's fireflies (Reports/chat-firefly-motion.md §3–4) ----
+   Send: one dot flies from the box up to the new 'you' line and blooms into it.
+   Wait: Sketcher's dot glows beside "Sketching…" and answers each real event once. */
+export const BLOOM_MS = 200;    // the 'you' tint settles .30 → .14 after the landing
+export const ANSWER_MS = 320;   // one answering flash, back in the loop by then
+export const RISE_MS = 80;      // its rise to full
+export const SEND_BOW = 10;     // px the flight bows to the left at its middle
+export const MIN_FLIGHT = 24;   // px: shorter than this, nothing flies
+/* null = no flight (both lines show at once); else when it lands and when everything is still. */
+export function flightPlan({ from, to, reduced = false, visible = true } = {}) {
+  if (reduced || !visible || !from || !to) return null;
+  const d = Math.hypot(to.x - from.x, to.y - from.y);
+  if (!(d >= MIN_FLIGHT)) return null;
+  const dur = Math.round(clamp(160 + .8 * d, 220, 380));
+  return { dur, bow: SEND_BOW, landAt: dur, settleAt: dur + BLOOM_MS };
+}
+/* The point at u (0–1) of the gentle arc: a quadratic curve whose middle sits `bow` px left of the straight line. */
+export const sendArcAt = (from, to, u, bow = SEND_BOW) => {
+  const c = { x: (from.x + to.x) / 2 - 2 * bow, y: (from.y + to.y) / 2 }, v = 1 - u;
+  return { x: v * v * from.x + 2 * v * u * c.x + u * u * to.x, y: v * v * from.y + 2 * v * u * c.y + u * u * to.y };
+};
+/* How long the wait dot stays at full after the latest event before it eases back (Reduce Motion: a plain step). */
+export const answerHold = reduced => reduced ? ANSWER_MS : RISE_MS;
+
 /* One turn with Sketcher (the creator on the engine): POST /api/agents/:id/chat, read its events.
    onText(all text so far) as it streams; onChange(event) when the draft or the files changed;
    onAllocate({ file, section }) once per file Sketcher sorted (after files);
@@ -215,7 +239,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   function start(a, still) {
     timers.forEach(h => win.clearTimeout(h)); timers = []; flyers = []; sorters = []; glows = new Map();
     id = a.id; name = nameOf(a); files = a.dna || [];
-    heldWhole = false; wasKept = kept(store, a); create.hidden = true;
+    heldWhole = false; wasKept = kept(store, a); create.hidden = true; drop();
     if (wasKept) store['left.kept.' + id] = '1';
     log.replaceChildren(); for (const m of a.chat || []) { const you = m.who === 'you'; line(you ? 'you' : 'sketcher', m.text, !you); }   // the talk so far, after a reload too: same renderer as live
     known = new Map(files.map(f => [f.id, f.state]));
@@ -269,6 +293,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     if (!open) return;
     open = false;
     slide(T().close, 'cubic-bezier(.4,0,1,1)');
+    land(false);   // a flight in the air lands at once
     panel.classList.remove('open'); panel.setAttribute('inert', ''); handle.style.transform = '';
     handle.setAttribute('aria-expanded', 'false'); handle.setAttribute('aria-label', 'Open Sketcher');
     handle.focus();
@@ -294,20 +319,67 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
     if (md) say(el, text); else el.textContent = text;
     log.append(el); log.scrollTop = log.scrollHeight; return el;
   };
+  // The box glows (CSS :focus-within); each arrival breathes twice, typing stills it. Reduce Motion: 'still'.
+  panel.classList.toggle('still', reduced);
+  box.addEventListener('focus', () => { form.classList.remove('breath'); if (!reduced) { void form.offsetWidth; form.classList.add('breath'); } });
+  box.addEventListener('input', () => form.classList.remove('breath'));
+  box.addEventListener('blur', () => form.classList.remove('breath'));
+  // The send flight: one dot, removed when it lands; the held lines show in that same frame.
+  let flight = null;
+  function land(bloom = true) {
+    if (!flight) return;
+    const f = flight; flight = null; win.clearTimeout(f.timer); f.dot.remove();
+    f.mine.classList.remove('landing'); f.reply.classList.remove('landing');
+    if (bloom) f.mine.classList.add('bloom');
+  }
+  function drop() { if (!flight) return; win.clearTimeout(flight.timer); flight.dot.remove(); flight = null; }   // an error: nothing lands
+  function fly(mine, reply) {
+    land(false);   // only ever one dot
+    const b = box.getBoundingClientRect(), r = mine.getBoundingClientRect(), L = log.getBoundingClientRect();
+    const from = { x: b.right - 24, y: b.top }, to = { x: r.right - 16, y: r.top + 18 };
+    const visible = open && !doc.hidden && to.x >= L.left && to.x <= L.right && to.y >= L.top && to.y <= L.bottom;
+    const plan = flightPlan({ from, to, reduced, visible });
+    if (!plan) return;
+    const dot = doc.createElement('div'); dot.className = 'send-fly'; dot.setAttribute('aria-hidden', 'true');
+    mine.classList.add('landing'); reply.classList.add('landing');
+    dot.style.transform = `translate(${from.x}px, ${from.y}px)`;
+    doc.body.append(dot);
+    if (dot.animate) {
+      const path = Array.from({ length: 13 }, (_, i) => { const p = sendArcAt(from, to, i / 12, plan.bow); return { transform: `translate(${p.x}px, ${p.y}px)` }; });
+      dot.animate(path, { duration: plan.dur, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' });
+      dot.animate([{ scale: 1 }, { scale: 1.25, offset: Math.min(1, RISE_MS / plan.dur) }, { scale: 1.25 }], { duration: plan.dur, fill: 'forwards' });
+    }
+    flight = { dot, mine, reply, timer: win.setTimeout(() => land(true), plan.landAt) };
+  }
+  // Sketcher's answering flash: one per real event; a burst merges into one longer glow.
+  function answer(reply) {
+    if (!reply.classList.contains('wait')) return;
+    reply.classList.remove('settle'); reply.classList.add('answer');
+    win.clearTimeout(reply._answer);
+    reply._answer = win.setTimeout(() => { reply.classList.remove('answer'); if (!reduced) reply.classList.add('settle'); }, answerHold(reduced));
+  }
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const message = box.value.trim(); if (!message || busy || !id) return;
     busy = true; box.value = ''; const mine = line('you', message);
     const reply = line('sketcher wait', 'Sketching…');
-    const onText = text => { say(reply, text); reply.classList.remove('wait'); reply.classList.add('md'); log.scrollTop = log.scrollHeight; };
+    fly(mine, reply);
+    const onText = text => {
+      if (flight && flight.reply === reply) land(true);   // a very fast reply: land at once
+      win.clearTimeout(reply._answer); reply.classList.remove('wait', 'answer', 'settle');
+      say(reply, text); reply.classList.add('md'); log.scrollTop = log.scrollHeight;
+    };
     try {
-      const onChange = ev => { pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
+      const onChange = ev => { answer(reply); pull(); if (ev === 'files') Promise.resolve(reloadMenu()).catch(() => {}); };
+      const onAllocate = a => { answer(reply); sortFile(a); };
       let ready = false;
-      await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate: sortFile, onReady: () => { ready = true; } });
+      await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate, onReady: () => { ready = true; } });
       if (showCreate(ready, wasKept)) create.hidden = false;
     } catch {
       // The message goes back in the box, so Enter tries again (no retyping, no retry button).
+      if (flight && flight.reply === reply) drop();
+      win.clearTimeout(reply._answer);
       mine.remove(); if (!box.value) box.value = message;
       reply.textContent = 'Sketcher couldn’t answer. Press Enter to try again.'; reply.className = 'sketcher err';
       box.focus(); box.setSelectionRange(box.value.length, box.value.length);
@@ -423,7 +495,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
 
   const api = {
     onDna, hide: null,
-    setReduced(v) { reduced = !!v; kick(); },
+    setReduced(v) { reduced = !!v; panel.classList.toggle('still', reduced); if (reduced) land(false); kick(); },
     isOpen: () => open,
     info: () => ({
       sorted: { count: sorted.count, last: sorted.last.slice() }, sorting: sorters.length, glowing: glows.size, took: tookSeen,
