@@ -7,8 +7,7 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::utils::config::WindowEffectsConfig;
-use tauri::window::{Effect, EffectState, EffectsBuilder};
+use tauri::window::Color;
 use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
 /// Holds the server for the app's life; taking it out stops the server.
@@ -71,33 +70,19 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
         .disable_drag_drop_handler()
         .visible(false)
         .center()
-        .initialization_script(GLASS_PAGE)
-        .transparent(true)
-        // Dark glass in both system themes: the Fireflies field is dark, and a
-        // dark material keeps light text readable over a bright desktop. It
-        // also means a launch shows dark glass first, never a white frame.
+        // A solid window: the window and its webview paint the app's one
+        // background (src/server/public/app-background.css, #0B1410) before
+        // the page arrives, so the first frame already is the final one.
+        // No vibrancy, no see-through window: the Sketcher chat is the only glass.
+        .background_color(APP_BACKGROUND)
         .theme(Some(Theme::Dark))
-        .effects(glass())
         .build()?;
     window.show()
 }
 
-/// The desktop shows through, blurred by macOS's own vibrancy. It stays glass
-/// when the window is in the background too, so it never turns flat grey.
-fn glass() -> WindowEffectsConfig {
-    EffectsBuilder::new().effect(Effect::UnderWindowBackground).state(EffectState::Active).build()
-}
-
-/// Tells each page it sits on glass (`html.glass`), so it tints its field
-/// instead of painting it solid. Runs before the page's own markup is parsed.
-const GLASS_PAGE: &str = r#"(() => {
-  const mark = () => {
-    const root = document.documentElement;
-    if (root) root.classList.add("glass");
-    return Boolean(root);
-  };
-  if (!mark()) new MutationObserver((_, watch) => { if (mark()) watch.disconnect(); }).observe(document, { childList: true });
-})();"#;
+/// The app's one screen background, #0B1410. Keep it equal to `--field` in
+/// src/server/public/app-background.css (a test checks both).
+const APP_BACKGROUND: Color = Color(11, 20, 16, 255);
 
 /// Hands an http, https or mailto link to macOS (`open`), so it lands in the
 /// user's default browser or mail app. Returns whether it was handed off.
@@ -117,7 +102,16 @@ fn external(url: &tauri::Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::external;
+    use super::{external, APP_BACKGROUND};
+
+    #[test]
+    fn window_paints_the_one_shared_background() {
+        let css = include_str!("../../src/server/public/app-background.css");
+        let tauri::window::Color(r, g, b, a) = APP_BACKGROUND;
+        assert_eq!(a, 255, "the window is solid");
+        let hex = format!("--field: #{r:02X}{g:02X}{b:02X};");
+        assert!(css.contains(&hex), "app-background.css must set {hex}");
+    }
 
     #[test]
     fn only_web_and_mail_links_leave_the_app() {

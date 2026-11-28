@@ -9,8 +9,8 @@ publish = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# macos-private-api: the only way macOS lets a WebKit window be see-through.
-tauri = { version = "2", features = ["macos-private-api"] }
+# The window is solid (no see-through, no private API): see src/main.rs.
+tauri = { version = "2", features = [] }
 
 # Small binary: the shell does little, so size beats speed.
 [profile.release]
