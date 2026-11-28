@@ -5,7 +5,7 @@
 export const TARGET_CHUNK_CHARS = 1500;
 export const OVERLAP_CHARS = 200;
 
-const paragraphsOf = (text) =>
+export const paragraphsOf = (text) =>
   text
     .replace(/\r\n/g, "\n")
     .split("\n\n")

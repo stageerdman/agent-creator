@@ -8,7 +8,7 @@ import { BadInput } from "../errors.mjs";
 import { createLogger } from "../../log/logger.mjs";
 import { packSources } from "../sourceText/pack.mjs";
 import { CAPABILITY_TAG, buildCapabilityMessage, buildCapabilityPrompt, readMap } from "./capabilityPrompt.mjs";
-import { fingerprintOf, readUsable } from "./capabilitySources.mjs";
+import { fingerprintOf, readUsable } from "../sourceText/usable.mjs";
 
 const log = createLogger("capabilityBuilder");
 export const CAPABILITY_FILE = "capabilities.json";

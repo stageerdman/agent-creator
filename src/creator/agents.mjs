@@ -15,6 +15,7 @@ import { createEmbedder } from "./knowledge/embedder.mjs";
 import { createKnowledgeBuilder } from "./knowledge/knowledgeBuilder.mjs";
 import { createPersonaBuilder } from "./persona/personaBuilder.mjs";
 import { createCapabilityBuilder } from "./capability/capabilityBuilder.mjs";
+import { createQualityBuilder } from "./quality/qualityBuilder.mjs";
 import { defaultHome } from "./agentStore.mjs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -72,6 +73,7 @@ export function createAgents({
     ...createKnowledgeBuilder({ store, memory, knowledge, forget, now }),
     ...createPersonaBuilder({ store, engine, memory, forget }),
     ...capability,
+    ...createQualityBuilder({ store, engine, memory, now }),
     putSource: memory.putSource,
     // Call after any change that may bring new Knowledge copies (chat, a
     // drop, putSource). → [{ type: "embedded" | "embed-failed", file, reason? }].
