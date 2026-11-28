@@ -6,7 +6,6 @@ import { join } from "node:path";
 import { createAgentStore } from "./agentStore.mjs";
 import { createAgents } from "./agents.mjs";
 import { saysReady, splitReply } from "./creatorReply.mjs";
-import { agentIdentity, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
 import { createFakeEmbedder } from "./knowledge/fakeEmbedder.mjs";
 
 const home = await mkdtemp(join(tmpdir(), "agent-creator-talk-"));
@@ -22,20 +21,6 @@ test("saysReady trusts only a real true in the block, never the words", () => {
   assert.equal(saysReady(splitReply('Done. <draft>{"ready":true}</draft>').patch), true);
   assert.equal(saysReady(splitReply('<draft>{"ready":"true"}</draft>').patch), false);
   assert.equal(saysReady(splitReply("It is ready, press Keep.").patch), false);
-});
-
-test("agentIdentity: the written system prompt, else persona and instructions", () => {
-  assert.equal(agentIdentity({ systemPrompt: " Be brief. ", draft: { persona: "x", instructions: "y" } }), "Be brief.");
-  assert.equal(agentIdentity({ systemPrompt: "", draft: { persona: "Calm.", instructions: " " } }), "Calm.");
-});
-
-test("buildTalkPrompt numbers retrieved passages by file; usedOf accepts their file names", () => {
-  const excerpts = [{ file: "a.md", text: "one " }, { file: "b.md", text: "two" }];
-  const prompt = buildTalkPrompt({ systemPrompt: "Be.", draft: {}, excerpts });
-  assert.match(prompt, /<knowledge>\n.*\n\n\[1\] \(from a\.md\)\none\n\n\[2\] \(from b\.md\)\ntwo\n<\/knowledge>/);
-  assert.match(prompt, /<used>/, "the used rule comes with passages alone");
-  assert.equal(buildTalkPrompt({ systemPrompt: "Be.", draft: {} }), "Be.");
-  assert.deepEqual(usedOf({ files: ["b.md", "x.md"] }, { excerpts }), [{ kind: "file", name: "b.md" }]);
 });
 
 test("talk reads the kept copies of knowledge and skill files; no copy, unrouted or removed ones are left out", async () => {
@@ -59,7 +44,7 @@ test("talk reads the kept copies of knowledge and skill files; no copy, unrouted
   const engine = echoEngine("Hi.");
   const agents = createAgents({ store, engine, embedder: createFakeEmbedder(), readOriginal: () => assert.fail("talk never reads an original") });
   await agents.embedKnowledge(id);
-  assert.deepEqual(await agents.talk(id, "alpha"), { say: "Hi.", used: [] });
+  assert.deepEqual(await agents.talk(id, "alpha"), { say: "Hi.", used: [], sources: [] }, "no block = own view");
   const prompt = engine.seen[0].systemPrompt;
   assert.match(prompt, /<knowledge>[\s\S]*\[1\] \(from a\.md\)\nalpha/, "knowledge comes as a retrieved passage");
   assert.ok(!prompt.includes('<file name="a.md">'), "knowledge is never inlined whole");

@@ -4,7 +4,7 @@
 // talk is kept in the record; it never changes the draft or the files.
 
 import { askWithBlock } from "./askWithBlock.mjs";
-import { buildTalkMessage, buildTalkPrompt, usedOf } from "./talkPrompt.mjs";
+import { buildTalkMessage, buildTalkPrompt, sourcesOf, usedOf } from "./talkPrompt.mjs";
 import { createLogger } from "../log/logger.mjs";
 import { BadInput, CantEmbed } from "./errors.mjs";
 import { CONTEXT_FILE } from "./persona/personaBuilder.mjs";
@@ -67,7 +67,8 @@ export function createTalk({ store, engine, memory, knowledge }) {
   return {
     canTalk,
 
-    // → { say, used: [{ kind, name }] }. Never resumed: each call gets the
+    // → { say, used: [{ kind, name }], sources: [{ file, passage }] }
+    // (no sources = the agent's own view). Never resumed: each call gets the
     // newest system prompt, with the earlier talk in the message.
     async talk(id, message, { onSay, signal, traceId } = {}) {
       const record = await canTalk(id);
@@ -82,10 +83,11 @@ export function createTalk({ store, engine, memory, knowledge }) {
       };
       const reply = await askWithBlock(engine, input, "used", { onSay, signal, traceId });
       const used = usedOf(reply.patch, { skills, files, excerpts });
+      const sources = sourcesOf(reply.patch, excerpts);
       const latest = await store.loadAgent(id);
-      const talk = [...(latest.talk ?? []), { who: "you", text: message }, { who: "agent", text: reply.say, used }].slice(-TALK_KEEP);
+      const talk = [...(latest.talk ?? []), { who: "you", text: message }, { who: "agent", text: reply.say, used, sources }].slice(-TALK_KEEP);
       await store.saveDraft(id, { talk });
-      return { say: reply.say, used };
+      return { say: reply.say, used, sources };
     },
   };
 }

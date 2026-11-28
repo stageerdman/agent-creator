@@ -6,9 +6,9 @@
 
 import { USER_SAYS } from "./creatorPrompt.mjs";
 
-const USED_RULE = `After your answer, if it drew on any of the skills or files above, end with exactly one block naming them, in this form:
-<used>{"skills": ["skill name"], "files": ["notes/week 1.md"]}</used>
-Use only the names given above, and only those your answer really drew on. No block when it drew on none. Never mention the block.`;
+const USED_RULE = `After your answer, if it drew on any of the skills, files or knowledge passages above, end with exactly one block naming them, in this form:
+<used>{"skills": ["skill name"], "files": ["notes/week 1.md"], "passages": [1, 3]}</used>
+Use only the names and passage numbers given above, and only those your answer really drew on. No block when it drew on none. Never mention the block.`;
 
 // The agent's system prompt: system-prompt.md when written, else its draft.
 export function agentIdentity({ systemPrompt, draft }) {
@@ -40,14 +40,26 @@ export function buildTalkMessage({ message, talk = [] }) {
 }
 
 // The agent's `<used>` patch → [{ kind, name }], only names it was given.
+// The file of a passage it used counts as a used file too.
 export function usedOf(patch, { skills = [], files = [], excerpts = [] }) {
-  const known = (names, given) => (Array.isArray(names) ? [...new Set(names)].filter((name) => given.includes(name)) : []);
   const fileNames = [...files.map((file) => file.path), ...excerpts.map((excerpt) => excerpt.file)];
+  const usedFiles = [...listOf(patch?.files), ...sourcesOf(patch, excerpts).map((source) => source.file)];
   return [
-    ...known(patch?.skills, skills.map((skill) => skill.name)).map((name) => ({ kind: "skill", name })),
-    ...known(patch?.files, fileNames).map((name) => ({ kind: "file", name })),
+    ...known(listOf(patch?.skills), skills.map((skill) => skill.name)).map((name) => ({ kind: "skill", name })),
+    ...known(usedFiles, fileNames).map((name) => ({ kind: "file", name })),
   ];
 }
+
+// The `<used>` passage numbers → [{ file, passage }], the passages the
+// answer stood on ("Where from"). Only numbers of passages it was given,
+// no repeats, in the agent's order. Empty = the agent's own view.
+export function sourcesOf(patch, excerpts = []) {
+  const valid = (n) => Number.isInteger(n) && n >= 1 && n <= excerpts.length;
+  return [...new Set(listOf(patch?.passages))].filter(valid).map((n) => ({ file: excerpts[n - 1].file, passage: excerpts[n - 1].text.trim() }));
+}
+
+const listOf = (value) => (Array.isArray(value) ? value : []);
+const known = (names, given) => [...new Set(names)].filter((name) => given.includes(name));
 
 const section = (kind, name, text) => `<${kind} name=${JSON.stringify(name)}>\n${text.trim()}\n</${kind}>`;
 

@@ -215,7 +215,7 @@ test("talk: the agent itself answers, streams delta+done with what it used, and 
   await json("POST", `/api/agents/${id}/save`);
   const before = await json("GET", `/api/agents/${id}`);
 
-  const events = await talk(id, '{"skills":["Plan a run","Ghost"],"files":["notes/week1.md","nope"]}');
+  const events = await talk(id, '{"skills":["Plan a run","Ghost"],"files":["nope"],"passages":[1,7]}');
   const names = events.map((e) => e.event);
   assert.equal(names.at(-1), "done");
   assert.ok(names.slice(0, -1).every((n) => n === "delta"));
@@ -223,7 +223,8 @@ test("talk: the agent itself answers, streams delta+done with what it used, and 
   assert.deepEqual(events.at(-1).data, {
     say: "From your notes:",
     used: [{ kind: "skill", name: "Plan a run" }, { kind: "file", name: "notes/week1.md" }],
-  });
+    sources: [{ file: "notes/week1.md", passage: "Run 5k on Monday." }],
+  }, "a used passage is a source, and its file a used file");
   assert.match(systemPrompts.at(-1), /^You are Coach, short and kind\./);
   assert.match(systemPrompts.at(-1), /<skill name="Plan a run">/);
   assert.match(systemPrompts.at(-1), /<knowledge>[\s\S]*\(from notes\/week1\.md\)\nRun 5k on Monday\./, "knowledge comes as a retrieved passage");
@@ -231,8 +232,8 @@ test("talk: the agent itself answers, streams delta+done with what it used, and 
   const after = await json("GET", `/api/agents/${id}`);
   assert.deepEqual([after.draft, after.files, after.chat], [before.draft, before.files, before.chat]);
   assert.deepEqual(after.talk, [
-    { who: "you", text: '{"skills":["Plan a run","Ghost"],"files":["notes/week1.md","nope"]}' },
-    { who: "agent", text: "From your notes:", used: events.at(-1).data.used },
+    { who: "you", text: '{"skills":["Plan a run","Ghost"],"files":["nope"],"passages":[1,7]}' },
+    { who: "agent", text: "From your notes:", used: events.at(-1).data.used, sources: events.at(-1).data.sources },
   ]);
 });
 
