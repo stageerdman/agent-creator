@@ -47,6 +47,16 @@ export class BadOutput extends Error {
   }
 }
 
+// The user stopped a turn (Esc), or it was waiting when they did. Same
+// `kind` as an aborted engine call, so the UI has one word for "stopped".
+export class Stopped extends Error {
+  constructor(cause) {
+    super("The turn was stopped.", cause ? { cause } : undefined);
+    this.name = "Stopped";
+    this.kind = "cancelled";
+  }
+}
+
 // Input the creator can't use, e.g. a file with no path.
 export class BadInput extends Error {
   constructor(message) {

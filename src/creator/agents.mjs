@@ -8,6 +8,8 @@ import { askedPaths, scanAsked } from "./intake/scanAsked.mjs";
 import { createMaterial } from "./agentMaterial.mjs";
 import { createTexts } from "./agentTexts.mjs";
 import { creatorTurn } from "./creatorTurn.mjs";
+import { createTurnLanes } from "./turnLanes.mjs";
+import { createLogger } from "../log/logger.mjs";
 import { createTalk } from "./agentTalk.mjs";
 import { createSourceMemory } from "./sourceText/memory.mjs";
 import { createKnowledgeBase } from "./knowledge/knowledgeBase.mjs";
@@ -19,6 +21,8 @@ import { createQualityBuilder } from "./quality/qualityBuilder.mjs";
 import { defaultHome } from "./agentStore.mjs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+
+const log = createLogger("creator");
 
 // The home's one-line description: the first sentence of persona, else of
 // instructions, cut to about 80 characters. Empty when neither has text.
@@ -66,6 +70,38 @@ export function createAgents({
   };
   const material = createMaterial({ store, memory, forget, now });
   const capability = createCapabilityBuilder({ store, engine, memory, now });
+  const lanes = createTurnLanes();
+
+  // The turn itself. The patch is applied to the draft as it is *after* the
+  // reply, so nothing saved meanwhile is lost. Autosaved before resolving;
+  // a stopped turn saves nothing. The creator sees file paths only: it may
+  // have paths read in (patch.paths, `onFiles` gets each batch found), then
+  // route files by path (patch.files) and by plain-word rules (patch.rules).
+  // `intake` reports that ({ added, skipped, rules }), null when not asked.
+  const chatTurn = async (id, message, { onSay, onFiles, signal, traceId }) => {
+    const before = await store.loadAgent(id);
+    const capabilities = await capability.getCapabilities(id);
+    const turn = await creatorTurn(
+      { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, files: before.files, capabilities, sessionId: before.sessionId },
+      { engine, onSay, signal, traceId },
+    );
+    const paths = askedPaths(turn.patch?.paths, home);
+    const scanned = await scanAsked(paths, { scan: (roots, options) => material.scan(id, roots, options), onFiles, signal, traceId });
+    signal.throwIfAborted();
+    const latest = await store.loadAgent(id);
+    const { draft, changed } = applyPatch(latest.draft, turn.patch);
+    const sorted = sortFiles(latest.files ?? [], turn.patch ?? {}, random);
+    const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
+    const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
+    const chat = withTurn(latest.chat, message, turn.say);
+    await store.saveDraft(id, { draft, handEdited, handLines, files: sorted.files, sessionId: turn.sessionId, chat });
+    const files = sorted.changed.length ? await memory.copySources(id, { traceId }) : sorted.files;
+    // A kept agent is never "ready to create" again, nor is an empty draft.
+    const ready = turn.ready === true && draft.status !== "saved" && !isEmpty(draft);
+    const intake = paths.length || sorted.rules.length ? { added: scanned.added.length, skipped: scanned.skipped, rules: sorted.rules } : null;
+    return { say: turn.say, draft, changed, files, filesChanged: sorted.changed, intake, sessionId: turn.sessionId, ready };
+  };
+
   return {
     ...material,
     ...createTexts({ store, material, now }),
@@ -91,33 +127,16 @@ export function createAgents({
 
     get: async (id) => view(await store.loadAgent(id)),
 
-    // One chat turn. The patch is applied to the draft as it is *after* the
-    // reply, so nothing saved meanwhile is lost. Autosaved before resolving.
-    // The creator sees file paths only: it may have paths read in
-    // (patch.paths, `onFiles` gets each batch found), then route files by
-    // path (patch.files) and by plain-word rules (patch.rules).
-    // `intake` reports that ({ added, skipped, rules }), null when not asked.
-    async chat(id, message, { onSay, onFiles, signal, traceId } = {}) {
-      const before = await store.loadAgent(id);
-      const capabilities = await capability.getCapabilities(id);
-      const turn = await creatorTurn(
-        { message, draft: before.draft, handEdited: before.handEdited, handLines: before.handLines, files: before.files, capabilities, sessionId: before.sessionId },
-        { engine, onSay, signal, traceId },
-      );
-      const paths = askedPaths(turn.patch?.paths, home);
-      const scanned = await scanAsked(paths, { scan: (roots, options) => material.scan(id, roots, options), onFiles, signal, traceId });
-      const latest = await store.loadAgent(id);
-      const { draft, changed } = applyPatch(latest.draft, turn.patch);
-      const sorted = sortFiles(latest.files ?? [], turn.patch ?? {}, random);
-      const handEdited = trackHandEdits(latest.handEdited, changed, "creator");
-      const handLines = trackHandLines(latest.handLines, latest.draft, draft, "creator");
-      const chat = withTurn(latest.chat, message, turn.say);
-      await store.saveDraft(id, { draft, handEdited, handLines, files: sorted.files, sessionId: turn.sessionId, chat });
-      const files = sorted.changed.length ? await memory.copySources(id, { traceId }) : sorted.files;
-      // A kept agent is never "ready to create" again, nor is an empty draft.
-      const ready = turn.ready === true && draft.status !== "saved" && !isEmpty(draft);
-      const intake = paths.length || sorted.rules.length ? { added: scanned.added.length, skipped: scanned.skipped, rules: sorted.rules } : null;
-      return { say: turn.say, draft, changed, files, filesChanged: sorted.changed, intake, sessionId: turn.sessionId, ready };
+    // One chat turn, in line behind any turn still thinking (`onQueued()`
+    // fires when it has to wait; turnLanes.mjs). `stop(id)` ends it as Stopped.
+    chat: (id, message, { onQueued, signal, ...options } = {}) =>
+      lanes.run(id, (turnSignal) => chatTurn(id, message, { ...options, signal: turnSignal }), { signal, onQueued }),
+
+    // Esc: stops the agent's running turn and its waiting ones. → { stopped: count }.
+    stop(id, { traceId } = {}) {
+      const stopped = lanes.stop(id);
+      log.info("stop", "turns stopped", { traceId, id, stopped });
+      return { stopped };
     },
 
     // A hand edit: autosaved, and its fields are "yours" until the creator changes them.
