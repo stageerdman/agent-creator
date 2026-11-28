@@ -7,8 +7,7 @@ mod server;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::utils::config::WindowEffectsConfig;
-use tauri::window::{Effect, EffectState, EffectsBuilder};
+use tauri::window::Color;
 use tauri::{Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
 /// Holds the server for the app's life; taking it out stops the server.
@@ -71,33 +70,17 @@ fn open_window(app: &tauri::App, url: &str) -> tauri::Result<()> {
         .disable_drag_drop_handler()
         .visible(false)
         .center()
-        .initialization_script(GLASS_PAGE)
-        .transparent(true)
-        // Dark glass in both system themes: the Fireflies field is dark, and a
-        // dark material keeps light text readable over a bright desktop. It
-        // also means a launch shows dark glass first, never a white frame.
+        // Dark chrome in both system themes, to match the dark page.
         .theme(Some(Theme::Dark))
-        .effects(glass())
+        // The window and webview start in the page's own colour, so a launch
+        // never flashes white or any other shade before the first paint.
+        .background_color(PAGE_BACKGROUND)
         .build()?;
     window.show()
 }
 
-/// The desktop shows through, blurred by macOS's own vibrancy. It stays glass
-/// when the window is in the background too, so it never turns flat grey.
-fn glass() -> WindowEffectsConfig {
-    EffectsBuilder::new().effect(Effect::UnderWindowBackground).state(EffectState::Active).build()
-}
-
-/// Tells each page it sits on glass (`html.glass`), so it tints its field
-/// instead of painting it solid. Runs before the page's own markup is parsed.
-const GLASS_PAGE: &str = r#"(() => {
-  const mark = () => {
-    const root = document.documentElement;
-    if (root) root.classList.add("glass");
-    return Boolean(root);
-  };
-  if (!mark()) new MutationObserver((_, watch) => { if (mark()) watch.disconnect(); }).observe(document, { childList: true });
-})();"#;
+/// The one flat colour every page paints (#0B1410, src/server/public/app-background.css).
+const PAGE_BACKGROUND: Color = Color(11, 20, 16, 255);
 
 /// Hands an http, https or mailto link to macOS (`open`), so it lands in the
 /// user's default browser or mail app. Returns whether it was handed off.
