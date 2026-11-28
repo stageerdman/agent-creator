@@ -418,7 +418,7 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
       const onQueued = () => { if (!t.reply) mine.classList.add('queued'); };
       let ready = false;
       await streamChat({ fetch: win.fetch.bind(win), id, message, onText, onChange, onAllocate, onQueued, onReady: () => { ready = true; } });
-      if (showCreate(ready, wasKept)) offerCreate(t.reply);
+      if (showCreate(ready, wasKept)) { await pull(); offerCreate(t.reply); }   // the card names the agent as this turn left it
     } catch (err) {
       if (flight && flight.mine === mine) drop();
       if (t.reply) win.clearTimeout(t.reply._answer);
