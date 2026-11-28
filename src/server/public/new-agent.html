@@ -11,9 +11,9 @@
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
     --hit: max(112px, 20vmin);   /* 2 x hitR = 2 x max(56, .10 U) */
   }
+  /* Solid, in the browser and in the Mac app alike (html.glass changes nothing here): the one glass on
+     this screen is the Sketcher panel, so it reads as the window and the field as the scene. */
   html { background: var(--field); }
-  /* In the Mac app the window is glass: the field tints the blurred desktop, dark enough for text. */
-  html.glass { background: transparent; --field: rgba(11, 20, 16, .62); --shadow: rgba(6, 11, 8, .8); }
   html, body { margin: 0; height: 100%; }
   body { background: radial-gradient(120% 90% at 50% 45%, var(--field) 0%, var(--field) 55%, var(--shadow) 100%) fixed; overflow: hidden; }
   canvas#field { position: fixed; inset: 0; display: block; pointer-events: none; }
@@ -140,25 +140,31 @@
   #handle[aria-expanded="true"] .chev { transform: scaleX(-1); }
   #handle[aria-expanded="true"]:hover .chev { transform: scaleX(-1) translateX(2px); }
   #handle[aria-expanded="true"] .label { max-width: 0 !important; opacity: 0 !important; }
-  #sketcher { position: fixed; left: 0; top: 0; bottom: 0; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
-    padding: 20px 20px 20px 24px; border-radius: 0 16px 16px 0; color: #E8EFE0; font: 400 14px/1.45 var(--font);
-    background: rgba(12,14,10,.92); transform: translateX(-100%); box-shadow: 0 0 60px rgba(0,0,0,.4); }
+  /* The floating chat: the one glass on the screen. A 12px gap on the left, top and bottom, round corners all
+     round and a soft shadow make it a window over the likeness. Closed, it sits its own width plus the gap
+     off-screen, so its right edge is at 0 and the arrow rides that edge on every frame. */
+  #sketcher { position: fixed; left: 12px; top: 12px; bottom: 12px; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+    padding: 20px 20px 20px 24px; border: 1px solid rgba(232,239,224,.08); border-radius: 16px; color: #E8EFE0; font: 400 14px/1.45 var(--font);
+    background: rgba(12,14,10,.92); transform: translateX(calc(-100% - 12px)); box-shadow: 0 12px 40px rgba(0,0,0,.45); }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    #sketcher { background: rgba(12,14,10,.64); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+    #sketcher { background: rgba(12,14,10,.36); backdrop-filter: blur(24px) saturate(1.3); -webkit-backdrop-filter: blur(24px) saturate(1.3); }
   }
-  /* Narrow screens: the panel is full width and the arrow rests just inside its right edge; keep words clear of it. */
-  @media (max-width: 639px) { #sketcher { padding-right: 56px; } }
-  /* Over the glass window the chat is long reading: near-solid, so it never depends on the wallpaper. */
-  html.glass #sketcher { background: rgba(12,14,10,.88); }
+  /* People who asked the system for less transparency get the panel near-solid. */
+  @media (prefers-reduced-transparency: reduce) { #sketcher { background: rgba(12,14,10,.94); } }
+  /* Narrow screens: a smaller gap; the arrow rests just inside the panel's right edge, so words keep clear of it. */
+  @media (max-width: 639px) { #sketcher { left: 8px; top: 8px; bottom: 8px; padding-right: 56px; transform: translateX(calc(-100% - 8px)); } }
   #sketcher[hidden] { display: none; }
   #sketcher.open { transform: translateX(0); }
   #sketcher .top { display: flex; align-items: center; gap: 8px; }
   #sketcher h2 { margin: 0; font: 600 17px/1.2 var(--font); }
-  #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  /* Reading over the bright likeness: a darker tint behind the messages only (the frame and title stay glass),
+     so text keeps AA contrast over a fully lit dot. */
+  #sketcher-log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    margin: 0 -8px; padding: 8px; border-radius: 12px; background: rgba(6,9,6,.55); }
   #sketcher-log > div { margin: 0; max-width: 90%; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   #sketcher-log > .you { align-self: flex-end; background: rgba(216,242,106,.14); }
   #sketcher-log > .sketcher { align-self: flex-start; background: rgba(232,239,224,.06); }
-  #sketcher-log > .wait { color: rgba(232,239,224,.6); }
+  #sketcher-log > .wait { color: rgba(232,239,224,.72); }
   #sketcher-log > .err { color: #FF6B5E; }
   /* Sketcher's formatted words (markdown.js): weight, slant, a faint tint and a thin rule. Nothing louder. */
   #sketcher-log > .md { white-space: normal; }

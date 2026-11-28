@@ -160,13 +160,14 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   let open = false, changedWhileOpen = false, heldWhole = false, wasKept = false, grow = 1, handleAt = 0, blinkAt = -1e9, blinks = 0, busy = false, pollT = 0;
   const T = () => timings(reduced);
   const later = (fn, ms) => { const h = win.setTimeout(fn, ms); timers.push(h); return h; };
+  const gap = () => parseFloat(win.getComputedStyle ? win.getComputedStyle(panel).left : 0) || 0;   // the floating panel's gap from the window edge (its CSS left)
   const geo = () => { const W = win.innerWidth, H = win.innerHeight, fw = Math.max(160, W - MENU_W), L = markSize(fw, H); return { W, H, fw, L, cx: fw / 2, cy: H / 2 }; };
 
   function place() {
     const g = geo();
     Object.assign(markEl.style, { left: g.cx - g.L / 2 + 'px', top: g.cy - g.L / 2 + 'px', width: g.L + 'px', height: g.L + 'px' });
     handle.style.top = clamp(g.cy - 24, 16, g.H - 64) + 'px';
-    panel.style.width = (g.W < 640 ? g.W : Math.min(440, g.fw)) + 'px';
+    panel.style.width = (g.W < 640 ? g.W - 2 * gap() : Math.min(440, g.fw)) + 'px';   // narrow: the whole width less the gap on each side
     if (open) handle.style.transform = `translateX(${edgeX()}px)`;
     kick();
   }
@@ -246,7 +247,8 @@ export function mountLeftSide({ doc = document, reduced = false, store = localSt
   // The tab's resting width (padding + chevron + gap, 48px), not min-width and not with a hovered label,
   // so the whole arrow stays on screen.
   const tabW = () => { const l = handle.querySelector('.label'); return Math.max(parseFloat(win.getComputedStyle(handle).minWidth) || 44, handle.offsetWidth - (l ? l.offsetWidth : 0)); };
-  const edgeX = () => Math.max(0, Math.min(panel.getBoundingClientRect().width, win.innerWidth - tabW()));
+  // Open, the arrow sits on the floating panel's right edge: its gap + its width.
+  const edgeX = () => Math.max(0, Math.min(gap() + panel.getBoundingClientRect().width, win.innerWidth - tabW()));
   function slide(ms, ease) {
     const tr = `transform ${ms}ms ${ease}`;
     panel.style.transition = tr; handle.style.transition = tr;
